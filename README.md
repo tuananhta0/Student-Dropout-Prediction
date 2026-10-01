@@ -1,115 +1,116 @@
+# Student Dropout Prediction
 
-```markdown
-# Q-AChatBot
-
-Hệ thống hỏi đáp tự động về quy chế đào tạo và sổ tay sinh viên áp dụng kiến trúc Retrieval-Augmented Generation (RAG).
+Hệ thống phân tích và dự đoán nguy cơ sinh viên bỏ học dựa trên lịch sử học tập, điểm số và mức độ tương tác trên hệ thống LMS bằng các mô hình học máy.
 
 ---
 
-## Cấu trúc thư mục
+## 1. Công nghệ sử dụng
+
+- Ngôn ngữ: Python 3.10+
+- Xử lý dữ liệu: Pandas, NumPy
+- Trực quan hóa dữ liệu: Matplotlib, Seaborn
+- Học máy: Scikit-learn, XGBoost, LightGBM
+- Cân bằng dữ liệu: Imbalanced-learn
+- Lưu trữ mô hình: Joblib
+- Giao diện người dùng: Streamlit
+
+---
+
+## 2. Cấu trúc thư mục
 
 ```text
-student-handbook-rag/
+student-dropout-prediction/
 ├── data/
-│   ├── raw/                  # Chứa tệp PDF quy chế gốc
-│   └── processed/            # Chứa văn bản sau trích xuất (tùy chọn)
-├── chroma_db/                # Dữ liệu vector do ChromaDB tự động tạo
+│   ├── raw/                  # Tệp dữ liệu CSV gốc
+│   └── processed/            # Dữ liệu sau khi làm sạch và chuẩn hóa
+├── notebooks/                # Notebook phục vụ phân tích và thử nghiệm
+│   ├── 01_eda.ipynb          # Phân tích khám phá dữ liệu (EDA)
+│   └── 02_model_training.ipynb # Thử nghiệm và đánh giá mô hình học máy
+├── models/                   # Tệp mô hình sau huấn luyện (.joblib)
+├── reports/                  # Báo cáo và biểu đồ đánh giá
+│   ├── figures/              # Lưu trữ ma trận nhầm lẫn, ROC curve
+│   └── cleaning_log.csv      # Nhật ký các bước làm sạch dữ liệu
 ├── src/
 │   ├── __init__.py           # Tệp rỗng đánh dấu package
-│   ├── ingest.py             # Script xử lý PDF và tạo cơ sở dữ liệu vector
-│   ├── rag_engine.py         # Module định nghĩa chuỗi xử lý RAG và LLM
-│   └── utils.py              # Các hàm phụ trợ tiền xử lý và metadata
-├── app.py                    # Giao diện web người dùng Streamlit
+│   ├── preprocess.py         # Hàm tiền xử lý và mã hóa đặc trưng
+│   ├── train.py              # Script huấn luyện và lưu mô hình
+│   └── evaluate.py           # Tính toán độ đo đánh giá mô hình
+├── app.py                    # Giao diện web dự báo nguy cơ sinh viên
 ├── requirements.txt          # Danh sách thư viện phụ thuộc
-├── .env.example              # Tệp cấu hình biến môi trường mẫu
-├── .env                      # Tệp lưu khóa API bảo mật
 ├── .gitignore                # Danh sách tệp loại trừ khỏi Git
 └── README.md                 # Tài liệu hướng dẫn kỹ thuật
-
 ```
 
 ---
 
-## Chi tiết nhiệm vụ theo tệp
+## 3. Chi tiết nhiệm vụ theo tệp
 
-* `data/raw/`: Không viết mã nguồn. Sao chép trực tiếp các tệp PDF quy chế đào tạo, sổ tay sinh viên cần tra cứu vào thư mục này.
-* `data/processed/`: Thư mục tùy chọn lưu dữ liệu trung gian sau khi làm sạch văn bản thô.
-* `chroma_db/`: Thư mục do hệ thống tự sinh sau khi hoàn tất vector hóa, không chỉnh sửa thủ công.
-* `src/__init__.py`: Giữ tệp rỗng để hỗ trợ cơ chế nhập module giữa các tệp trong thư mục `src`.
-* `src/utils.py`: Lập trình các hàm bổ trợ như làm sạch ký tự thừa trong văn bản và định dạng thông tin trích dẫn nguồn.
-* `src/ingest.py`: Lập trình quy trình đọc tài liệu PDF, phân tách thành các đoạn văn bản, gửi tới API embedding và lưu trữ vector vào ChromaDB.
-* `src/rag_engine.py`: Lập trình kết nối với ChromaDB làm bộ truy xuất, thiết lập prompt mẫu hướng dẫn ngữ cảnh, kết nối mô hình Gemini 1.5 Flash và xuất hàm xử lý truy vấn hoàn chỉnh.
-* `app.py`: Lập trình giao diện trò chuyện bằng Streamlit, quản lý lịch sử tương tác qua `session_state`, nhận câu hỏi từ người dùng, gọi hàm từ `rag_engine.py` và hiển thị câu trả lời kèm đoạn quy chế trích dẫn.
-* `requirements.txt`: Khai báo đầy đủ tên và phiên bản của các thư viện phụ thuộc.
-* `.env`: Khai báo giá trị khóa Google API phục vụ quá trình embedding và gọi mô hình ngôn ngữ.
+- data/raw/: Lưu trữ tập dữ liệu gốc định dạng CSV.
+- data/processed/: Lưu trữ dữ liệu sau khi làm sạch, mã hóa và chia tập dữ liệu.
+- notebooks/01_eda.ipynb: Thống kê mô tả, phân tích tương quan và trực quan hóa phân phối dữ liệu.
+- notebooks/02_model_training.ipynb: Thử nghiệm các thuật toán phân loại và so sánh hiệu năng.
+- models/: Lưu trữ trọng số của mô hình tối ưu nhất phục vụ suy luận.
+- reports/cleaning_log.csv: Ghi nhận các bước tiền xử lý, xử lý giá trị thiếu và biến đổi dữ liệu.
+- src/preprocess.py: Đóng gói quy trình làm sạch dữ liệu thành hàm xử lý tự động.
+- src/train.py: Tự động hóa quá trình huấn luyện và xuất tệp mô hình ra thư mục models/.
+- src/evaluate.py: Tính toán các chỉ số Accuracy, Precision, Recall, F1-score và ROC-AUC.
+- app.py: Giao diện tương tác cho phép nhập thông tin học tập và xuất cảnh báo mức độ rủi ro.
+- requirements.txt: Khai báo danh sách thư viện phục vụ cài đặt môi trường.
 
 ---
 
-## Cài đặt môi trường
+## 4. Cài đặt môi trường
 
 Khởi tạo môi trường ảo:
 
-* Windows:
-
+- Windows:
 ```powershell
 python -m venv venv
 .\venv\Scripts\Activate.ps1
-
 ```
 
-* Mac/Linux:
-
+- Mac/Linux:
 ```bash
 python3 -m venv venv
 source venv/bin/activate
-
 ```
 
 Cài đặt thư viện phụ thuộc:
-
 ```bash
 pip install -r requirements.txt
-
 ```
 
 ---
 
-## Cấu hình API
+## 5. Chuẩn bị dữ liệu
 
-Sao chép tệp cấu hình mẫu và cập nhật khóa:
+Đặt tệp dữ liệu CSV vào đường dẫn:
+```text
+data/raw/data.csv
+```
 
+---
+
+## 6. Huấn luyện mô hình
+
+Chạy script tiền xử lý và huấn luyện:
 ```bash
-cp .env.example .env
-
-```
-
-Nội dung tệp `.env`:
-
-```env
-GOOGLE_API_KEY="dien_khoa_api_tai_day"
-
+python src/train.py
 ```
 
 ---
 
-## Nạp dữ liệu
+## 7. Khởi chạy hệ thống
 
-Sao chép các tệp PDF vào thư mục `data/raw/`, sau đó chạy script:
-
-```bash
-python src/ingest.py
-
-```
-
----
-
-## Cách chạy
-
-Khởi chạy ứng dụng web:
-
+Khởi chạy ứng dụng Streamlit:
 ```bash
 streamlit run app.py
-
 ```
 
-Truy cập hệ thống tại địa chỉ: `http://localhost:8501`.
+Truy cập hệ thống tại địa chỉ: http://localhost:8501
+
+---
+
+## 8. Nhật ký làm sạch dữ liệu
+
+Mọi bước xử lý dữ liệu bất thường (giá trị thiếu, trùng lặp, sai định dạng, chuẩn hóa thang điểm) được ghi lại tại `reports/cleaning_log.csv`, gồm: bước xử lý, lý do, số dòng trước/sau và số dòng bị ảnh hưởng.
