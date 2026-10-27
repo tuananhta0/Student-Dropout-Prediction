@@ -1,0 +1,226 @@
+{
+  "status": "PASS",
+  "error_count": 0,
+  "errors": [],
+  "checks_count": 52,
+  "checks": [
+    {
+      "check": "train: X/y/keys row alignment",
+      "pass": true
+    },
+    {
+      "check": "train: row IDs match source split",
+      "pass": true
+    },
+    {
+      "check": "train: target matches source",
+      "pass": true
+    },
+    {
+      "check": "train: both target classes present",
+      "pass": true
+    },
+    {
+      "check": "train/linear: row count",
+      "pass": true
+    },
+    {
+      "check": "train/linear: identical feature schema",
+      "pass": true
+    },
+    {
+      "check": "train/linear: no missing or infinite values",
+      "pass": true
+    },
+    {
+      "check": "train/linear: no label or IDs in features",
+      "pass": true
+    },
+    {
+      "check": "train/tree: row count",
+      "pass": true
+    },
+    {
+      "check": "train/tree: identical feature schema",
+      "pass": true
+    },
+    {
+      "check": "train/tree: no missing or infinite values",
+      "pass": true
+    },
+    {
+      "check": "train/tree: no label or IDs in features",
+      "pass": true
+    },
+    {
+      "check": "train: unique identifiers",
+      "pass": true
+    },
+    {
+      "check": "validation: X/y/keys row alignment",
+      "pass": true
+    },
+    {
+      "check": "validation: row IDs match source split",
+      "pass": true
+    },
+    {
+      "check": "validation: target matches source",
+      "pass": true
+    },
+    {
+      "check": "validation: both target classes present",
+      "pass": true
+    },
+    {
+      "check": "validation/linear: row count",
+      "pass": true
+    },
+    {
+      "check": "validation/linear: identical feature schema",
+      "pass": true
+    },
+    {
+      "check": "validation/linear: no missing or infinite values",
+      "pass": true
+    },
+    {
+      "check": "validation/linear: no label or IDs in features",
+      "pass": true
+    },
+    {
+      "check": "validation/tree: row count",
+      "pass": true
+    },
+    {
+      "check": "validation/tree: identical feature schema",
+      "pass": true
+    },
+    {
+      "check": "validation/tree: no missing or infinite values",
+      "pass": true
+    },
+    {
+      "check": "validation/tree: no label or IDs in features",
+      "pass": true
+    },
+    {
+      "check": "validation: unique identifiers",
+      "pass": true
+    },
+    {
+      "check": "test: X/y/keys row alignment",
+      "pass": true
+    },
+    {
+      "check": "test: row IDs match source split",
+      "pass": true
+    },
+    {
+      "check": "test: target matches source",
+      "pass": true
+    },
+    {
+      "check": "test: both target classes present",
+      "pass": true
+    },
+    {
+      "check": "test/linear: row count",
+      "pass": true
+    },
+    {
+      "check": "test/linear: identical feature schema",
+      "pass": true
+    },
+    {
+      "check": "test/linear: no missing or infinite values",
+      "pass": true
+    },
+    {
+      "check": "test/linear: no label or IDs in features",
+      "pass": true
+    },
+    {
+      "check": "test/tree: row count",
+      "pass": true
+    },
+    {
+      "check": "test/tree: identical feature schema",
+      "pass": true
+    },
+    {
+      "check": "test/tree: no missing or infinite values",
+      "pass": true
+    },
+    {
+      "check": "test/tree: no label or IDs in features",
+      "pass": true
+    },
+    {
+      "check": "test: unique identifiers",
+      "pass": true
+    },
+    {
+      "check": "linear/major_code: one-hot fitted on train only",
+      "pass": true
+    },
+    {
+      "check": "linear/degree_type: one-hot fitted on train only",
+      "pass": true
+    },
+    {
+      "check": "linear/education_mode: one-hot fitted on train only",
+      "pass": true
+    },
+    {
+      "check": "linear/living_status: one-hot fitted on train only",
+      "pass": true
+    },
+    {
+      "check": "linear/admission_method_family: one-hot fitted on train only",
+      "pass": true
+    },
+    {
+      "check": "linear: medians learned on Train only",
+      "pass": true
+    },
+    {
+      "check": "tree/major_code: one-hot fitted on train only",
+      "pass": true
+    },
+    {
+      "check": "tree/degree_type: one-hot fitted on train only",
+      "pass": true
+    },
+    {
+      "check": "tree/education_mode: one-hot fitted on train only",
+      "pass": true
+    },
+    {
+      "check": "tree/living_status: one-hot fitted on train only",
+      "pass": true
+    },
+    {
+      "check": "tree/admission_method_family: one-hot fitted on train only",
+      "pass": true
+    },
+    {
+      "check": "tree: medians learned on Train only",
+      "pass": true
+    },
+    {
+      "check": "all splits disjoint by ID",
+      "pass": true
+    }
+  ],
+  "source_sha256": {
+    "original_cleaned": "d1e08eb0c252db7fadd37f46b438e70c8f0948afa0c1b3db33a054eca2e78436",
+    "hk1_input": "a0cc8165d58d37a5c65c5ca45dfaf6ef6344a090c0404e92e7fae92f7f9c666b",
+    "feature_manifest": "fbbaa5dad166db8ff11d9a58f76f391dc95a9354f6913d34b7951b65c81d03a1",
+    "split_manifest": "70289b3842ab7241a1f5f7d5c8887844c715762f22c3c2999893d87bd85770f3"
+  },
+  "python_version": "3.13.5",
+  "sklearn_version": "1.8.0",
+  "numpy_version": "2.3.5",
+  "pandas_version": "2.2.3"
+}

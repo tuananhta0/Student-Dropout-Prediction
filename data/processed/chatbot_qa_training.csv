@@ -1,0 +1,112 @@
+﻿question,intent,topic_title
+tra cứu thông tin học tập cá nhân,personal,Tra cứu Hồ sơ & Bảng điểm Cá nhân
+xem hồ sơ cá nhân của tôi,personal,Tra cứu Hồ sơ & Bảng điểm Cá nhân
+bảng điểm của tôi,personal,Tra cứu Hồ sơ & Bảng điểm Cá nhân
+cho tôi xem kết quả học tập,personal,Tra cứu Hồ sơ & Bảng điểm Cá nhân
+thông tin sinh viên của mình,personal,Tra cứu Hồ sơ & Bảng điểm Cá nhân
+điểm trung bình gpa của tôi là bao nhiêu,personal,Tra cứu Hồ sơ & Bảng điểm Cá nhân
+tôi đã tích lũy được bao nhiêu tín chỉ,personal,Tra cứu Hồ sơ & Bảng điểm Cá nhân
+xem thông tin cá nhân,personal,Tra cứu Hồ sơ & Bảng điểm Cá nhân
+kiểm tra hồ sơ học vụ,personal,Tra cứu Hồ sơ & Bảng điểm Cá nhân
+tình hình học tập hiện tại của tôi,personal,Tra cứu Hồ sơ & Bảng điểm Cá nhân
+cho xem bảng điểm và biểu đồ,personal,Tra cứu Hồ sơ & Bảng điểm Cá nhân
+tra cứu điểm cá nhân,personal,Tra cứu Hồ sơ & Bảng điểm Cá nhân
+dự đoán tỷ lệ bỏ học của tôi,risk,Dự báo Nguy cơ Bỏ học & Phân tích Rủi ro Học vụ
+nguy cơ bỏ học của tôi là bao nhiêu phần trăm,risk,Dự báo Nguy cơ Bỏ học & Phân tích Rủi ro Học vụ
+tôi có nguy cơ bị cảnh báo học tập hay buộc thôi học không,risk,Dự báo Nguy cơ Bỏ học & Phân tích Rủi ro Học vụ
+dự báo học vụ của tôi,risk,Dự báo Nguy cơ Bỏ học & Phân tích Rủi ro Học vụ
+phân tích rủi ro bỏ học,risk,Dự báo Nguy cơ Bỏ học & Phân tích Rủi ro Học vụ
+tỉ lệ thôi học của mình cao hay thấp,risk,Dự báo Nguy cơ Bỏ học & Phân tích Rủi ro Học vụ
+kiểm tra mức độ an toàn học tập,risk,Dự báo Nguy cơ Bỏ học & Phân tích Rủi ro Học vụ
+xác suất bỏ học của tôi,risk,Dự báo Nguy cơ Bỏ học & Phân tích Rủi ro Học vụ
+tôi muốn phúc khảo điểm giữa kì môn tiếng anh,phuc_khao_diem,Quy định về Phúc tra / Phúc khảo & Khiếu nại Điểm số (Điều 16)
+phúc khảo điểm giữa kỳ như thế nào,phuc_khao_diem,Quy định về Phúc tra / Phúc khảo & Khiếu nại Điểm số (Điều 16)
+phúc tra điểm thi cuối kỳ ở đâu,phuc_khao_diem,Quy định về Phúc tra / Phúc khảo & Khiếu nại Điểm số (Điều 16)
+chấm lại bài thi kết thúc học phần,phuc_khao_diem,Quy định về Phúc tra / Phúc khảo & Khiếu nại Điểm số (Điều 16)
+điểm thành phần bị sai thì khiếu nại với ai,phuc_khao_diem,Quy định về Phúc tra / Phúc khảo & Khiếu nại Điểm số (Điều 16)
+thủ tục phúc khảo bài thi,phuc_khao_diem,Quy định về Phúc tra / Phúc khảo & Khiếu nại Điểm số (Điều 16)
+khiếu nại điểm đánh giá thường xuyên,phuc_khao_diem,Quy định về Phúc tra / Phúc khảo & Khiếu nại Điểm số (Điều 16)
+bao lâu thì có kết quả phúc tra điểm,phuc_khao_diem,Quy định về Phúc tra / Phúc khảo & Khiếu nại Điểm số (Điều 16)
+em muốn xin chấm phúc khảo môn học,phuc_khao_diem,Quy định về Phúc tra / Phúc khảo & Khiếu nại Điểm số (Điều 16)
+thắc mắc điểm kiểm tra quá trình giữa kỳ,phuc_khao_diem,Quy định về Phúc tra / Phúc khảo & Khiếu nại Điểm số (Điều 16)
+khi nào sinh viên bị cảnh báo học tập,canh_bao_hoc_tap,"Quy định về Cảnh báo Học tập (Điều 18, Khoản 1)"
+điều kiện bị cảnh báo học tập là gì,canh_bao_hoc_tap,"Quy định về Cảnh báo Học tập (Điều 18, Khoản 1)"
+điểm gpa dưới bao nhiêu thì bị cảnh báo,canh_bao_hoc_tap,"Quy định về Cảnh báo Học tập (Điều 18, Khoản 1)"
+rớt bao nhiêu tín chỉ thì bị cảnh báo học tập,canh_bao_hoc_tap,"Quy định về Cảnh báo Học tập (Điều 18, Khoản 1)"
+nợ quá 24 tín chỉ có bị sao không,canh_bao_hoc_tap,"Quy định về Cảnh báo Học tập (Điều 18, Khoản 1)"
+quy định cảnh báo học vụ điều 18,canh_bao_hoc_tap,"Quy định về Cảnh báo Học tập (Điều 18, Khoản 1)"
+điểm trung bình học kỳ dưới 1.0 có bị cảnh báo không,canh_bao_hoc_tap,"Quy định về Cảnh báo Học tập (Điều 18, Khoản 1)"
+cảnh báo học tập tính như thế nào,canh_bao_hoc_tap,"Quy định về Cảnh báo Học tập (Điều 18, Khoản 1)"
+khi nào bị buộc thôi học,buoc_thoi_hoc,"Quy định về Buộc thôi học & Thời gian học tối đa (Điều 18, Khoản 2-4)"
+bị cảnh báo học tập mấy lần thì bị đuổi học,buoc_thoi_hoc,"Quy định về Buộc thôi học & Thời gian học tối đa (Điều 18, Khoản 2-4)"
+cảnh báo 2 lần liên tiếp có bị thôi học không,buoc_thoi_hoc,"Quy định về Buộc thôi học & Thời gian học tối đa (Điều 18, Khoản 2-4)"
+thời gian học tối đa ở trường là bao lâu,buoc_thoi_hoc,"Quy định về Buộc thôi học & Thời gian học tối đa (Điều 18, Khoản 2-4)"
+sinh viên bị đuổi học trong trường hợp nào,buoc_thoi_hoc,"Quy định về Buộc thôi học & Thời gian học tối đa (Điều 18, Khoản 2-4)"
+quá 3 lần cảnh báo học tập thì sao,buoc_thoi_hoc,"Quy định về Buộc thôi học & Thời gian học tối đa (Điều 18, Khoản 2-4)"
+bị buộc thôi học có được bảo lưu môn đã học khi thi lại không,buoc_thoi_hoc,"Quy định về Buộc thôi học & Thời gian học tối đa (Điều 18, Khoản 2-4)"
+em muốn rút bớt môn học đã đăng ký,rut_hoc_phan_bo_hoc,"Quy định về Rút bớt Học phần & Tự ý Bỏ học (Điều 12, Khoản 4)"
+thời hạn rút học phần là khi nào,rut_hoc_phan_bo_hoc,"Quy định về Rút bớt Học phần & Tự ý Bỏ học (Điều 12, Khoản 4)"
+hủy môn học sau 1 tuần có được không,rut_hoc_phan_bo_hoc,"Quy định về Rút bớt Học phần & Tự ý Bỏ học (Điều 12, Khoản 4)"
+tự ý nghỉ học không đi học môn đã đăng ký thì sao,rut_hoc_phan_bo_hoc,"Quy định về Rút bớt Học phần & Tự ý Bỏ học (Điều 12, Khoản 4)"
+bỏ học giữa chừng có phải đóng học phí không,rut_hoc_phan_bo_hoc,"Quy định về Rút bớt Học phần & Tự ý Bỏ học (Điều 12, Khoản 4)"
+rút học phần điều 12,rut_hoc_phan_bo_hoc,"Quy định về Rút bớt Học phần & Tự ý Bỏ học (Điều 12, Khoản 4)"
+thủ tục xin bảo lưu kết quả học tập,bao_luu_tam_nghi,Quy định về Nghỉ học tạm thời / Bảo lưu & Tự xin thôi học (Điều 21)
+nghỉ học tạm thời được tối đa bao lâu,bao_luu_tam_nghi,Quy định về Nghỉ học tạm thời / Bảo lưu & Tự xin thôi học (Điều 21)
+em muốn xin nghỉ học tạm thời vì lý do cá nhân,bao_luu_tam_nghi,Quy định về Nghỉ học tạm thời / Bảo lưu & Tự xin thôi học (Điều 21)
+sinh viên năm nhất học kỳ 1 có được bảo lưu không,bao_luu_tam_nghi,Quy định về Nghỉ học tạm thời / Bảo lưu & Tự xin thôi học (Điều 21)
+bị ốm nằm viện xin bảo lưu có tính vào thời gian học không,bao_luu_tam_nghi,Quy định về Nghỉ học tạm thời / Bảo lưu & Tự xin thôi học (Điều 21)
+muốn quay lại học sau khi bảo lưu cần làm gì,bao_luu_tam_nghi,Quy định về Nghỉ học tạm thời / Bảo lưu & Tự xin thôi học (Điều 21)
+tự xin thôi học vì lý do cá nhân,bao_luu_tam_nghi,Quy định về Nghỉ học tạm thời / Bảo lưu & Tự xin thôi học (Điều 21)
+điểm liệt cuối kỳ là bao nhiêu,hoc_lai_diem_liet,"Quy định về Điểm liệt, Học lại, Học cải thiện & Thi lại (Điều 13, 14, 15)"
+thi cuối kỳ được 2 điểm có qua môn không,hoc_lai_diem_liet,"Quy định về Điểm liệt, Học lại, Học cải thiện & Thi lại (Điều 13, 14, 15)"
+khi nào phải học lại môn học,hoc_lai_diem_liet,"Quy định về Điểm liệt, Học lại, Học cải thiện & Thi lại (Điều 13, 14, 15)"
+điểm tổng kết dưới 4.0 là điểm gì,hoc_lai_diem_liet,"Quy định về Điểm liệt, Học lại, Học cải thiện & Thi lại (Điều 13, 14, 15)"
+học cải thiện điểm thì lấy điểm nào,hoc_lai_diem_liet,"Quy định về Điểm liệt, Học lại, Học cải thiện & Thi lại (Điều 13, 14, 15)"
+thi lại điểm tối đa được bao nhiêu,hoc_lai_diem_liet,"Quy định về Điểm liệt, Học lại, Học cải thiện & Thi lại (Điều 13, 14, 15)"
+cách quy đổi điểm chữ A B C D F sang thang 4,hoc_lai_diem_liet,"Quy định về Điểm liệt, Học lại, Học cải thiện & Thi lại (Điều 13, 14, 15)"
+học lại có mất tiền học phí không,hoc_lai_diem_liet,"Quy định về Điểm liệt, Học lại, Học cải thiện & Thi lại (Điều 13, 14, 15)"
+nghỉ học bao nhiêu buổi thì bị cấm thi,chuyen_can_cam_thi,"Quy định về Chuyên cần, Nghỉ học & Đi thi muộn (Điều 15 & Điều 25)"
+vắng quá 20% số tiết có được thi cuối kỳ không,chuyen_can_cam_thi,"Quy định về Chuyên cần, Nghỉ học & Đi thi muộn (Điều 15 & Điều 25)"
+nghỉ học có phép quá 30% có bị học lại không,chuyen_can_cam_thi,"Quy định về Chuyên cần, Nghỉ học & Đi thi muộn (Điều 15 & Điều 25)"
+đi thi muộn 15 phút có được vào phòng thi không,chuyen_can_cam_thi,"Quy định về Chuyên cần, Nghỉ học & Đi thi muộn (Điều 15 & Điều 25)"
+vắng thi cuối kỳ không lý do bị điểm mấy,chuyen_can_cam_thi,"Quy định về Chuyên cần, Nghỉ học & Đi thi muộn (Điều 15 & Điều 25)"
+ốm không đi thi cuối kỳ được có được thi bù không,chuyen_can_cam_thi,"Quy định về Chuyên cần, Nghỉ học & Đi thi muộn (Điều 15 & Điều 25)"
+mang điện thoại vào phòng thi bị xử lý như thế nào,ky_luat_thi_cu,"Xử lý Kỷ luật Gian lận Thi cử, Điện thoại, Tài liệu & Học hộ/Thi hộ (Điều 25)"
+sử dụng tài liệu trong phòng thi bị phạt gì,ky_luat_thi_cu,"Xử lý Kỷ luật Gian lận Thi cử, Điện thoại, Tài liệu & Học hộ/Thi hộ (Điều 25)"
+nhìn bài hoặc trao đổi bài trong giờ thi bị trừ bao nhiêu điểm,ky_luat_thi_cu,"Xử lý Kỷ luật Gian lận Thi cử, Điện thoại, Tài liệu & Học hộ/Thi hộ (Điều 25)"
+đi học hộ bạn bị kỷ luật thế nào,ky_luat_thi_cu,"Xử lý Kỷ luật Gian lận Thi cử, Điện thoại, Tài liệu & Học hộ/Thi hộ (Điều 25)"
+nhờ người khác thi hộ bị phạt sao,ky_luat_thi_cu,"Xử lý Kỷ luật Gian lận Thi cử, Điện thoại, Tài liệu & Học hộ/Thi hộ (Điều 25)"
+làm hộ bài kiểm tra giữa kỳ bị xử lý ra sao,ky_luat_thi_cu,"Xử lý Kỷ luật Gian lận Thi cử, Điện thoại, Tài liệu & Học hộ/Thi hộ (Điều 25)"
+dùng bằng cấp chứng chỉ giả bị xử lý thế nào,ky_luat_thi_cu,"Xử lý Kỷ luật Gian lận Thi cử, Điện thoại, Tài liệu & Học hộ/Thi hộ (Điều 25)"
+chuẩn đầu ra tiếng anh của trường là gì,tieng_anh_ngoai_ngu,"Quy định về Chuẩn đầu ra Tiếng Anh & Ngoại ngữ (Điều 19, 20)"
+hệ gm cần tiếng anh b1 hay b2,tieng_anh_ngoai_ngu,"Quy định về Chuẩn đầu ra Tiếng Anh & Ngoại ngữ (Điều 19, 20)"
+hệ sm chuẩn tiếng anh đầu ra bậc mấy,tieng_anh_ngoai_ngu,"Quy định về Chuẩn đầu ra Tiếng Anh & Ngoại ngữ (Điều 19, 20)"
+chưa có chứng chỉ tiếng anh có được xét tốt nghiệp không,tieng_anh_ngoai_ngu,"Quy định về Chuẩn đầu ra Tiếng Anh & Ngoại ngữ (Điều 19, 20)"
+hết thời gian học tối đa mà nợ tiếng anh hoặc thể chất quốc phòng thì sao,tieng_anh_ngoai_ngu,"Quy định về Chuẩn đầu ra Tiếng Anh & Ngoại ngữ (Điều 19, 20)"
+điều kiện để được làm khóa luận đồ án tốt nghiệp là gì,khoa_luan_tot_nghiep,"Quy định về Khóa luận Tốt nghiệp, Xét Tốt nghiệp & Hạ bậc Bằng (Điều 12, 20)"
+điểm gpa bao nhiêu thì được làm khóa luận,khoa_luan_tot_nghiep,"Quy định về Khóa luận Tốt nghiệp, Xét Tốt nghiệp & Hạ bậc Bằng (Điều 12, 20)"
+khi nào sinh viên đủ điều kiện xét tốt nghiệp,khoa_luan_tot_nghiep,"Quy định về Khóa luận Tốt nghiệp, Xét Tốt nghiệp & Hạ bậc Bằng (Điều 12, 20)"
+tại sao bằng giỏi xuất sắc lại bị hạ bậc xuống khá,khoa_luan_tot_nghiep,"Quy định về Khóa luận Tốt nghiệp, Xét Tốt nghiệp & Hạ bậc Bằng (Điều 12, 20)"
+học lại quá 5% số tín chỉ có bị hạ bằng tốt nghiệp không,khoa_luan_tot_nghiep,"Quy định về Khóa luận Tốt nghiệp, Xét Tốt nghiệp & Hạ bậc Bằng (Điều 12, 20)"
+thời gian làm khóa luận tốt nghiệp là mấy tháng,khoa_luan_tot_nghiep,"Quy định về Khóa luận Tốt nghiệp, Xét Tốt nghiệp & Hạ bậc Bằng (Điều 12, 20)"
+điều kiện xin chuyển ngành học là gì,chuyen_nganh_song_bang,"Quy định về Chuyển ngành, Chuyển trường & Học Song bằng (Điều 22, 23)"
+sinh viên năm nhất hoặc năm cuối có được chuyển ngành không,chuyen_nganh_song_bang,"Quy định về Chuyển ngành, Chuyển trường & Học Song bằng (Điều 22, 23)"
+được chuyển ngành mấy lần trong khóa học,chuyen_nganh_song_bang,"Quy định về Chuyển ngành, Chuyển trường & Học Song bằng (Điều 22, 23)"
+điều kiện đăng ký học cùng lúc 2 chương trình song bằng,chuyen_nganh_song_bang,"Quy định về Chuyển ngành, Chuyển trường & Học Song bằng (Điều 22, 23)"
+tích lũy bao nhiêu tín chỉ thì được học thêm ngành thứ 2,chuyen_nganh_song_bang,"Quy định về Chuyển ngành, Chuyển trường & Học Song bằng (Điều 22, 23)"
+làm hỏng đồ thì phải đền bù như nào,den_bu_hong_do_csvc,Quy định về Bảo vệ Tài sản & Đền bù Hư hỏng Cơ sở vật chất
+lỡ làm vỡ thiết bị trong phòng thực hành có bị sao không,den_bu_hong_do_csvc,Quy định về Bảo vệ Tài sản & Đền bù Hư hỏng Cơ sở vật chất
+làm hư hỏng máy tính bàn ghế của trường đền bù bao nhiêu,den_bu_hong_do_csvc,Quy định về Bảo vệ Tài sản & Đền bù Hư hỏng Cơ sở vật chất
+quy định bồi thường tài sản cơ sở vật chất,den_bu_hong_do_csvc,Quy định về Bảo vệ Tài sản & Đền bù Hư hỏng Cơ sở vật chất
+làm hỏng thiết bị phòng lab xử lý thế nào,den_bu_hong_do_csvc,Quy định về Bảo vệ Tài sản & Đền bù Hư hỏng Cơ sở vật chất
+bấm báo cháy có bị sao không,bam_bao_chay_noi_quy,Quy định về An toàn PCCC & Xử lý Hành vi Tự ý Bấm Chuông Báo Cháy
+tự ý bấm nút chuông báo cháy giả ở trường bị phạt thế nào,bam_bao_chay_noi_quy,Quy định về An toàn PCCC & Xử lý Hành vi Tự ý Bấm Chuông Báo Cháy
+nghịch chuông báo cháy trong tòa nhà có bị kỷ luật không,bam_bao_chay_noi_quy,Quy định về An toàn PCCC & Xử lý Hành vi Tự ý Bấm Chuông Báo Cháy
+vi phạm an toàn phòng cháy chữa cháy pccc trong trường,bam_bao_chay_noi_quy,Quy định về An toàn PCCC & Xử lý Hành vi Tự ý Bấm Chuông Báo Cháy
+gây rối mất trật tự an toàn trong trường bị xử lý ra sao,bam_bao_chay_noi_quy,Quy định về An toàn PCCC & Xử lý Hành vi Tự ý Bấm Chuông Báo Cháy
+mỗi học kỳ phải đăng ký tối thiểu và tối đa bao nhiêu tín chỉ,dang_ky_tin_chi_co_van,"Quy định về Đăng ký Tín chỉ, Khối lượng Học tập & Cố vấn Học tập (Điều 5, 7, 12)"
+lớp học phần bị hủy do ít sinh viên thì làm sao,dang_ky_tin_chi_co_van,"Quy định về Đăng ký Tín chỉ, Khối lượng Học tập & Cố vấn Học tập (Điều 5, 7, 12)"
+cố vấn học tập và giáo viên chủ nhiệm hỗ trợ những gì,dang_ky_tin_chi_co_van,"Quy định về Đăng ký Tín chỉ, Khối lượng Học tập & Cố vấn Học tập (Điều 5, 7, 12)"
+thời gian các tiết học sáng chiều tối của trường,dang_ky_tin_chi_co_van,"Quy định về Đăng ký Tín chỉ, Khối lượng Học tập & Cố vấn Học tập (Điều 5, 7, 12)"
+tổng thời lượng học online trực tuyến tối đa là bao nhiêu phần trăm,dang_ky_tin_chi_co_van,"Quy định về Đăng ký Tín chỉ, Khối lượng Học tập & Cố vấn Học tập (Điều 5, 7, 12)"
+cộng điểm thưởng nghiên cứu khoa học olympic,dang_ky_tin_chi_co_van,"Quy định về Đăng ký Tín chỉ, Khối lượng Học tập & Cố vấn Học tập (Điều 5, 7, 12)"

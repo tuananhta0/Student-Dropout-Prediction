@@ -1,0 +1,12 @@
+test_fit_categories_come_from_train (__main__.Tests.test_fit_categories_come_from_train) ... ok
+test_score_normalization_and_structural_missing (__main__.Tests.test_score_normalization_and_structural_missing) ... ok
+test_score_outside_method_range_is_rejected (__main__.Tests.test_score_outside_method_range_is_rejected) ... ok
+test_training_schema_excludes_identifiers_and_target (__main__.Tests.test_training_schema_excludes_identifiers_and_target) ... ok
+test_unknown_format_is_rejected (__main__.Tests.test_unknown_format_is_rejected) ... ok
+
+----------------------------------------------------------------------
+Ran 5 tests in 0.270s
+
+OK
+
+Reproducibility: PASS (identical output fingerprints across reruns)

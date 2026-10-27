@@ -1,0 +1,127 @@
+{
+  "audited_date": "2026-10-25",
+  "source_zip": "Yêu Bách vl.zip",
+  "source_dataset_sha256": "d1e08eb0c252db7fadd37f46b438e70c8f0948afa0c1b3db33a054eca2e78436",
+  "rows": 10000,
+  "columns": 81,
+  "curriculum_groups": 200,
+  "status": {
+    "Enrolled": 5874,
+    "Graduate": 3138,
+    "Dropout": 988
+  },
+  "status_detail": {
+    "Enrolled": 5669,
+    "Graduate": 3138,
+    "Dropout": 988,
+    "On_Leave": 205
+  },
+  "labels": {
+    "0": 9615,
+    "NA": 113,
+    "1": 272
+  },
+  "missing_cells_total": 33326,
+  "history": {
+    "course_attempts": 372053,
+    "semester_records": 73650,
+    "warning_semesters": 68289,
+    "academic_events": 33758
+  },
+  "checks_total": 437911,
+  "check_counts": {
+    "credit_degree_range": 10000,
+    "status_mapping": 10000,
+    "label_completeness": 10000,
+    "snapshot_present_for_labeled": 9887,
+    "first_gpa_present_for_labeled": 9887,
+    "no_current_overdue_without_debt": 9974,
+    "last_credit_accounting": 9974,
+    "first_credit_accounting": 9974,
+    "gpa_domain": 59844,
+    "graduate_credits_complete": 3138,
+    "graduate_no_owed": 3138,
+    "graduate_no_tuition_debt": 3138,
+    "graduate_gpa": 3138,
+    "graduate_english": 3138,
+    "curriculum_fixed_credit": 9800,
+    "dropout_horizon_consistency": 988,
+    "row_count": 1,
+    "curriculum_group_count": 1,
+    "label_sum": 1,
+    "final_target_order": 1,
+    "student_id_unique": 1,
+    "record_uid_unique": 1,
+    "warning_rule_on_semester": 68289,
+    "first_history_found": 9974,
+    "first_history_alignment": 49870,
+    "last_history_found": 9974,
+    "last_semester_alignment": 9974,
+    "last_history_alignment": 49870,
+    "course_first_exists": 9974,
+    "course_first_gpa4": 9974,
+    "course_first_gpa10": 9974,
+    "course_last_exists": 9974,
+    "course_last_gpa4": 9974,
+    "course_last_gpa10": 9974,
+    "labeled_snap_precedes_exit": 9887,
+    "graduate_has_degree_event": 3138,
+    "dropout_has_exit_event": 988,
+    "feature_whitelist_T0": 18,
+    "no_post_leakage": 61
+  },
+  "errors": [],
+  "safe_t0_features": [
+    "cohort_year",
+    "major_code",
+    "degree_type",
+    "education_mode",
+    "credits_required",
+    "admission_method",
+    "admission_score",
+    "enrollment_age",
+    "living_status",
+    "scholarship_percent",
+    "first_sem_credits_registered",
+    "first_sem_credits_failed",
+    "first_sem_gpa4",
+    "first_sem_courses_failed",
+    "first_sem_attendance_rate",
+    "first_sem_lms_logins_4weeks",
+    "first_sem_tuition_overdue_days",
+    "first_sem_warning_flag"
+  ],
+  "split_counts": {
+    "TRAIN_2022_2023": {
+      "0": 5731,
+      "1": 161
+    },
+    "VALIDATION_2024": {
+      "0": 2329,
+      "1": 62
+    },
+    "TEST_2025": {
+      "0": 1555,
+      "1": 49
+    }
+  },
+  "known_limitations": [
+    "Entirely synthetic",
+    "200 fixed curriculum requirements not official CMC",
+    "Regulations simulated not independently certified",
+    "Generalization to actual CMC not demonstrated"
+  ],
+  "raw_to_clean_reproduction": {
+    "identical_sha256": true,
+    "sha256": "d1e08eb0c252db7fadd37f46b438e70c8f0948afa0c1b3db33a054eca2e78436",
+    "normalizations": {
+      "category_case": 213,
+      "decimal_separator": 65,
+      "date_format": 19,
+      "numeric_typo_credit": 16,
+      "numeric_typo_attendance": 15,
+      "student_id_typo": 9
+    },
+    "raw_missing_kept_unimputed": true
+  }
+}

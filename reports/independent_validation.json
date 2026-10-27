@@ -1,0 +1,13 @@
+{
+  "status": "PASS",
+  "check_count": 106,
+  "error_count": 0,
+  "errors": [],
+  "rows_total": 9887,
+  "split_rows": {
+    "train": 5892,
+    "validation": 2391,
+    "test": 1604
+  },
+  "encoded_columns": 48
+}

@@ -1,0 +1,82 @@
+﻿column_position,column_name,time_class,hk1_feature_policy,hk1_policy_reason_vi
+1,record_uid,ID,JOIN_KEY_ONLY,"Khóa nối và kiểm tra rò rỉ, không phải đặc trưng huấn luyện."
+2,student_id,ID,EXCLUDE_FROM_X,Định danh sinh viên; không được học MSSV.
+3,cohort_year,T0,INCLUDE_T0,"Thông tin có ở cuối HK1, được phép sử dụng sau khi chia dữ liệu và xử lý missing trên Train."
+4,enrollment_date,T0,EXCLUDE_FROM_X,Gần như định danh khóa và ngày; tránh học thuộc lịch giả lập.
+5,campus,T0,EXCLUDE_FROM_X,Cột hằng HN trong toàn bộ dữ liệu.
+6,major_code,T0,INCLUDE_T0,"Thông tin có ở cuối HK1, được phép sử dụng sau khi chia dữ liệu và xử lý missing trên Train."
+7,major_name,T0,EXCLUDE_FROM_X,Trùng thông tin với major_code.
+8,specialization,T0*,EXCLUDE_FROM_X,Thời điểm chọn chuyên sâu chưa được xác minh có trước HK1.
+9,class_code,T0,EXCLUDE_FROM_X,"Giống định danh lớp, trùng ngành/khóa và nguy cơ học thuộc nhóm."
+10,degree_type,T0,INCLUDE_T0,"Thông tin có ở cuối HK1, được phép sử dụng sau khi chia dữ liệu và xử lý missing trên Train."
+11,education_mode,T0,INCLUDE_T0,"Thông tin có ở cuối HK1, được phép sử dụng sau khi chia dữ liệu và xử lý missing trên Train."
+12,curriculum_year,T0,EXCLUDE_FROM_X,Trùng cohort_year theo bản mô phỏng.
+13,designed_semesters,T0,EXCLUDE_FROM_X,Suy từ degree_type; không cần trùng.
+14,max_semesters,T0,EXCLUDE_FROM_X,Suy từ degree_type; không cần trùng.
+15,credits_required,T0,INCLUDE_T0,"Tín chỉ yêu cầu theo 200 nhóm CTĐT mô phỏng; giữ vì biết khi nhập học, không coi là chuẩn CMC thực tế."
+16,admission_method,T0,INCLUDE_T0,Giữ phương thức để phân biệt các thang admission_score; mã hóa trên Train.
+17,admission_score,T0,INCLUDE_T0,"Điểm tuyển sinh có thang 30, 40, 80, 150, 1200; phải xử lý theo admission_method và fit trên Train."
+18,gender,T0,EXCLUDE_FROM_X,"Giữ để kiểm tra công bằng, không làm đặc trưng mặc định."
+19,birth_year,T0,EXCLUDE_FROM_X,Trùng thông tin với tuổi lúc nhập học và khóa.
+20,enrollment_age,T0,INCLUDE_T0,"Thông tin có ở cuối HK1, được phép sử dụng sau khi chia dữ liệu và xử lý missing trên Train."
+21,home_province,T0,EXCLUDE_FROM_X,Thông tin nền nhạy cảm theo địa phương; chỉ dùng phân tích kiểm toán.
+22,living_status,T0,INCLUDE_T0,"Thông tin có ở cuối HK1, được phép sử dụng sau khi chia dữ liệu và xử lý missing trên Train."
+23,scholarship_percent,T0,INCLUDE_T0,"Thông tin có ở cuối HK1, được phép sử dụng sau khi chia dữ liệu và xử lý missing trên Train."
+24,semester_current,POST,EXCLUDE_FROM_X,Thông tin hậu nghiệm (POST) tại ngày chốt hoặc metadata; không được sử dụng để dự đoán sau HK1.
+25,semester_last_completed,POST,EXCLUDE_FROM_X,Thông tin hậu nghiệm (POST) tại ngày chốt hoặc metadata; không được sử dụng để dự đoán sau HK1.
+26,feature_snapshot_semester,META,EXCLUDE_FROM_X,Cờ nghiệp vụ/metadata; không huấn luyện.
+27,semesters_on_leave,POST,EXCLUDE_FROM_X,Thông tin hậu nghiệm (POST) tại ngày chốt hoặc metadata; không được sử dụng để dự đoán sau HK1.
+28,credits_registered_last,POST,EXCLUDE_FROM_X,Thông tin hậu nghiệm (POST) tại ngày chốt hoặc metadata; không được sử dụng để dự đoán sau HK1.
+29,credits_passed_last,POST,EXCLUDE_FROM_X,Thông tin hậu nghiệm (POST) tại ngày chốt hoặc metadata; không được sử dụng để dự đoán sau HK1.
+30,credits_failed_last,POST,EXCLUDE_FROM_X,Thông tin hậu nghiệm (POST) tại ngày chốt hoặc metadata; không được sử dụng để dự đoán sau HK1.
+31,credits_earned_total,POST,EXCLUDE_FROM_X,Thông tin hậu nghiệm (POST) tại ngày chốt hoặc metadata; không được sử dụng để dự đoán sau HK1.
+32,credits_owed_total,POST,EXCLUDE_FROM_X,Thông tin hậu nghiệm (POST) tại ngày chốt hoặc metadata; không được sử dụng để dự đoán sau HK1.
+33,credits_attempted_total,POST,EXCLUDE_FROM_X,Thông tin hậu nghiệm (POST) tại ngày chốt hoặc metadata; không được sử dụng để dự đoán sau HK1.
+34,courses_failed_total,POST,EXCLUDE_FROM_X,Thông tin hậu nghiệm (POST) tại ngày chốt hoặc metadata; không được sử dụng để dự đoán sau HK1.
+35,courses_retake_total,POST,EXCLUDE_FROM_X,Thông tin hậu nghiệm (POST) tại ngày chốt hoặc metadata; không được sử dụng để dự đoán sau HK1.
+36,attendance_rate_last,POST,EXCLUDE_FROM_X,Thông tin hậu nghiệm (POST) tại ngày chốt hoặc metadata; không được sử dụng để dự đoán sau HK1.
+37,first_semester_code,T0,EXCLUDE_FROM_X,Mã kỳ trùng thông tin khóa.
+38,first_semester_start_date,T0,EXCLUDE_FROM_X,Ngày lịch mô phỏng; không cần khi dùng cohort_year.
+39,first_semester_end_date,T0,EXCLUDE_FROM_X,Ngày lịch mô phỏng; không cần khi dùng cohort_year.
+40,first_sem_credits_registered,T0,INCLUDE_T0,"Thông tin có ở cuối HK1, được phép sử dụng sau khi chia dữ liệu và xử lý missing trên Train."
+41,first_sem_credits_passed,T0,EXCLUDE_FROM_X,Suy ra được từ đăng ký - không đạt; tránh dư thừa.
+42,first_sem_credits_failed,T0,INCLUDE_T0,"Thông tin có ở cuối HK1, được phép sử dụng sau khi chia dữ liệu và xử lý missing trên Train."
+43,first_sem_gpa10,T0,EXCLUDE_FROM_X,"Thông tin điểm trùng/có tương quan mạnh GPA4; giữ để kiểm thử ablation, không mặc định."
+44,first_sem_gpa4,T0,INCLUDE_T0,"Thông tin có ở cuối HK1, được phép sử dụng sau khi chia dữ liệu và xử lý missing trên Train."
+45,first_sem_courses_failed,T0,INCLUDE_T0,"Thông tin có ở cuối HK1, được phép sử dụng sau khi chia dữ liệu và xử lý missing trên Train."
+46,first_sem_attendance_rate,T0,INCLUDE_T0,"Thông tin có ở cuối HK1, được phép sử dụng sau khi chia dữ liệu và xử lý missing trên Train."
+47,first_sem_lms_logins_4weeks,T0,INCLUDE_T0,"Thông tin có ở cuối HK1, được phép sử dụng sau khi chia dữ liệu và xử lý missing trên Train."
+48,first_sem_tuition_overdue_days,T0,INCLUDE_T0,"Thông tin có ở cuối HK1, được phép sử dụng sau khi chia dữ liệu và xử lý missing trên Train."
+49,first_sem_warning_flag,T0,INCLUDE_T0,Cờ cảnh báo kỳ 1 chỉ hợp lệ khi có trước/tại thời điểm snapshot; đã được đối chiếu lịch sử mô phỏng.
+50,gpa10_last,POST,EXCLUDE_FROM_X,Thông tin hậu nghiệm (POST) tại ngày chốt hoặc metadata; không được sử dụng để dự đoán sau HK1.
+51,gpa4_last,POST,EXCLUDE_FROM_X,Thông tin hậu nghiệm (POST) tại ngày chốt hoặc metadata; không được sử dụng để dự đoán sau HK1.
+52,grade_letter_mode_last,POST,EXCLUDE_FROM_X,Thông tin hậu nghiệm (POST) tại ngày chốt hoặc metadata; không được sử dụng để dự đoán sau HK1.
+53,gpa10_cumulative,POST,EXCLUDE_FROM_X,Thông tin hậu nghiệm (POST) tại ngày chốt hoặc metadata; không được sử dụng để dự đoán sau HK1.
+54,gpa4_cumulative,POST,EXCLUDE_FROM_X,Thông tin hậu nghiệm (POST) tại ngày chốt hoặc metadata; không được sử dụng để dự đoán sau HK1.
+55,gpa4_previous,POST,EXCLUDE_FROM_X,Thông tin hậu nghiệm (POST) tại ngày chốt hoặc metadata; không được sử dụng để dự đoán sau HK1.
+56,academic_rank,POST,EXCLUDE_FROM_X,Thông tin hậu nghiệm (POST) tại ngày chốt hoặc metadata; không được sử dụng để dự đoán sau HK1.
+57,gpa_trend_2sem,POST,EXCLUDE_FROM_X,Thông tin hậu nghiệm (POST) tại ngày chốt hoặc metadata; không được sử dụng để dự đoán sau HK1.
+58,lms_logins_4weeks,POST,EXCLUDE_FROM_X,Thông tin hậu nghiệm (POST) tại ngày chốt hoặc metadata; không được sử dụng để dự đoán sau HK1.
+59,lms_assignment_submission_rate,POST,EXCLUDE_FROM_X,Thông tin hậu nghiệm (POST) tại ngày chốt hoặc metadata; không được sử dụng để dự đoán sau HK1.
+60,study_hours_week,POST,EXCLUDE_FROM_X,Thông tin hậu nghiệm (POST) tại ngày chốt hoặc metadata; không được sử dụng để dự đoán sau HK1.
+61,tuition_debt_vnd,POST,EXCLUDE_FROM_X,Thông tin hậu nghiệm (POST) tại ngày chốt hoặc metadata; không được sử dụng để dự đoán sau HK1.
+62,tuition_overdue_days,POST,EXCLUDE_FROM_X,Thông tin hậu nghiệm (POST) tại ngày chốt hoặc metadata; không được sử dụng để dự đoán sau HK1.
+63,counselling_sessions_total,POST,EXCLUDE_FROM_X,Thông tin hậu nghiệm (POST) tại ngày chốt hoặc metadata; không được sử dụng để dự đoán sau HK1.
+64,part_time_work_hours_week,POST,EXCLUDE_FROM_X,Thông tin hậu nghiệm (POST) tại ngày chốt hoặc metadata; không được sử dụng để dự đoán sau HK1.
+65,english_requirement_status,POST,EXCLUDE_FROM_X,Thông tin hậu nghiệm (POST) tại ngày chốt hoặc metadata; không được sử dụng để dự đoán sau HK1.
+66,warning_current,POST,EXCLUDE_FROM_X,Thông tin hậu nghiệm (POST) tại ngày chốt hoặc metadata; không được sử dụng để dự đoán sau HK1.
+67,warning_total,POST,EXCLUDE_FROM_X,Thông tin hậu nghiệm (POST) tại ngày chốt hoặc metadata; không được sử dụng để dự đoán sau HK1.
+68,warnings_consecutive,POST,EXCLUDE_FROM_X,Thông tin hậu nghiệm (POST) tại ngày chốt hoặc metadata; không được sử dụng để dự đoán sau HK1.
+69,discipline_status,POST,EXCLUDE_FROM_X,Thông tin hậu nghiệm (POST) tại ngày chốt hoặc metadata; không được sử dụng để dự đoán sau HK1.
+70,status_date,POST,EXCLUDE_FROM_X,Thông tin hậu nghiệm (POST) tại ngày chốt hoặc metadata; không được sử dụng để dự đoán sau HK1.
+71,exit_reason,POST,EXCLUDE_FROM_X,Thông tin hậu nghiệm (POST) tại ngày chốt hoặc metadata; không được sử dụng để dự đoán sau HK1.
+72,exit_semester,POST,EXCLUDE_FROM_X,Thông tin hậu nghiệm (POST) tại ngày chốt hoặc metadata; không được sử dụng để dự đoán sau HK1.
+73,feature_snapshot_date,META,EXCLUDE_FROM_X,Mốc thời gian dùng kiểm định nhãn; không phải đặc trưng.
+74,dataset_version,META,EXCLUDE_FROM_X,Thông tin hậu nghiệm (POST) tại ngày chốt hoặc metadata; không được sử dụng để dự đoán sau HK1.
+75,regulation_version,META,EXCLUDE_FROM_X,Thông tin hậu nghiệm (POST) tại ngày chốt hoặc metadata; không được sử dụng để dự đoán sau HK1.
+76,generator_seed,META,EXCLUDE_FROM_X,Thông tin hậu nghiệm (POST) tại ngày chốt hoặc metadata; không được sử dụng để dự đoán sau HK1.
+77,is_counterfactual_program,META,EXCLUDE_FROM_X,Thông tin hậu nghiệm (POST) tại ngày chốt hoặc metadata; không được sử dụng để dự đoán sau HK1.
+78,academic_status_detail,POST,EXCLUDE_FROM_X,"Trạng thái đầy đủ tại cutoff, có thông tin tương lai."
+79,label_observed,LABEL,FILTER_ONLY,"Cờ xác định điều kiện lấy mẫu, không cho vào X."
+80,academic_status,TARGET,EXCLUDE_FROM_X,"Nhãn trạng thái tại cutoff, có thông tin tương lai."
+81,dropout_next_2_terms,LABEL,TARGET_ONLY,"Nhãn y, không được đưa vào X."
