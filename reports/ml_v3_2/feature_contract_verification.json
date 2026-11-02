@@ -1,0 +1,62 @@
+{
+  "status": "PASS",
+  "scope": "C1,C2,C3 (static data contract)",
+  "C1": "PASS",
+  "C2": "PASS",
+  "C3": "PASS",
+  "C4": "PENDING trainer Pipeline, fit on Train only",
+  "C5": "PENDING mutation and fail-fast tests on new loader",
+  "total_rows": 57569,
+  "source_snapshots": 57569,
+  "t1_lagged_features": [
+    "gpa4_previous",
+    "gpa_delta_1term",
+    "gpa_slope_last3",
+    "credits_owed_delta",
+    "attendance_delta_1term"
+  ],
+  "splits": {
+    "TRAIN_2022_23": {
+      "rows": 34304,
+      "b5_count": 58,
+      "metadata_removed": [
+        "administrative_action_eligible_at_cutoff",
+        "cohort_year",
+        "record_uid",
+        "weeks_observed"
+      ],
+      "all_snapshot_times_asof": true,
+      "hk1_lagged_features_null": true
+    },
+    "VALIDATION_2024": {
+      "rows": 13981,
+      "b5_count": 58,
+      "metadata_removed": [
+        "administrative_action_eligible_at_cutoff",
+        "cohort_year",
+        "record_uid",
+        "weeks_observed"
+      ],
+      "all_snapshot_times_asof": true,
+      "hk1_lagged_features_null": true
+    },
+    "TEST_2025": {
+      "rows": 9284,
+      "b5_count": 58,
+      "metadata_removed": [
+        "administrative_action_eligible_at_cutoff",
+        "cohort_year",
+        "record_uid",
+        "weeks_observed"
+      ],
+      "all_snapshot_times_asof": true,
+      "hk1_lagged_features_null": true
+    }
+  },
+  "notes": [
+    "No target labels loaded",
+    "No model fitted or scored",
+    "Dataset not modified",
+    "C3 verifies stored source timestamps; full lineage depends on Phase 1 source contract"
+  ]
+}

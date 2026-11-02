@@ -1,0 +1,1762 @@
+{
+  "status": "PASS",
+  "phase": "2-I",
+  "dataset": "V3_2_MAIN/FULL_SIMULATION synthetic",
+  "model_version": "v3.2-rf-b-platt-g1",
+  "threshold_unchanged": 0.27,
+  "frozen_predictions_sha256": "a32e11d289b1712b32c919b3a8d7e00d115006161c933b8985a74ec9522102c3",
+  "frozen_model_sha256": "5c45deb380e011ff8ecfe94628d19e07db589ea75eed22c14bf08259887ed5c4",
+  "test_rescored": false,
+  "model_fitted": false,
+  "threshold_tuned": false,
+  "support_rule": {
+    "minimum_n": 100,
+    "minimum_positives": 20,
+    "minimum_negatives": 20,
+    "minimum_uids": 50
+  },
+  "support_status_counts": {
+    "SUFFICIENT": 34,
+    "INSUFFICIENT_SUPPORT": 18
+  },
+  "insufficient_support_groups": [
+    "major_code=GA",
+    "gender=Khác",
+    "HK1/major_code=CB",
+    "HK1/major_code=CL",
+    "HK1/major_code=DA",
+    "HK1/major_code=EC",
+    "HK1/major_code=EM",
+    "HK1/major_code=GA",
+    "HK1/major_code=GD",
+    "HK1/major_code=IB",
+    "HK1/major_code=KL",
+    "HK1/major_code=LS",
+    "HK1/major_code=MC",
+    "HK1/major_code=MK",
+    "HK1/major_code=NS",
+    "HK1/major_code=PR",
+    "HK1/major_code=SE",
+    "HK1/gender=Khác"
+  ],
+  "subgroups": [
+    {
+      "group_by": "cohort_year",
+      "group_value": "2025",
+      "status": "SUFFICIENT",
+      "n": 9284,
+      "uids": 3234,
+      "positives": 911,
+      "negatives": 8373,
+      "prevalence": 0.09812580784144766,
+      "prevalence_wilson95": [
+        0.09223974158180648,
+        0.10434430508995132
+      ],
+      "mean_probability": 0.09241845679780457,
+      "overprediction_mean_minus_prevalence": -0.0057073510436430885,
+      "alerts_threshold": 701,
+      "false_positives_threshold": 296,
+      "false_negatives_threshold": 506,
+      "brier": 0.0627003341691487,
+      "ece10": 0.008074950026362661,
+      "pr_auc": 0.5439055507677624,
+      "roc_auc": 0.828459780620973,
+      "recall_threshold": 0.4445664105378705,
+      "recall_wilson95": [
+        0.4125980634251949,
+        0.4770002937260025
+      ],
+      "false_negative_rate_threshold": 0.5554335894621295,
+      "false_positive_rate_threshold": 0.035351725785262154,
+      "fpr_wilson95": [
+        0.03160451202118859,
+        0.03952509712203826
+      ]
+    },
+    {
+      "group_by": "snapshot_term_index",
+      "group_value": "1",
+      "status": "SUFFICIENT",
+      "n": 3234,
+      "uids": 3234,
+      "positives": 248,
+      "negatives": 2986,
+      "prevalence": 0.0766852195423624,
+      "prevalence_wilson95": [
+        0.06800830953329631,
+        0.08636659275199018
+      ],
+      "mean_probability": 0.0693077950665589,
+      "overprediction_mean_minus_prevalence": -0.007377424475803501,
+      "alerts_threshold": 135,
+      "false_positives_threshold": 83,
+      "false_negatives_threshold": 196,
+      "brier": 0.06307799788173485,
+      "ece10": 0.008335052001623317,
+      "pr_auc": 0.27536674093601626,
+      "roc_auc": 0.7718465743361493,
+      "recall_threshold": 0.20967741935483872,
+      "recall_wilson95": [
+        0.16363498666068077,
+        0.2645767117851856
+      ],
+      "false_negative_rate_threshold": 0.7903225806451613,
+      "false_positive_rate_threshold": 0.027796383121232417,
+      "fpr_wilson95": [
+        0.022479474359054803,
+        0.03432670120574788
+      ]
+    },
+    {
+      "group_by": "snapshot_term_index",
+      "group_value": "2",
+      "status": "SUFFICIENT",
+      "n": 3090,
+      "uids": 3090,
+      "positives": 327,
+      "negatives": 2763,
+      "prevalence": 0.10582524271844661,
+      "prevalence_wilson95": [
+        0.09546423331371645,
+        0.11716510389590556
+      ],
+      "mean_probability": 0.10287612536367002,
+      "overprediction_mean_minus_prevalence": -0.002949117354776584,
+      "alerts_threshold": 288,
+      "false_positives_threshold": 116,
+      "false_negatives_threshold": 155,
+      "brier": 0.06412967543909939,
+      "ece10": 0.005093652557777749,
+      "pr_auc": 0.5732879520428059,
+      "roc_auc": 0.8456603811174532,
+      "recall_threshold": 0.5259938837920489,
+      "recall_wilson95": [
+        0.4718864887947726,
+        0.5794976396049679
+      ],
+      "false_negative_rate_threshold": 0.4740061162079511,
+      "false_positive_rate_threshold": 0.0419833514296055,
+      "fpr_wilson95": [
+        0.03511948987566885,
+        0.05011902571358952
+      ]
+    },
+    {
+      "group_by": "snapshot_term_index",
+      "group_value": "3",
+      "status": "SUFFICIENT",
+      "n": 2960,
+      "uids": 2960,
+      "positives": 336,
+      "negatives": 2624,
+      "prevalence": 0.11351351351351352,
+      "prevalence_wilson95": [
+        0.10258308378474394,
+        0.12544579974724157
+      ],
+      "mean_probability": 0.10675145820669792,
+      "overprediction_mean_minus_prevalence": -0.006762055306815604,
+      "alerts_threshold": 278,
+      "false_positives_threshold": 97,
+      "false_negatives_threshold": 155,
+      "brier": 0.06079559465203683,
+      "ece10": 0.012357473910658716,
+      "pr_auc": 0.6557268661034722,
+      "roc_auc": 0.8534316927990708,
+      "recall_threshold": 0.5386904761904762,
+      "recall_wilson95": [
+        0.48525133914959584,
+        0.5912549237714271
+      ],
+      "false_negative_rate_threshold": 0.46130952380952384,
+      "false_positive_rate_threshold": 0.036966463414634144,
+      "fpr_wilson95": [
+        0.030397703612350446,
+        0.04488897631904851
+      ]
+    },
+    {
+      "group_by": "major_code",
+      "group_value": "AI",
+      "status": "SUFFICIENT",
+      "n": 728,
+      "uids": 256,
+      "positives": 71,
+      "negatives": 657,
+      "prevalence": 0.09752747252747253,
+      "prevalence_wilson95": [
+        0.0780423533998398,
+        0.12123777354965871
+      ],
+      "mean_probability": 0.09095528594332246,
+      "overprediction_mean_minus_prevalence": -0.006572186584150069,
+      "alerts_threshold": 45,
+      "false_positives_threshold": 20,
+      "false_negatives_threshold": 46,
+      "brier": 0.06649812581898756,
+      "ece10": 0.009672343130701089,
+      "pr_auc": 0.48854013402482516,
+      "roc_auc": 0.7966857461358715,
+      "recall_threshold": 0.352112676056338,
+      "recall_wilson95": [
+        0.25122748121653293,
+        0.4681793778839557
+      ],
+      "false_negative_rate_threshold": 0.647887323943662,
+      "false_positive_rate_threshold": 0.030441400304414,
+      "fpr_wilson95": [
+        0.01979114192066064,
+        0.046550729091686976
+      ]
+    },
+    {
+      "group_by": "major_code",
+      "group_value": "BA",
+      "status": "SUFFICIENT",
+      "n": 902,
+      "uids": 315,
+      "positives": 80,
+      "negatives": 822,
+      "prevalence": 0.08869179600886919,
+      "prevalence_wilson95": [
+        0.07184023757497925,
+        0.10903187555836939
+      ],
+      "mean_probability": 0.08655068722633137,
+      "overprediction_mean_minus_prevalence": -0.002141108782537815,
+      "alerts_threshold": 69,
+      "false_positives_threshold": 35,
+      "false_negatives_threshold": 46,
+      "brier": 0.060494202610274196,
+      "ece10": 0.012536785379425068,
+      "pr_auc": 0.49133383782539586,
+      "roc_auc": 0.791970802919708,
+      "recall_threshold": 0.425,
+      "recall_wilson95": [
+        0.3225656178960177,
+        0.5343071015343113
+      ],
+      "false_negative_rate_threshold": 0.575,
+      "false_positive_rate_threshold": 0.04257907542579075,
+      "fpr_wilson95": [
+        0.030772901436646304,
+        0.058640699723726666
+      ]
+    },
+    {
+      "group_by": "major_code",
+      "group_value": "CB",
+      "status": "SUFFICIENT",
+      "n": 297,
+      "uids": 103,
+      "positives": 25,
+      "negatives": 272,
+      "prevalence": 0.08417508417508418,
+      "prevalence_wilson95": [
+        0.057664117910485736,
+        0.12130542648593476
+      ],
+      "mean_probability": 0.08799130393461915,
+      "overprediction_mean_minus_prevalence": 0.0038162197595349723,
+      "alerts_threshold": 21,
+      "false_positives_threshold": 10,
+      "false_negatives_threshold": 14,
+      "brier": 0.06091787386621807,
+      "ece10": 0.03436363993880809,
+      "pr_auc": 0.4485367361338479,
+      "roc_auc": 0.8319117647058824,
+      "recall_threshold": 0.44,
+      "recall_wilson95": [
+        0.26665638881067344,
+        0.6293266813020123
+      ],
+      "false_negative_rate_threshold": 0.56,
+      "false_positive_rate_threshold": 0.03676470588235294,
+      "fpr_wilson95": [
+        0.020090313387053416,
+        0.06634143230709855
+      ]
+    },
+    {
+      "group_by": "major_code",
+      "group_value": "CL",
+      "status": "SUFFICIENT",
+      "n": 412,
+      "uids": 144,
+      "positives": 48,
+      "negatives": 364,
+      "prevalence": 0.11650485436893204,
+      "prevalence_wilson95": [
+        0.08900865168801839,
+        0.1510863573662486
+      ],
+      "mean_probability": 0.10676573824386192,
+      "overprediction_mean_minus_prevalence": -0.009739116125070127,
+      "alerts_threshold": 45,
+      "false_positives_threshold": 22,
+      "false_negatives_threshold": 25,
+      "brier": 0.07930305629380044,
+      "ece10": 0.04151468326521221,
+      "pr_auc": 0.49985269230943336,
+      "roc_auc": 0.8090659340659341,
+      "recall_threshold": 0.4791666666666667,
+      "recall_wilson95": [
+        0.34471316176951616,
+        0.616707676966572
+      ],
+      "false_negative_rate_threshold": 0.5208333333333334,
+      "false_positive_rate_threshold": 0.06043956043956044,
+      "fpr_wilson95": [
+        0.04024878038043071,
+        0.0898112160486685
+      ]
+    },
+    {
+      "group_by": "major_code",
+      "group_value": "CS",
+      "status": "SUFFICIENT",
+      "n": 821,
+      "uids": 286,
+      "positives": 83,
+      "negatives": 738,
+      "prevalence": 0.10109622411693057,
+      "prevalence_wilson95": [
+        0.08229779732922872,
+        0.1236102071781134
+      ],
+      "mean_probability": 0.10238838738560462,
+      "overprediction_mean_minus_prevalence": 0.0012921632686740403,
+      "alerts_threshold": 74,
+      "false_positives_threshold": 31,
+      "false_negatives_threshold": 40,
+      "brier": 0.06112711690591707,
+      "ece10": 0.010540991005900434,
+      "pr_auc": 0.5847867637983122,
+      "roc_auc": 0.8362719169360369,
+      "recall_threshold": 0.5180722891566265,
+      "recall_wilson95": [
+        0.4121775709212428,
+        0.6223681407784449
+      ],
+      "false_negative_rate_threshold": 0.4819277108433735,
+      "false_positive_rate_threshold": 0.04200542005420054,
+      "fpr_wilson95": [
+        0.029748188192407293,
+        0.05900589536253763
+      ]
+    },
+    {
+      "group_by": "major_code",
+      "group_value": "DA",
+      "status": "SUFFICIENT",
+      "n": 281,
+      "uids": 96,
+      "positives": 23,
+      "negatives": 258,
+      "prevalence": 0.08185053380782918,
+      "prevalence_wilson95": [
+        0.055158551624166025,
+        0.11982109855403714
+      ],
+      "mean_probability": 0.09658493097954343,
+      "overprediction_mean_minus_prevalence": 0.01473439717171425,
+      "alerts_threshold": 21,
+      "false_positives_threshold": 8,
+      "false_negatives_threshold": 10,
+      "brier": 0.04306468115961199,
+      "ece10": 0.03045929002198558,
+      "pr_auc": 0.6709988670568691,
+      "roc_auc": 0.8943377148634986,
+      "recall_threshold": 0.5652173913043478,
+      "recall_wilson95": [
+        0.3681137508501646,
+        0.743653646743258
+      ],
+      "false_negative_rate_threshold": 0.43478260869565216,
+      "false_positive_rate_threshold": 0.031007751937984496,
+      "fpr_wilson95": [
+        0.015794214423464188,
+        0.059982398302640884
+      ]
+    },
+    {
+      "group_by": "major_code",
+      "group_value": "EC",
+      "status": "SUFFICIENT",
+      "n": 192,
+      "uids": 68,
+      "positives": 21,
+      "negatives": 171,
+      "prevalence": 0.109375,
+      "prevalence_wilson95": [
+        0.07265855054023301,
+        0.16141578232441864
+      ],
+      "mean_probability": 0.06672049468238272,
+      "overprediction_mean_minus_prevalence": -0.042654505317617275,
+      "alerts_threshold": 6,
+      "false_positives_threshold": 2,
+      "false_negatives_threshold": 17,
+      "brier": 0.08534822187361701,
+      "ece10": 0.04943359797785006,
+      "pr_auc": 0.42574410195853174,
+      "roc_auc": 0.8031189083820663,
+      "recall_threshold": 0.19047619047619047,
+      "recall_wilson95": [
+        0.07667565052761793,
+        0.40000564690204926
+      ],
+      "false_negative_rate_threshold": 0.8095238095238095,
+      "false_positive_rate_threshold": 0.011695906432748537,
+      "fpr_wilson95": [
+        0.00321332131762787,
+        0.0416356457041802
+      ]
+    },
+    {
+      "group_by": "major_code",
+      "group_value": "EM",
+      "status": "SUFFICIENT",
+      "n": 529,
+      "uids": 185,
+      "positives": 45,
+      "negatives": 484,
+      "prevalence": 0.08506616257088846,
+      "prevalence_wilson95": [
+        0.06418176990396982,
+        0.11193339018208609
+      ],
+      "mean_probability": 0.09302606838465603,
+      "overprediction_mean_minus_prevalence": 0.00795990581376757,
+      "alerts_threshold": 39,
+      "false_positives_threshold": 18,
+      "false_negatives_threshold": 24,
+      "brier": 0.05340175502956849,
+      "ece10": 0.01885867715094192,
+      "pr_auc": 0.5611858476748138,
+      "roc_auc": 0.860651974288338,
+      "recall_threshold": 0.4666666666666667,
+      "recall_wilson95": [
+        0.32935132065011297,
+        0.6092254525987463
+      ],
+      "false_negative_rate_threshold": 0.5333333333333333,
+      "false_positive_rate_threshold": 0.0371900826446281,
+      "fpr_wilson95": [
+        0.02365189022627699,
+        0.05801697596030479
+      ]
+    },
+    {
+      "group_by": "major_code",
+      "group_value": "GA",
+      "status": "INSUFFICIENT_SUPPORT",
+      "n": 162,
+      "uids": 55,
+      "positives": 16,
+      "negatives": 146,
+      "prevalence": 0.09876543209876543,
+      "prevalence_wilson95": [
+        0.061710998226063775,
+        0.15440781232688422
+      ],
+      "mean_probability": 0.12149714357167332,
+      "overprediction_mean_minus_prevalence": 0.022731711472907895,
+      "alerts_threshold": 24,
+      "false_positives_threshold": 13,
+      "false_negatives_threshold": 5,
+      "brier": 0.052674324474143545,
+      "ece10": 0.03851236883800128,
+      "pr_auc": null,
+      "roc_auc": null,
+      "recall_threshold": null,
+      "recall_wilson95": null,
+      "false_negative_rate_threshold": null,
+      "false_positive_rate_threshold": null,
+      "fpr_wilson95": null
+    },
+    {
+      "group_by": "major_code",
+      "group_value": "GD",
+      "status": "SUFFICIENT",
+      "n": 361,
+      "uids": 126,
+      "positives": 25,
+      "negatives": 336,
+      "prevalence": 0.06925207756232687,
+      "prevalence_wilson95": [
+        0.04734438260671893,
+        0.10023056404197096
+      ],
+      "mean_probability": 0.07569867272158548,
+      "overprediction_mean_minus_prevalence": 0.006446595159258606,
+      "alerts_threshold": 17,
+      "false_positives_threshold": 3,
+      "false_negatives_threshold": 11,
+      "brier": 0.03728959599882816,
+      "ece10": 0.02807588753594228,
+      "pr_auc": 0.6701114377326238,
+      "roc_auc": 0.8629761904761905,
+      "recall_threshold": 0.56,
+      "recall_wilson95": [
+        0.3706733186979878,
+        0.7333436111893266
+      ],
+      "false_negative_rate_threshold": 0.44,
+      "false_positive_rate_threshold": 0.008928571428571428,
+      "fpr_wilson95": [
+        0.00304107504179223,
+        0.025917895575994103
+      ]
+    },
+    {
+      "group_by": "major_code",
+      "group_value": "IB",
+      "status": "SUFFICIENT",
+      "n": 296,
+      "uids": 103,
+      "positives": 34,
+      "negatives": 262,
+      "prevalence": 0.11486486486486487,
+      "prevalence_wilson95": [
+        0.08337220203807413,
+        0.156225947941764
+      ],
+      "mean_probability": 0.08472765239429315,
+      "overprediction_mean_minus_prevalence": -0.030137212470571717,
+      "alerts_threshold": 17,
+      "false_positives_threshold": 7,
+      "false_negatives_threshold": 24,
+      "brier": 0.07845005896791164,
+      "ece10": 0.04406275896778921,
+      "pr_auc": 0.4943363841053238,
+      "roc_auc": 0.7542658284687921,
+      "recall_threshold": 0.29411764705882354,
+      "recall_wilson95": [
+        0.1683463067042242,
+        0.4616890979471443
+      ],
+      "false_negative_rate_threshold": 0.7058823529411765,
+      "false_positive_rate_threshold": 0.026717557251908396,
+      "fpr_wilson95": [
+        0.013001019518631467,
+        0.0541121346892978
+      ]
+    },
+    {
+      "group_by": "major_code",
+      "group_value": "IT",
+      "status": "SUFFICIENT",
+      "n": 1616,
+      "uids": 560,
+      "positives": 147,
+      "negatives": 1469,
+      "prevalence": 0.09096534653465346,
+      "prevalence_wilson95": [
+        0.07789820565396319,
+        0.10597254120143212
+      ],
+      "mean_probability": 0.09057229979427843,
+      "overprediction_mean_minus_prevalence": -0.0003930467403750332,
+      "alerts_threshold": 117,
+      "false_positives_threshold": 51,
+      "false_negatives_threshold": 81,
+      "brier": 0.05928937347601805,
+      "ece10": 0.006016473927776559,
+      "pr_auc": 0.5302844659574936,
+      "roc_auc": 0.8486869220118273,
+      "recall_threshold": 0.4489795918367347,
+      "recall_wilson95": [
+        0.3708930805274901,
+        0.5296647626724318
+      ],
+      "false_negative_rate_threshold": 0.5510204081632653,
+      "false_positive_rate_threshold": 0.03471749489448604,
+      "fpr_wilson95": [
+        0.026503474086048133,
+        0.045358611399677874
+      ]
+    },
+    {
+      "group_by": "major_code",
+      "group_value": "KL",
+      "status": "SUFFICIENT",
+      "n": 391,
+      "uids": 136,
+      "positives": 43,
+      "negatives": 348,
+      "prevalence": 0.10997442455242967,
+      "prevalence_wilson95": [
+        0.08267746262712433,
+        0.14486059553179118
+      ],
+      "mean_probability": 0.10583559526071641,
+      "overprediction_mean_minus_prevalence": -0.004138829291713261,
+      "alerts_threshold": 36,
+      "false_positives_threshold": 10,
+      "false_negatives_threshold": 17,
+      "brier": 0.050427566238086016,
+      "ece10": 0.02418625799885467,
+      "pr_auc": 0.7533245413683771,
+      "roc_auc": 0.9264234161988772,
+      "recall_threshold": 0.6046511627906976,
+      "recall_wilson95": [
+        0.45579063062873904,
+        0.7363468524170255
+      ],
+      "false_negative_rate_threshold": 0.3953488372093023,
+      "false_positive_rate_threshold": 0.028735632183908046,
+      "fpr_wilson95": [
+        0.01568209518788788,
+        0.05207984196586932
+      ]
+    },
+    {
+      "group_by": "major_code",
+      "group_value": "LS",
+      "status": "SUFFICIENT",
+      "n": 338,
+      "uids": 118,
+      "positives": 30,
+      "negatives": 308,
+      "prevalence": 0.08875739644970414,
+      "prevalence_wilson95": [
+        0.06287884866755183,
+        0.12387865886514579
+      ],
+      "mean_probability": 0.08082533119405136,
+      "overprediction_mean_minus_prevalence": -0.007932065255652779,
+      "alerts_threshold": 19,
+      "false_positives_threshold": 6,
+      "false_negatives_threshold": 17,
+      "brier": 0.05279663700580491,
+      "ece10": 0.01556747590184484,
+      "pr_auc": 0.5782409602410465,
+      "roc_auc": 0.8050865800865801,
+      "recall_threshold": 0.43333333333333335,
+      "recall_wilson95": [
+        0.2737748557646652,
+        0.6080269299918639
+      ],
+      "false_negative_rate_threshold": 0.5666666666666667,
+      "false_positive_rate_threshold": 0.01948051948051948,
+      "fpr_wilson95": [
+        0.008957930262743361,
+        0.04184178982772355
+      ]
+    },
+    {
+      "group_by": "major_code",
+      "group_value": "MC",
+      "status": "SUFFICIENT",
+      "n": 215,
+      "uids": 75,
+      "positives": 30,
+      "negatives": 185,
+      "prevalence": 0.13953488372093023,
+      "prevalence_wilson95": [
+        0.09952003742126234,
+        0.19220466211568452
+      ],
+      "mean_probability": 0.10178249288530222,
+      "overprediction_mean_minus_prevalence": -0.03775239083562801,
+      "alerts_threshold": 16,
+      "false_positives_threshold": 5,
+      "false_negatives_threshold": 19,
+      "brier": 0.09020514736788868,
+      "ece10": 0.059640581373025456,
+      "pr_auc": 0.5514944289309587,
+      "roc_auc": 0.8,
+      "recall_threshold": 0.36666666666666664,
+      "recall_wilson95": [
+        0.21873920806100708,
+        0.5448643634520511
+      ],
+      "false_negative_rate_threshold": 0.6333333333333333,
+      "false_positive_rate_threshold": 0.02702702702702703,
+      "fpr_wilson95": [
+        0.01159838483624824,
+        0.06169833139933571
+      ]
+    },
+    {
+      "group_by": "major_code",
+      "group_value": "MK",
+      "status": "SUFFICIENT",
+      "n": 318,
+      "uids": 111,
+      "positives": 43,
+      "negatives": 275,
+      "prevalence": 0.13522012578616352,
+      "prevalence_wilson95": [
+        0.10196177992248136,
+        0.17718640424836857
+      ],
+      "mean_probability": 0.09597295262715906,
+      "overprediction_mean_minus_prevalence": -0.03924717315900446,
+      "alerts_threshold": 25,
+      "false_positives_threshold": 9,
+      "false_negatives_threshold": 27,
+      "brier": 0.08563551619311394,
+      "ece10": 0.048937084303263795,
+      "pr_auc": 0.5919379658024633,
+      "roc_auc": 0.8616490486257928,
+      "recall_threshold": 0.37209302325581395,
+      "recall_wilson95": [
+        0.24376339009650572,
+        0.5214019084031153
+      ],
+      "false_negative_rate_threshold": 0.627906976744186,
+      "false_positive_rate_threshold": 0.03272727272727273,
+      "fpr_wilson95": [
+        0.017311704173264986,
+        0.061017604936895106
+      ]
+    },
+    {
+      "group_by": "major_code",
+      "group_value": "NS",
+      "status": "SUFFICIENT",
+      "n": 388,
+      "uids": 136,
+      "positives": 40,
+      "negatives": 348,
+      "prevalence": 0.10309278350515463,
+      "prevalence_wilson95": [
+        0.07662558112605918,
+        0.1373422288985044
+      ],
+      "mean_probability": 0.09280631053894386,
+      "overprediction_mean_minus_prevalence": -0.010286472966210769,
+      "alerts_threshold": 33,
+      "false_positives_threshold": 12,
+      "false_negatives_threshold": 19,
+      "brier": 0.0597275115030507,
+      "ece10": 0.025192539483991236,
+      "pr_auc": 0.6292346482414672,
+      "roc_auc": 0.835344827586207,
+      "recall_threshold": 0.525,
+      "recall_wilson95": [
+        0.3749736210669248,
+        0.670645298873211
+      ],
+      "false_negative_rate_threshold": 0.475,
+      "false_positive_rate_threshold": 0.034482758620689655,
+      "fpr_wilson95": [
+        0.019833687482652518,
+        0.05929700653508324
+      ]
+    },
+    {
+      "group_by": "major_code",
+      "group_value": "PR",
+      "status": "SUFFICIENT",
+      "n": 351,
+      "uids": 121,
+      "positives": 38,
+      "negatives": 313,
+      "prevalence": 0.10826210826210826,
+      "prevalence_wilson95": [
+        0.07989736267769751,
+        0.14510864165461762
+      ],
+      "mean_probability": 0.1013380505240863,
+      "overprediction_mean_minus_prevalence": -0.00692405773802196,
+      "alerts_threshold": 33,
+      "false_positives_threshold": 13,
+      "false_negatives_threshold": 18,
+      "brier": 0.06719638132171106,
+      "ece10": 0.027196843069999987,
+      "pr_auc": 0.5603413578005261,
+      "roc_auc": 0.7872877080881117,
+      "recall_threshold": 0.5263157894736842,
+      "recall_wilson95": [
+        0.3725897138449667,
+        0.6752097667747392
+      ],
+      "false_negative_rate_threshold": 0.47368421052631576,
+      "false_positive_rate_threshold": 0.04153354632587859,
+      "fpr_wilson95": [
+        0.024430566503730947,
+        0.0697536319018884
+      ]
+    },
+    {
+      "group_by": "major_code",
+      "group_value": "SE",
+      "status": "SUFFICIENT",
+      "n": 686,
+      "uids": 240,
+      "positives": 69,
+      "negatives": 617,
+      "prevalence": 0.10058309037900874,
+      "prevalence_wilson95": [
+        0.08025251527187996,
+        0.12536206037739547
+      ],
+      "mean_probability": 0.08636986607988731,
+      "overprediction_mean_minus_prevalence": -0.014213224299121432,
+      "alerts_threshold": 44,
+      "false_positives_threshold": 21,
+      "false_negatives_threshold": 46,
+      "brier": 0.07211170027491139,
+      "ece10": 0.022656034407025946,
+      "pr_auc": 0.45578214412767476,
+      "roc_auc": 0.7997322246494256,
+      "recall_threshold": 0.3333333333333333,
+      "recall_wilson95": [
+        0.2335105070168671,
+        0.4507352457128168
+      ],
+      "false_negative_rate_threshold": 0.6666666666666666,
+      "false_positive_rate_threshold": 0.03403565640194489,
+      "fpr_wilson95": [
+        0.022367504164606672,
+        0.05147012083513362
+      ]
+    },
+    {
+      "group_by": "education_mode",
+      "group_value": "GM",
+      "status": "SUFFICIENT",
+      "n": 3212,
+      "uids": 1112,
+      "positives": 283,
+      "negatives": 2929,
+      "prevalence": 0.08810709838107099,
+      "prevalence_wilson95": [
+        0.078790111665857,
+        0.09840813212743779
+      ],
+      "mean_probability": 0.08839727201552655,
+      "overprediction_mean_minus_prevalence": 0.0002901736344555622,
+      "alerts_threshold": 218,
+      "false_positives_threshold": 102,
+      "false_negatives_threshold": 167,
+      "brier": 0.058225093022122025,
+      "ece10": 0.00864207443774881,
+      "pr_auc": 0.5166789963650184,
+      "roc_auc": 0.8318448269830029,
+      "recall_threshold": 0.4098939929328622,
+      "recall_wilson95": [
+        0.3541727707491241,
+        0.4680286634170564
+      ],
+      "false_negative_rate_threshold": 0.5901060070671378,
+      "false_positive_rate_threshold": 0.03482417207237965,
+      "fpr_wilson95": [
+        0.02877044749849574,
+        0.04209647856585003
+      ]
+    },
+    {
+      "group_by": "education_mode",
+      "group_value": "SM",
+      "status": "SUFFICIENT",
+      "n": 6072,
+      "uids": 2122,
+      "positives": 628,
+      "negatives": 5444,
+      "prevalence": 0.10342555994729907,
+      "prevalence_wilson95": [
+        0.09601530778194559,
+        0.11133728154404815
+      ],
+      "mean_probability": 0.09454560526958931,
+      "overprediction_mean_minus_prevalence": -0.008879954677709759,
+      "alerts_threshold": 483,
+      "false_positives_threshold": 194,
+      "false_negatives_threshold": 339,
+      "brier": 0.06506767187735847,
+      "ece10": 0.009621770128465485,
+      "pr_auc": 0.557180280621058,
+      "roc_auc": 0.8270877305465727,
+      "recall_threshold": 0.4601910828025478,
+      "recall_wilson95": [
+        0.42156964188730495,
+        0.4992965828562834
+      ],
+      "false_negative_rate_threshold": 0.5398089171974523,
+      "false_positive_rate_threshold": 0.035635562086700955,
+      "fpr_wilson95": [
+        0.031029481085715783,
+        0.04089652149394023
+      ]
+    },
+    {
+      "group_by": "gender",
+      "group_value": "Khác",
+      "status": "INSUFFICIENT_SUPPORT",
+      "n": 60,
+      "uids": 22,
+      "positives": 7,
+      "negatives": 53,
+      "prevalence": 0.11666666666666667,
+      "prevalence_wilson95": [
+        0.0576772064005603,
+        0.2217878802417086
+      ],
+      "mean_probability": 0.12579901090753837,
+      "overprediction_mean_minus_prevalence": 0.009132344240871698,
+      "alerts_threshold": 6,
+      "false_positives_threshold": 2,
+      "false_negatives_threshold": 3,
+      "brier": 0.06802724386498084,
+      "ece10": 0.07752611257757874,
+      "pr_auc": null,
+      "roc_auc": null,
+      "recall_threshold": null,
+      "recall_wilson95": null,
+      "false_negative_rate_threshold": null,
+      "false_positive_rate_threshold": null,
+      "fpr_wilson95": null
+    },
+    {
+      "group_by": "gender",
+      "group_value": "Nam",
+      "status": "SUFFICIENT",
+      "n": 5493,
+      "uids": 1913,
+      "positives": 507,
+      "negatives": 4986,
+      "prevalence": 0.0922992900054615,
+      "prevalence_wilson95": [
+        0.08492713648871887,
+        0.1002412854943056
+      ],
+      "mean_probability": 0.09143768282293013,
+      "overprediction_mean_minus_prevalence": -0.0008616071825313654,
+      "alerts_threshold": 396,
+      "false_positives_threshold": 167,
+      "false_negatives_threshold": 278,
+      "brier": 0.05891323135031692,
+      "ece10": 0.00419294885387752,
+      "pr_auc": 0.5450390059744048,
+      "roc_auc": 0.8442087549279995,
+      "recall_threshold": 0.4516765285996055,
+      "recall_wilson95": [
+        0.40888278036237147,
+        0.4951970488020052
+      ],
+      "false_negative_rate_threshold": 0.5483234714003945,
+      "false_positive_rate_threshold": 0.033493782591255516,
+      "fpr_wilson95": [
+        0.028847855821769564,
+        0.0388579944760353
+      ]
+    },
+    {
+      "group_by": "gender",
+      "group_value": "Nữ",
+      "status": "SUFFICIENT",
+      "n": 3731,
+      "uids": 1299,
+      "positives": 397,
+      "negatives": 3334,
+      "prevalence": 0.1064057893326186,
+      "prevalence_wilson95": [
+        0.09691305366124478,
+        0.1167081850492784
+      ],
+      "mean_probability": 0.09332560185205312,
+      "overprediction_mean_minus_prevalence": -0.013080187480565483,
+      "alerts_threshold": 299,
+      "false_positives_threshold": 127,
+      "false_negatives_threshold": 225,
+      "brier": 0.06819026748517473,
+      "ece10": 0.01677840583867748,
+      "pr_auc": 0.5421540680543093,
+      "roc_auc": 0.8073531389439996,
+      "recall_threshold": 0.4332493702770781,
+      "recall_wilson95": [
+        0.38537536170985653,
+        0.4824027863990491
+      ],
+      "false_negative_rate_threshold": 0.5667506297229219,
+      "false_positive_rate_threshold": 0.03809238152369526,
+      "fpr_wilson95": [
+        0.03210842853959399,
+        0.045139536051208684
+      ]
+    },
+    {
+      "group_by": "HK1/major_code",
+      "group_value": "AI",
+      "status": "SUFFICIENT",
+      "n": 256,
+      "uids": 256,
+      "positives": 22,
+      "negatives": 234,
+      "prevalence": 0.0859375,
+      "prevalence_wilson95": [
+        0.05743557903626671,
+        0.12668230206640807
+      ],
+      "mean_probability": 0.07142003372379586,
+      "overprediction_mean_minus_prevalence": -0.014517466276204136,
+      "alerts_threshold": 9,
+      "false_positives_threshold": 7,
+      "false_negatives_threshold": 20,
+      "brier": 0.07554396691532539,
+      "ece10": 0.02053655473983719,
+      "pr_auc": 0.19505448854111257,
+      "roc_auc": 0.6886169386169386,
+      "recall_threshold": 0.09090909090909091,
+      "recall_wilson95": [
+        0.025295428990995267,
+        0.27814946841605814
+      ],
+      "false_negative_rate_threshold": 0.9090909090909091,
+      "false_positive_rate_threshold": 0.029914529914529916,
+      "fpr_wilson95": [
+        0.014564666864974578,
+        0.060449415663608425
+      ]
+    },
+    {
+      "group_by": "HK1/major_code",
+      "group_value": "BA",
+      "status": "SUFFICIENT",
+      "n": 315,
+      "uids": 315,
+      "positives": 25,
+      "negatives": 290,
+      "prevalence": 0.07936507936507936,
+      "prevalence_wilson95": [
+        0.05433314932537496,
+        0.11453277864973437
+      ],
+      "mean_probability": 0.06974300262833352,
+      "overprediction_mean_minus_prevalence": -0.009622076736745838,
+      "alerts_threshold": 18,
+      "false_positives_threshold": 12,
+      "false_negatives_threshold": 19,
+      "brier": 0.06439150770013091,
+      "ece10": 0.016444359152332545,
+      "pr_auc": 0.3558897199677925,
+      "roc_auc": 0.7706206896551724,
+      "recall_threshold": 0.24,
+      "recall_wilson95": [
+        0.11496313693401444,
+        0.4342968335542908
+      ],
+      "false_negative_rate_threshold": 0.76,
+      "false_positive_rate_threshold": 0.041379310344827586,
+      "fpr_wilson95": [
+        0.023826617020570977,
+        0.07092331694869694
+      ]
+    },
+    {
+      "group_by": "HK1/major_code",
+      "group_value": "CB",
+      "status": "INSUFFICIENT_SUPPORT",
+      "n": 103,
+      "uids": 103,
+      "positives": 7,
+      "negatives": 96,
+      "prevalence": 0.06796116504854369,
+      "prevalence_wilson95": [
+        0.03330773910988612,
+        0.13368229469933413
+      ],
+      "mean_probability": 0.06512283398392481,
+      "overprediction_mean_minus_prevalence": -0.002838331064618879,
+      "alerts_threshold": 3,
+      "false_positives_threshold": 1,
+      "false_negatives_threshold": 5,
+      "brier": 0.05283718768883876,
+      "ece10": 0.033072079812906226,
+      "pr_auc": null,
+      "roc_auc": null,
+      "recall_threshold": null,
+      "recall_wilson95": null,
+      "false_negative_rate_threshold": null,
+      "false_positive_rate_threshold": null,
+      "fpr_wilson95": null
+    },
+    {
+      "group_by": "HK1/major_code",
+      "group_value": "CL",
+      "status": "INSUFFICIENT_SUPPORT",
+      "n": 144,
+      "uids": 144,
+      "positives": 14,
+      "negatives": 130,
+      "prevalence": 0.09722222222222222,
+      "prevalence_wilson95": [
+        0.058799052664080885,
+        0.1565766550344765
+      ],
+      "mean_probability": 0.08238605324115647,
+      "overprediction_mean_minus_prevalence": -0.014836168981065753,
+      "alerts_threshold": 13,
+      "false_positives_threshold": 8,
+      "false_negatives_threshold": 9,
+      "brier": 0.07723406509829038,
+      "ece10": 0.0402331945007858,
+      "pr_auc": null,
+      "roc_auc": null,
+      "recall_threshold": null,
+      "recall_wilson95": null,
+      "false_negative_rate_threshold": null,
+      "false_positive_rate_threshold": null,
+      "fpr_wilson95": null
+    },
+    {
+      "group_by": "HK1/major_code",
+      "group_value": "CS",
+      "status": "SUFFICIENT",
+      "n": 286,
+      "uids": 286,
+      "positives": 23,
+      "negatives": 263,
+      "prevalence": 0.08041958041958042,
+      "prevalence_wilson95": [
+        0.05418334794075167,
+        0.1177777614998676
+      ],
+      "mean_probability": 0.07769434042857153,
+      "overprediction_mean_minus_prevalence": -0.0027252399910088904,
+      "alerts_threshold": 18,
+      "false_positives_threshold": 10,
+      "false_negatives_threshold": 15,
+      "brier": 0.06252476059092144,
+      "ece10": 0.018781306472573273,
+      "pr_auc": 0.34566238853835396,
+      "roc_auc": 0.7690527359894197,
+      "recall_threshold": 0.34782608695652173,
+      "recall_wilson95": [
+        0.1881127593879773,
+        0.55109664622737
+      ],
+      "false_negative_rate_threshold": 0.6521739130434783,
+      "false_positive_rate_threshold": 0.03802281368821293,
+      "fpr_wilson95": [
+        0.02078211795578977,
+        0.06856478835352758
+      ]
+    },
+    {
+      "group_by": "HK1/major_code",
+      "group_value": "DA",
+      "status": "INSUFFICIENT_SUPPORT",
+      "n": 96,
+      "uids": 96,
+      "positives": 4,
+      "negatives": 92,
+      "prevalence": 0.041666666666666664,
+      "prevalence_wilson95": [
+        0.01632070753628833,
+        0.10228191466658104
+      ],
+      "mean_probability": 0.0691484886265148,
+      "overprediction_mean_minus_prevalence": 0.027481821959848142,
+      "alerts_threshold": 2,
+      "false_positives_threshold": 1,
+      "false_negatives_threshold": 3,
+      "brier": 0.036917536363092425,
+      "ece10": 0.0405520474494461,
+      "pr_auc": null,
+      "roc_auc": null,
+      "recall_threshold": null,
+      "recall_wilson95": null,
+      "false_negative_rate_threshold": null,
+      "false_positive_rate_threshold": null,
+      "fpr_wilson95": null
+    },
+    {
+      "group_by": "HK1/major_code",
+      "group_value": "EC",
+      "status": "INSUFFICIENT_SUPPORT",
+      "n": 68,
+      "uids": 68,
+      "positives": 8,
+      "negatives": 60,
+      "prevalence": 0.11764705882352941,
+      "prevalence_wilson95": [
+        0.06083492602331342,
+        0.21534903719791698
+      ],
+      "mean_probability": 0.056764216657074026,
+      "overprediction_mean_minus_prevalence": -0.060882842166455384,
+      "alerts_threshold": 1,
+      "false_positives_threshold": 1,
+      "false_negatives_threshold": 8,
+      "brier": 0.10277677168299514,
+      "ece10": 0.07094715435942626,
+      "pr_auc": null,
+      "roc_auc": null,
+      "recall_threshold": null,
+      "recall_wilson95": null,
+      "false_negative_rate_threshold": null,
+      "false_positive_rate_threshold": null,
+      "fpr_wilson95": null
+    },
+    {
+      "group_by": "HK1/major_code",
+      "group_value": "EM",
+      "status": "INSUFFICIENT_SUPPORT",
+      "n": 185,
+      "uids": 185,
+      "positives": 14,
+      "negatives": 171,
+      "prevalence": 0.07567567567567568,
+      "prevalence_wilson95": [
+        0.04561083069467514,
+        0.12300393758524875
+      ],
+      "mean_probability": 0.06757082879821012,
+      "overprediction_mean_minus_prevalence": -0.008104846877465557,
+      "alerts_threshold": 8,
+      "false_positives_threshold": 6,
+      "false_negatives_threshold": 12,
+      "brier": 0.06874479396029326,
+      "ece10": 0.0316995802791975,
+      "pr_auc": null,
+      "roc_auc": null,
+      "recall_threshold": null,
+      "recall_wilson95": null,
+      "false_negative_rate_threshold": null,
+      "false_positive_rate_threshold": null,
+      "fpr_wilson95": null
+    },
+    {
+      "group_by": "HK1/major_code",
+      "group_value": "GA",
+      "status": "INSUFFICIENT_SUPPORT",
+      "n": 55,
+      "uids": 55,
+      "positives": 1,
+      "negatives": 54,
+      "prevalence": 0.01818181818181818,
+      "prevalence_wilson95": [
+        0.003216780454841077,
+        0.09605776062162397
+      ],
+      "mean_probability": 0.08815899299690345,
+      "overprediction_mean_minus_prevalence": 0.06997717481508528,
+      "alerts_threshold": 6,
+      "false_positives_threshold": 5,
+      "false_negatives_threshold": 0,
+      "brier": 0.02577862457971124,
+      "ece10": 0.06997717481508527,
+      "pr_auc": null,
+      "roc_auc": null,
+      "recall_threshold": null,
+      "recall_wilson95": null,
+      "false_negative_rate_threshold": null,
+      "false_positive_rate_threshold": null,
+      "fpr_wilson95": null
+    },
+    {
+      "group_by": "HK1/major_code",
+      "group_value": "GD",
+      "status": "INSUFFICIENT_SUPPORT",
+      "n": 126,
+      "uids": 126,
+      "positives": 9,
+      "negatives": 117,
+      "prevalence": 0.07142857142857142,
+      "prevalence_wilson95": [
+        0.038031143767313015,
+        0.13018522578885708
+      ],
+      "mean_probability": 0.059630877174889116,
+      "overprediction_mean_minus_prevalence": -0.011797694253682309,
+      "alerts_threshold": 2,
+      "false_positives_threshold": 0,
+      "false_negatives_threshold": 7,
+      "brier": 0.0580773135566197,
+      "ece10": 0.031472258968129656,
+      "pr_auc": null,
+      "roc_auc": null,
+      "recall_threshold": null,
+      "recall_wilson95": null,
+      "false_negative_rate_threshold": null,
+      "false_positive_rate_threshold": null,
+      "fpr_wilson95": null
+    },
+    {
+      "group_by": "HK1/major_code",
+      "group_value": "IB",
+      "status": "INSUFFICIENT_SUPPORT",
+      "n": 103,
+      "uids": 103,
+      "positives": 8,
+      "negatives": 95,
+      "prevalence": 0.07766990291262135,
+      "prevalence_wilson95": [
+        0.039880356912350534,
+        0.14582900197980858
+      ],
+      "mean_probability": 0.06253314548361767,
+      "overprediction_mean_minus_prevalence": -0.01513675742900368,
+      "alerts_threshold": 2,
+      "false_positives_threshold": 2,
+      "false_negatives_threshold": 8,
+      "brier": 0.06628144656934244,
+      "ece10": 0.02738165677641125,
+      "pr_auc": null,
+      "roc_auc": null,
+      "recall_threshold": null,
+      "recall_wilson95": null,
+      "false_negative_rate_threshold": null,
+      "false_positive_rate_threshold": null,
+      "fpr_wilson95": null
+    },
+    {
+      "group_by": "HK1/major_code",
+      "group_value": "IT",
+      "status": "SUFFICIENT",
+      "n": 560,
+      "uids": 560,
+      "positives": 38,
+      "negatives": 522,
+      "prevalence": 0.06785714285714285,
+      "prevalence_wilson95": [
+        0.049834490003291265,
+        0.09176818495375605
+      ],
+      "mean_probability": 0.06625117330090755,
+      "overprediction_mean_minus_prevalence": -0.0016059695562353066,
+      "alerts_threshold": 17,
+      "false_positives_threshold": 11,
+      "false_negatives_threshold": 32,
+      "brier": 0.05660198227726369,
+      "ece10": 0.01240581747829993,
+      "pr_auc": 0.2669546895725729,
+      "roc_auc": 0.7713248638838476,
+      "recall_threshold": 0.15789473684210525,
+      "recall_wilson95": [
+        0.07443863415158927,
+        0.3041681177922313
+      ],
+      "false_negative_rate_threshold": 0.8421052631578947,
+      "false_positive_rate_threshold": 0.0210727969348659,
+      "fpr_wilson95": [
+        0.011806681288622858,
+        0.037336379584988796
+      ]
+    },
+    {
+      "group_by": "HK1/major_code",
+      "group_value": "KL",
+      "status": "INSUFFICIENT_SUPPORT",
+      "n": 136,
+      "uids": 136,
+      "positives": 9,
+      "negatives": 127,
+      "prevalence": 0.0661764705882353,
+      "prevalence_wilson95": [
+        0.035203171505731254,
+        0.12098412091017112
+      ],
+      "mean_probability": 0.07190397817569064,
+      "overprediction_mean_minus_prevalence": 0.005727507587455341,
+      "alerts_threshold": 7,
+      "false_positives_threshold": 5,
+      "false_negatives_threshold": 7,
+      "brier": 0.05542853671298909,
+      "ece10": 0.0104442613300057,
+      "pr_auc": null,
+      "roc_auc": null,
+      "recall_threshold": null,
+      "recall_wilson95": null,
+      "false_negative_rate_threshold": null,
+      "false_positive_rate_threshold": null,
+      "fpr_wilson95": null
+    },
+    {
+      "group_by": "HK1/major_code",
+      "group_value": "LS",
+      "status": "INSUFFICIENT_SUPPORT",
+      "n": 118,
+      "uids": 118,
+      "positives": 10,
+      "negatives": 108,
+      "prevalence": 0.0847457627118644,
+      "prevalence_wilson95": [
+        0.04668269511917863,
+        0.14899338305204546
+      ],
+      "mean_probability": 0.05701028556260982,
+      "overprediction_mean_minus_prevalence": -0.027735477149254582,
+      "alerts_threshold": 1,
+      "false_positives_threshold": 0,
+      "false_negatives_threshold": 9,
+      "brier": 0.0705716529131324,
+      "ece10": 0.03371577505791244,
+      "pr_auc": null,
+      "roc_auc": null,
+      "recall_threshold": null,
+      "recall_wilson95": null,
+      "false_negative_rate_threshold": null,
+      "false_positive_rate_threshold": null,
+      "fpr_wilson95": null
+    },
+    {
+      "group_by": "HK1/major_code",
+      "group_value": "MC",
+      "status": "INSUFFICIENT_SUPPORT",
+      "n": 75,
+      "uids": 75,
+      "positives": 7,
+      "negatives": 68,
+      "prevalence": 0.09333333333333334,
+      "prevalence_wilson95": [
+        0.04594852339060043,
+        0.18034686849541504
+      ],
+      "mean_probability": 0.07643298750483497,
+      "overprediction_mean_minus_prevalence": -0.016900345828498364,
+      "alerts_threshold": 3,
+      "false_positives_threshold": 1,
+      "false_negatives_threshold": 5,
+      "brier": 0.07175093642386714,
+      "ece10": 0.042334077348506416,
+      "pr_auc": null,
+      "roc_auc": null,
+      "recall_threshold": null,
+      "recall_wilson95": null,
+      "false_negative_rate_threshold": null,
+      "false_positive_rate_threshold": null,
+      "fpr_wilson95": null
+    },
+    {
+      "group_by": "HK1/major_code",
+      "group_value": "MK",
+      "status": "INSUFFICIENT_SUPPORT",
+      "n": 111,
+      "uids": 111,
+      "positives": 9,
+      "negatives": 102,
+      "prevalence": 0.08108108108108109,
+      "prevalence_wilson95": [
+        0.04324200258456554,
+        0.14694592296935782
+      ],
+      "mean_probability": 0.06419115592581849,
+      "overprediction_mean_minus_prevalence": -0.016889925155262595,
+      "alerts_threshold": 3,
+      "false_positives_threshold": 2,
+      "false_negatives_threshold": 8,
+      "brier": 0.058387342811124926,
+      "ece10": 0.0731199249116538,
+      "pr_auc": null,
+      "roc_auc": null,
+      "recall_threshold": null,
+      "recall_wilson95": null,
+      "false_negative_rate_threshold": null,
+      "false_positive_rate_threshold": null,
+      "fpr_wilson95": null
+    },
+    {
+      "group_by": "HK1/major_code",
+      "group_value": "NS",
+      "status": "INSUFFICIENT_SUPPORT",
+      "n": 136,
+      "uids": 136,
+      "positives": 11,
+      "negatives": 125,
+      "prevalence": 0.08088235294117647,
+      "prevalence_wilson95": [
+        0.0457619634476793,
+        0.13902914956429419
+      ],
+      "mean_probability": 0.07142092446244874,
+      "overprediction_mean_minus_prevalence": -0.009461428478727732,
+      "alerts_threshold": 8,
+      "false_positives_threshold": 4,
+      "false_negatives_threshold": 7,
+      "brier": 0.06270000373594645,
+      "ece10": 0.02948937992477305,
+      "pr_auc": null,
+      "roc_auc": null,
+      "recall_threshold": null,
+      "recall_wilson95": null,
+      "false_negative_rate_threshold": null,
+      "false_positive_rate_threshold": null,
+      "fpr_wilson95": null
+    },
+    {
+      "group_by": "HK1/major_code",
+      "group_value": "PR",
+      "status": "INSUFFICIENT_SUPPORT",
+      "n": 121,
+      "uids": 121,
+      "positives": 10,
+      "negatives": 111,
+      "prevalence": 0.08264462809917356,
+      "prevalence_wilson95": [
+        0.045509049437406586,
+        0.14546483893197612
+      ],
+      "mean_probability": 0.07399686215321516,
+      "overprediction_mean_minus_prevalence": -0.008647765945958397,
+      "alerts_threshold": 7,
+      "false_positives_threshold": 4,
+      "false_negatives_threshold": 7,
+      "brier": 0.0679294624374066,
+      "ece10": 0.022097649399981014,
+      "pr_auc": null,
+      "roc_auc": null,
+      "recall_threshold": null,
+      "recall_wilson95": null,
+      "false_negative_rate_threshold": null,
+      "false_positive_rate_threshold": null,
+      "fpr_wilson95": null
+    },
+    {
+      "group_by": "HK1/major_code",
+      "group_value": "SE",
+      "status": "INSUFFICIENT_SUPPORT",
+      "n": 240,
+      "uids": 240,
+      "positives": 19,
+      "negatives": 221,
+      "prevalence": 0.07916666666666666,
+      "prevalence_wilson95": [
+        0.05126524186067317,
+        0.12032764075680552
+      ],
+      "mean_probability": 0.06734860653070064,
+      "overprediction_mean_minus_prevalence": -0.011818060135966021,
+      "alerts_threshold": 7,
+      "false_positives_threshold": 3,
+      "false_negatives_threshold": 15,
+      "brier": 0.06225239539633049,
+      "ece10": 0.028311433300166843,
+      "pr_auc": null,
+      "roc_auc": null,
+      "recall_threshold": null,
+      "recall_wilson95": null,
+      "false_negative_rate_threshold": null,
+      "false_positive_rate_threshold": null,
+      "fpr_wilson95": null
+    },
+    {
+      "group_by": "HK1/education_mode",
+      "group_value": "GM",
+      "status": "SUFFICIENT",
+      "n": 1112,
+      "uids": 1112,
+      "positives": 72,
+      "negatives": 1040,
+      "prevalence": 0.06474820143884892,
+      "prevalence_wilson95": [
+        0.05173048339766508,
+        0.08076276432315738
+      ],
+      "mean_probability": 0.06442714872386134,
+      "overprediction_mean_minus_prevalence": -0.00032105271498758525,
+      "alerts_threshold": 35,
+      "false_positives_threshold": 28,
+      "false_negatives_threshold": 65,
+      "brier": 0.05657700293545033,
+      "ece10": 0.010384660111055877,
+      "pr_auc": 0.20836487210911397,
+      "roc_auc": 0.7659054487179487,
+      "recall_threshold": 0.09722222222222222,
+      "recall_wilson95": [
+        0.047896319973655774,
+        0.1873504579512686
+      ],
+      "false_negative_rate_threshold": 0.9027777777777778,
+      "false_positive_rate_threshold": 0.026923076923076925,
+      "fpr_wilson95": [
+        0.018691917129113007,
+        0.038636193682179645
+      ]
+    },
+    {
+      "group_by": "HK1/education_mode",
+      "group_value": "SM",
+      "status": "SUFFICIENT",
+      "n": 2122,
+      "uids": 2122,
+      "positives": 176,
+      "negatives": 1946,
+      "prevalence": 0.08294062205466542,
+      "prevalence_wilson95": [
+        0.07194635363187689,
+        0.09544216790824604
+      ],
+      "mean_probability": 0.07186541935170485,
+      "overprediction_mean_minus_prevalence": -0.011075202702960571,
+      "alerts_threshold": 100,
+      "false_positives_threshold": 55,
+      "false_negatives_threshold": 131,
+      "brier": 0.06648473981400081,
+      "ece10": 0.011784785146737982,
+      "pr_auc": 0.3038581841274872,
+      "roc_auc": 0.7746426235634869,
+      "recall_threshold": 0.2556818181818182,
+      "recall_wilson95": [
+        0.19692962457504892,
+        0.324871407489844
+      ],
+      "false_negative_rate_threshold": 0.7443181818181818,
+      "false_positive_rate_threshold": 0.02826310380267215,
+      "fpr_wilson95": [
+        0.0217781635768524,
+        0.03660681859987693
+      ]
+    },
+    {
+      "group_by": "HK1/gender",
+      "group_value": "Khác",
+      "status": "INSUFFICIENT_SUPPORT",
+      "n": 22,
+      "uids": 22,
+      "positives": 1,
+      "negatives": 21,
+      "prevalence": 0.045454545454545456,
+      "prevalence_wilson95": [
+        0.00806942762126385,
+        0.21798045838657332
+      ],
+      "mean_probability": 0.08582902712796692,
+      "overprediction_mean_minus_prevalence": 0.04037448167342146,
+      "alerts_threshold": 1,
+      "false_positives_threshold": 0,
+      "false_negatives_threshold": 0,
+      "brier": 0.019616093483435255,
+      "ece10": 0.08886716206385087,
+      "pr_auc": null,
+      "roc_auc": null,
+      "recall_threshold": null,
+      "recall_wilson95": null,
+      "false_negative_rate_threshold": null,
+      "false_positive_rate_threshold": null,
+      "fpr_wilson95": null
+    },
+    {
+      "group_by": "HK1/gender",
+      "group_value": "Nam",
+      "status": "SUFFICIENT",
+      "n": 1913,
+      "uids": 1913,
+      "positives": 141,
+      "negatives": 1772,
+      "prevalence": 0.07370622059592263,
+      "prevalence_wilson95": [
+        0.06283219381206548,
+        0.08628888112365377
+      ],
+      "mean_probability": 0.06875198350261422,
+      "overprediction_mean_minus_prevalence": -0.004954237093308417,
+      "alerts_threshold": 68,
+      "false_positives_threshold": 41,
+      "false_negatives_threshold": 114,
+      "brier": 0.06049743696104862,
+      "ece10": 0.005622996197653387,
+      "pr_auc": 0.28001143952595303,
+      "roc_auc": 0.7898555945119511,
+      "recall_threshold": 0.19148936170212766,
+      "recall_wilson95": [
+        0.13507217612814998,
+        0.2642710733229531
+      ],
+      "false_negative_rate_threshold": 0.8085106382978723,
+      "false_positive_rate_threshold": 0.023137697516930022,
+      "fpr_wilson95": [
+        0.017101213013144514,
+        0.03123725683973298
+      ]
+    },
+    {
+      "group_by": "HK1/gender",
+      "group_value": "Nữ",
+      "status": "SUFFICIENT",
+      "n": 1299,
+      "uids": 1299,
+      "positives": 106,
+      "negatives": 1193,
+      "prevalence": 0.08160123171670516,
+      "prevalence_wilson95": [
+        0.06791873942409449,
+        0.09775104131505202
+      ],
+      "mean_probability": 0.06984651748108947,
+      "overprediction_mean_minus_prevalence": -0.011754714235615693,
+      "alerts_threshold": 66,
+      "false_positives_threshold": 42,
+      "false_negatives_threshold": 82,
+      "brier": 0.06761439121355572,
+      "ece10": 0.014003310188921935,
+      "pr_auc": 0.2726272970384041,
+      "roc_auc": 0.7464375523889355,
+      "recall_threshold": 0.22641509433962265,
+      "recall_wilson95": [
+        0.15713470742524072,
+        0.3148315189640177
+      ],
+      "false_negative_rate_threshold": 0.7735849056603774,
+      "false_positive_rate_threshold": 0.03520536462699078,
+      "fpr_wilson95": [
+        0.026149932056428724,
+        0.04724446631881521
+      ]
+    }
+  ],
+  "hk1_risk_budgets": {
+    "top5": {
+      "budget": 0.05,
+      "alerts": 162,
+      "true_positives": 60,
+      "false_negatives": 188,
+      "recall": 0.24193548387096775,
+      "miss_rate": 0.7580645161290323
+    },
+    "top10": {
+      "budget": 0.1,
+      "alerts": 324,
+      "true_positives": 105,
+      "false_negatives": 143,
+      "recall": 0.42338709677419356,
+      "miss_rate": 0.5766129032258065
+    },
+    "threshold": {
+      "threshold": 0.27,
+      "alerts": 135,
+      "true_positives": 52,
+      "false_negatives": 196,
+      "recall": 0.20967741935483872,
+      "miss_rate": 0.7903225806451613
+    },
+    "hk1_n": 3234,
+    "hk1_positives": 248,
+    "calibration": {
+      "brier": 0.06307799788173485,
+      "ece10": 0.008335052001623317,
+      "mean_probability": 0.0693077950665589,
+      "prevalence": 0.0766852195423624,
+      "overprediction_mean_minus_prevalence": -0.007377424475803501
+    }
+  },
+  "shift_summary": {
+    "purpose": "descriptive only",
+    "measured_numeric": [
+      "gpa4_term",
+      "attendance_rate_term",
+      "lms_logins_4weeks",
+      "tuition_debt_to_due_ratio",
+      "failed_credit_ratio"
+    ],
+    "flag_large_abs_standardized_difference": 0.2,
+    "max_abs_standardized_mean_difference": 0.027277854178208747
+  },
+  "limitations": [
+    "Synthetic generator, not measured population of CMC students",
+    "Test consists only of 2025 cohort: no 2022/23/24 Test-cohort fairness comparison",
+    "Subgroup uncertainty uses Wilson snapshot-level intervals; repeated snapshots per UID are correlated",
+    "Overall H confidence intervals use UID cluster bootstrap; subgroup Wilson intervals are descriptive, not cluster-aware",
+    "Prior Validation model selection prevents an unbiased fairness selection claim",
+    "Protected-group audit uses retrospective metadata, not serving features",
+    "No causality inferred from feature correlations or importance",
+    "All Test subgroup analyses are diagnostic, not justification to change the frozen model"
+  ],
+  "created_utc": "2026-11-02T16:57:29.606963+00:00"
+}

@@ -1,0 +1,23 @@
+{
+  "status": "PASS",
+  "phase": "2-K",
+  "verified_utc": "2026-11-02T17:21:37.630282+00:00",
+  "model_version": "v3.2-rf-b-platt-g1",
+  "model_sha256": "5c45deb380e011ff8ecfe94628d19e07db589ea75eed22c14bf08259887ed5c4",
+  "metadata_sha256": "cf559689b3152e570018ddb266267aea3312bd6d0422eca06b53f1af61385385",
+  "source": "V3_2_MAIN synthetic ASOF_2026_DEMO",
+  "serving_max_asof": "2026-10-01",
+  "feature_count": 58,
+  "visible_train_cohort_snapshots_checked": 3,
+  "api_direct_max_abs_probability_delta": 4.163336342344337e-17,
+  "tolerance": 1e-10,
+  "unknown_uid_not_available": true,
+  "past_asof_not_available": true,
+  "future_asof_rejected": true,
+  "no_fit": true,
+  "no_test_split_opened": true,
+  "no_labels_accessed": true,
+  "no_test_predictions_accessed": true,
+  "model_and_metadata_unchanged": true,
+  "note": "No real-student validity claim. TopK requires batch ranking. Phase 1 E1-E5 must remain PASS."
+}

@@ -1,0 +1,349 @@
+{
+  "status": "PASS",
+  "phase": "2",
+  "scope": "E1-E5 + optional E6",
+  "train_n": 34304,
+  "train_positive": 3136,
+  "validation_n": 13981,
+  "validation_positive": 1240,
+  "test_accessed": false,
+  "prediction_selection_data": "Validation only",
+  "seed": 221026,
+  "preprocessing_fit_partition": "TRAIN_2022_23",
+  "threshold_selection": "Validation F1, first maximum on grid np.linspace(.05, .8, 76); B0=0.5",
+  "reference_tolerance_abs_metrics": 0.0001,
+  "b5_saved_artifact_max_probability_difference": 0.0,
+  "versions": {
+    "pandas": "3.1.0",
+    "numpy": "2.5.4",
+    "scikit-learn": "1.9.1",
+    "joblib": "1.6.0"
+  },
+  "reference": {
+    "generator_zip_path": "C:\\Code\\AI\\new\\CMC_Synthetic_Dataset_V3_2_RESEARCH_CANDIDATE.zip",
+    "generator_zip_sha256": "5df81f995347b167c4996f3a83c63c11637f78674834f76dd3d28a0548e6ecd6",
+    "generator_script_sha256": "c501d1149d0d70f893689eeb5224b6d11385f330d5ad75aaee167b06e10f1ef4",
+    "generator_benchmark_report_sha256": "27489c8848b0a0d8259bf73f653662248fbc96f27f0058ce0e9c8405f8f18174",
+    "generator_version": "V3_2_MAIN",
+    "reference_metrics_scope": "Validation only",
+    "reference_feature_contract_identical": true
+  },
+  "models": {
+    "B0_PRIOR": {
+      "model": "B0_PRIOR",
+      "features": 0,
+      "validation": {
+        "n": 13981,
+        "positive": 1240,
+        "prevalence": 0.08869179600886919,
+        "pr_auc": 0.08869179600886919,
+        "roc_auc": 0.5,
+        "brier": 0.08083299302952424,
+        "threshold": 0.5,
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "confusion_matrix": [
+          [
+            12741,
+            0
+          ],
+          [
+            1240,
+            0
+          ]
+        ]
+      },
+      "validation_top10": {
+        "k": 1399,
+        "positive_found": 119,
+        "precision_at_k": 0.08506075768406005,
+        "recall_at_k": 0.09596774193548387
+      },
+      "reference_validation": {
+        "pr_auc": 0.08869179600886919,
+        "roc_auc": 0.5,
+        "brier": 0.08083299302952424,
+        "threshold": 0.5
+      },
+      "metric_deltas": {
+        "pr_auc": 0.0,
+        "roc_auc": 0.0,
+        "brier": 0.0
+      },
+      "threshold_delta_vs_generator": 0.0,
+      "reference_match": true
+    },
+    "B1_GPA_ONLY": {
+      "model": "B1_GPA_ONLY",
+      "features": 1,
+      "validation": {
+        "n": 13981,
+        "positive": 1240,
+        "prevalence": 0.08869179600886919,
+        "pr_auc": 0.30081680336827515,
+        "roc_auc": 0.7671209088768542,
+        "brier": 0.07099460936398963,
+        "threshold": 0.22000000000000003,
+        "precision": 0.35388567758509953,
+        "recall": 0.4443548387096774,
+        "f1": 0.39399356453342865,
+        "confusion_matrix": [
+          [
+            11735,
+            1006
+          ],
+          [
+            689,
+            551
+          ]
+        ]
+      },
+      "validation_top10": {
+        "k": 1399,
+        "positive_found": 517,
+        "precision_at_k": 0.3695496783416726,
+        "recall_at_k": 0.41693548387096774
+      },
+      "reference_validation": {
+        "pr_auc": 0.30081680336827515,
+        "roc_auc": 0.7671209088768542,
+        "brier": 0.07099460936398963,
+        "threshold": 0.22000000000000003
+      },
+      "metric_deltas": {
+        "pr_auc": 0.0,
+        "roc_auc": 0.0,
+        "brier": 0.0
+      },
+      "threshold_delta_vs_generator": 0.0,
+      "reference_match": true
+    },
+    "B2_ACADEMIC": {
+      "model": "B2_ACADEMIC",
+      "features": 20,
+      "validation": {
+        "n": 13981,
+        "positive": 1240,
+        "prevalence": 0.08869179600886919,
+        "pr_auc": 0.4834503685090246,
+        "roc_auc": 0.7819225335530963,
+        "brier": 0.05998698339435074,
+        "threshold": 0.24,
+        "precision": 0.640495867768595,
+        "recall": 0.375,
+        "f1": 0.47304170905391657,
+        "confusion_matrix": [
+          [
+            12480,
+            261
+          ],
+          [
+            775,
+            465
+          ]
+        ]
+      },
+      "validation_top10": {
+        "k": 1399,
+        "positive_found": 579,
+        "precision_at_k": 0.413867047891351,
+        "recall_at_k": 0.4669354838709677
+      },
+      "reference_validation": {
+        "pr_auc": 0.4834503685090246,
+        "roc_auc": 0.7819225335530964,
+        "brier": 0.05998698336640443,
+        "threshold": 0.24
+      },
+      "metric_deltas": {
+        "pr_auc": 0.0,
+        "roc_auc": -1.1102230246251565e-16,
+        "brier": 2.7946311931259515e-11
+      },
+      "threshold_delta_vs_generator": 0.0,
+      "reference_match": true
+    },
+    "B3_PLUS_BEHAVIOR": {
+      "model": "B3_PLUS_BEHAVIOR",
+      "features": 40,
+      "validation": {
+        "n": 13981,
+        "positive": 1240,
+        "prevalence": 0.08869179600886919,
+        "pr_auc": 0.5367099791477279,
+        "roc_auc": 0.8266331578774138,
+        "brier": 0.05704962418967677,
+        "threshold": 0.22999999999999998,
+        "precision": 0.571715145436309,
+        "recall": 0.4596774193548387,
+        "f1": 0.5096110862762628,
+        "confusion_matrix": [
+          [
+            12314,
+            427
+          ],
+          [
+            670,
+            570
+          ]
+        ]
+      },
+      "validation_top10": {
+        "k": 1399,
+        "positive_found": 656,
+        "precision_at_k": 0.46890636168691924,
+        "recall_at_k": 0.5290322580645161
+      },
+      "reference_validation": {
+        "pr_auc": 0.5367100413847178,
+        "roc_auc": 0.8266332844689863,
+        "brier": 0.05704962196033936,
+        "threshold": 0.22999999999999998
+      },
+      "metric_deltas": {
+        "pr_auc": -6.223698989504811e-08,
+        "roc_auc": -1.265915725578992e-07,
+        "brier": 2.2293374091209017e-09
+      },
+      "threshold_delta_vs_generator": 0.0,
+      "reference_match": true
+    },
+    "B4_PLUS_FINANCE": {
+      "model": "B4_PLUS_FINANCE",
+      "features": 44,
+      "validation": {
+        "n": 13981,
+        "positive": 1240,
+        "prevalence": 0.08869179600886919,
+        "pr_auc": 0.5383062445066072,
+        "roc_auc": 0.8273721361821501,
+        "brier": 0.05693354059580574,
+        "threshold": 0.22999999999999998,
+        "precision": 0.57,
+        "recall": 0.4596774193548387,
+        "f1": 0.5089285714285714,
+        "confusion_matrix": [
+          [
+            12311,
+            430
+          ],
+          [
+            670,
+            570
+          ]
+        ]
+      },
+      "validation_top10": {
+        "k": 1399,
+        "positive_found": 656,
+        "precision_at_k": 0.46890636168691924,
+        "recall_at_k": 0.5290322580645161
+      },
+      "reference_validation": {
+        "pr_auc": 0.5383076991949068,
+        "roc_auc": 0.827372832435799,
+        "brier": 0.05693354070272058,
+        "threshold": 0.22999999999999998
+      },
+      "metric_deltas": {
+        "pr_auc": -1.45468829959583e-06,
+        "roc_auc": -6.962536488464011e-07,
+        "brier": -1.0691483809388558e-10
+      },
+      "threshold_delta_vs_generator": 0.0,
+      "reference_match": true
+    },
+    "B5_FULL_SAFE": {
+      "model": "B5_FULL_SAFE",
+      "features": 58,
+      "validation": {
+        "n": 13981,
+        "positive": 1240,
+        "prevalence": 0.08869179600886919,
+        "pr_auc": 0.5344977715375336,
+        "roc_auc": 0.8240320175405282,
+        "brier": 0.05719821004120004,
+        "threshold": 0.21000000000000002,
+        "precision": 0.5345744680851063,
+        "recall": 0.48629032258064514,
+        "f1": 0.5092905405405406,
+        "confusion_matrix": [
+          [
+            12216,
+            525
+          ],
+          [
+            637,
+            603
+          ]
+        ]
+      },
+      "validation_top10": {
+        "k": 1399,
+        "positive_found": 643,
+        "precision_at_k": 0.45961401000714797,
+        "recall_at_k": 0.5185483870967742
+      },
+      "reference_validation": {
+        "pr_auc": 0.5344908966457337,
+        "roc_auc": 0.8240342328930478,
+        "brier": 0.057198113611501886,
+        "threshold": 0.21000000000000002
+      },
+      "metric_deltas": {
+        "pr_auc": 6.874891799957261e-06,
+        "roc_auc": -2.2153525195411916e-06,
+        "brier": 9.642969815704117e-08
+      },
+      "threshold_delta_vs_generator": 0.0,
+      "reference_match": true
+    },
+    "B3_PLUS_BEHAVIOR_V31": {
+      "model": "B3_PLUS_BEHAVIOR_V31",
+      "features": 33,
+      "validation": {
+        "n": 13981,
+        "positive": 1240,
+        "prevalence": 0.08869179600886919,
+        "pr_auc": 0.537098154922242,
+        "roc_auc": 0.8260435576282816,
+        "brier": 0.05704346287951987,
+        "threshold": 0.24,
+        "precision": 0.5894179894179894,
+        "recall": 0.4491935483870968,
+        "f1": 0.5098398169336384,
+        "confusion_matrix": [
+          [
+            12353,
+            388
+          ],
+          [
+            683,
+            557
+          ]
+        ]
+      },
+      "validation_top10": {
+        "k": 1399,
+        "positive_found": 652,
+        "precision_at_k": 0.4660471765546819,
+        "recall_at_k": 0.5258064516129032
+      },
+      "reference_validation": {
+        "pr_auc": 0.5370993048713426,
+        "roc_auc": 0.8260440639945718,
+        "brier": 0.057043474985304,
+        "threshold": 0.24
+      },
+      "metric_deltas": {
+        "pr_auc": -1.1499491006095042e-06,
+        "roc_auc": -5.063662901205745e-07,
+        "brier": -1.210578413207708e-08
+      },
+      "threshold_delta_vs_generator": 0.0,
+      "reference_match": true
+    }
+  },
+  "note": "Research-only synthetic dataset; Validation is reused to select threshold so thresholded metrics are in-sample to selection."
+}

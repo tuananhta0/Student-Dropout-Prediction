@@ -1,0 +1,35 @@
+{
+  "top5": {
+    "budget": 0.05,
+    "alerts": 162,
+    "true_positives": 60,
+    "false_negatives": 188,
+    "recall": 0.24193548387096775,
+    "miss_rate": 0.7580645161290323
+  },
+  "top10": {
+    "budget": 0.1,
+    "alerts": 324,
+    "true_positives": 105,
+    "false_negatives": 143,
+    "recall": 0.42338709677419356,
+    "miss_rate": 0.5766129032258065
+  },
+  "threshold": {
+    "threshold": 0.27,
+    "alerts": 135,
+    "true_positives": 52,
+    "false_negatives": 196,
+    "recall": 0.20967741935483872,
+    "miss_rate": 0.7903225806451613
+  },
+  "hk1_n": 3234,
+  "hk1_positives": 248,
+  "calibration": {
+    "brier": 0.06307799788173485,
+    "ece10": 0.008335052001623317,
+    "mean_probability": 0.0693077950665589,
+    "prevalence": 0.0766852195423624,
+    "overprediction_mean_minus_prevalence": -0.007377424475803501
+  }
+}

@@ -1,0 +1,39 @@
+{
+  "status": "READY_FOR_COMMIT",
+  "phase": "2-L",
+  "generated_utc": "2026-11-02T17:34:00.439171+00:00",
+  "tests": {
+    "unit_tests": 93,
+    "unit_tests_passed": 93,
+    "phase1_e1_e5": "PASS"
+  },
+  "evidence_gates": {
+    "A": "PASS",
+    "B": "PASS",
+    "C": "PASS",
+    "D": "PASS",
+    "E": "PASS",
+    "F": "PASS",
+    "G": "PASS",
+    "H": "PASS",
+    "I": "PASS",
+    "J": "PASS",
+    "K": "PASS"
+  },
+  "test_rescored": false,
+  "model_refitted": false,
+  "frozen_evidence": {
+    "model_sha256": "5c45deb380e011ff8ecfe94628d19e07db589ea75eed22c14bf08259887ed5c4",
+    "metadata_sha256": "cf559689b3152e570018ddb266267aea3312bd6d0422eca06b53f1af61385385",
+    "g_sha256": "a795f5a8c03636a7277ad0f6b47ee3d165926bbc47630db898bb292761571a3a",
+    "h_sha256": "960c3c36501b105e091cf5b5386cc96e9fed6e23b1e679cdc3f2e0eef911fbdd",
+    "i_sha256": "d6373d5afb504334e4b910d7f3566ba69033f1028e84cbb28028b8f2eab6c9f8",
+    "k_sha256": "3dd9a567038888c18b2eb324e5014e4908551d3cbf9399db1a54a59aea2053b3"
+  },
+  "privacy": {
+    "test_predictions_excluded_from_git": true
+  },
+  "git_commit_and_push": "PENDING",
+  "L4_L5": "PENDING_COMMIT_AND_HANDOVER",
+  "note": "Do not claim Phase 2 complete until staged-path audit, SHA handover, commit and push pass."
+}

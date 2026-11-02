@@ -1,0 +1,1061 @@
+{
+  "phase": "2-F",
+  "status": "PASS",
+  "mode": "full",
+  "scenario": "V3_2_MAIN",
+  "target": "dropout_next_2_terms",
+  "train_split": "TRAIN_2022_23",
+  "validation_split": "VALIDATION_2024",
+  "test_accessed": false,
+  "seed": 221026,
+  "feature_count": 58,
+  "features_ordered": [
+    "gpa4_term",
+    "gpa4_cumulative",
+    "gpa4_previous",
+    "gpa_delta_1term",
+    "gpa_mean_last3",
+    "gpa_slope_last3",
+    "credits_registered_term",
+    "credits_failed_term",
+    "failed_credit_ratio",
+    "credits_owed_cumulative",
+    "credits_owed_delta",
+    "credits_earned_cumulative",
+    "curriculum_progress_ratio",
+    "courses_failed_term",
+    "courses_failed_total_to_date",
+    "retake_count_to_date",
+    "warning_current",
+    "warnings_total_to_date",
+    "warning_streak",
+    "counted_duration_semesters",
+    "attendance_rate_term",
+    "unexcused_absence_rate_term",
+    "attendance_delta_1term",
+    "lms_logins_4weeks",
+    "lms_active_days_4weeks",
+    "days_since_last_lms_activity",
+    "assignment_on_time_rate_term",
+    "assignment_completion_rate_term",
+    "lms_activity_delta_last4w",
+    "lms_decline_ratio_4w",
+    "assignment_miss_streak_weeks",
+    "process_score10_mean_term",
+    "process_failure_course_rate",
+    "lms_slope_last6w",
+    "attendance_slope_last4w",
+    "assignment_missed_streak",
+    "longest_inactive_streak_6w",
+    "observed_concern_reports_term",
+    "lms_first6_mean",
+    "lms_last6_mean",
+    "tuition_debt_to_due_ratio",
+    "tuition_debt_end_vnd",
+    "tuition_overdue_days_end",
+    "tuition_overdue_terms_to_date",
+    "advisor_contacts_to_date",
+    "tutoring_sessions_to_date",
+    "academic_recovery_flag",
+    "leave_semesters_to_date",
+    "major_code",
+    "degree_type",
+    "education_mode",
+    "credits_required",
+    "admission_method",
+    "admission_score_normalized",
+    "enrollment_age",
+    "living_status_at_cutoff",
+    "scholarship_percent_at_cutoff",
+    "snapshot_term_index"
+  ],
+  "trial_budget_predefined": 7,
+  "trial_configs": [
+    {
+      "trial": "LR_B5",
+      "family": "LogisticRegression",
+      "params": {}
+    },
+    {
+      "trial": "RF_A",
+      "family": "RandomForest",
+      "params": {
+        "n_estimators": 80,
+        "max_depth": 10,
+        "min_samples_leaf": 10,
+        "max_features": "sqrt",
+        "class_weight": "balanced_subsample"
+      }
+    },
+    {
+      "trial": "RF_B",
+      "family": "RandomForest",
+      "params": {
+        "n_estimators": 120,
+        "max_depth": 12,
+        "min_samples_leaf": 10,
+        "max_features": "sqrt",
+        "class_weight": null
+      }
+    },
+    {
+      "trial": "XGB_A",
+      "family": "XGBoost",
+      "params": {
+        "n_estimators": 240,
+        "max_depth": 4,
+        "learning_rate": 0.06,
+        "min_child_weight": 5,
+        "subsample": 0.85,
+        "colsample_bytree": 0.85,
+        "reg_lambda": 5
+      }
+    },
+    {
+      "trial": "XGB_B",
+      "family": "XGBoost",
+      "params": {
+        "n_estimators": 350,
+        "max_depth": 3,
+        "learning_rate": 0.04,
+        "min_child_weight": 10,
+        "subsample": 1.0,
+        "colsample_bytree": 1.0,
+        "reg_lambda": 10
+      }
+    },
+    {
+      "trial": "LGBM_A",
+      "family": "LightGBM",
+      "params": {
+        "n_estimators": 250,
+        "num_leaves": 15,
+        "learning_rate": 0.05,
+        "min_child_samples": 40,
+        "subsample": 0.9,
+        "subsample_freq": 1,
+        "colsample_bytree": 0.9,
+        "reg_lambda": 3
+      }
+    },
+    {
+      "trial": "LGBM_B",
+      "family": "LightGBM",
+      "params": {
+        "n_estimators": 320,
+        "num_leaves": 31,
+        "learning_rate": 0.035,
+        "min_child_samples": 60,
+        "subsample": 1.0,
+        "subsample_freq": 0,
+        "colsample_bytree": 1.0,
+        "reg_lambda": 8
+      }
+    }
+  ],
+  "preprocessing": "Train-only; numeric median, categorical mode+OHE; scaler for LR only",
+  "threshold_policy": "F1 at fixed 0.5 exploratory; threshold optimization reserved for G",
+  "group_rank_policy": "Top5/Top10 sorted by score descending, UID/term ascending tie break",
+  "environment": {
+    "python": "3.14.7",
+    "numpy": "2.5.4",
+    "pandas": "3.1.0",
+    "scikit-learn": "1.9.1",
+    "xgboost": "3.4.1",
+    "lightgbm": "4.7.0",
+    "joblib": "1.6.0"
+  },
+  "train_rows": 34304,
+  "val_rows": 13981,
+  "input_hashes": {
+    "X_TRAIN_2022_23.csv.gz": "9ab830105e879382d3b5de5eeb2da09373e0d8fb6b87c06b4f4d9a2aa4533e6c",
+    "X_VALIDATION_2024.csv.gz": "bb312d58e27aa0601694c9ae12fd75eacf2e55328cc223899f7d35142bd2fb63",
+    "y_TRAIN_2022_23.csv.gz": "9a1b31edfd5b59fbcb448865ddb3c8628672059655820cdab7c660a7a0688311",
+    "y_VALIDATION_2024.csv.gz": "d7ee4169f8739322e4ffb74cf5c9631d818f8b202010dd11c126048bf15eac10"
+  },
+  "results": [
+    {
+      "trial": "LR_B5",
+      "family": "LogisticRegression",
+      "params": {},
+      "metrics": {
+        "pooled": {
+          "n": 13981,
+          "positive": 1240,
+          "prevalence": 0.08869179600886919,
+          "pr_auc": 0.5344977715375336,
+          "pr_auc_lift": 6.026462374085692,
+          "roc_auc": 0.8240320175405282,
+          "brier": 0.05719821004120004,
+          "f1_at_0_5": 0.4444444444444444,
+          "precision_at_0_5": 0.7868852459016393,
+          "recall_at_0_5": 0.3096774193548387,
+          "top5": {
+            "budget": 0.05,
+            "k": 700,
+            "positive_found": 471,
+            "precision_at_k": 0.6728571428571428,
+            "recall_at_k": 0.37983870967741934
+          },
+          "top10": {
+            "budget": 0.1,
+            "k": 1399,
+            "positive_found": 643,
+            "precision_at_k": 0.45961401000714797,
+            "recall_at_k": 0.5185483870967742
+          }
+        },
+        "by_term": {
+          "1": {
+            "n": 4842,
+            "positive": 319,
+            "prevalence": 0.06588186699710863,
+            "pr_auc": 0.2259719265236836,
+            "pr_auc_lift": 3.429956326732527,
+            "roc_auc": 0.7393447769914412,
+            "brier": 0.05657471513043965,
+            "f1_at_0_5": 0.03067484662576687,
+            "precision_at_0_5": 0.7142857142857143,
+            "recall_at_0_5": 0.01567398119122257,
+            "top5": {
+              "budget": 0.05,
+              "k": 243,
+              "positive_found": 76,
+              "precision_at_k": 0.31275720164609055,
+              "recall_at_k": 0.23824451410658307
+            },
+            "top10": {
+              "budget": 0.1,
+              "k": 485,
+              "positive_found": 119,
+              "precision_at_k": 0.24536082474226803,
+              "recall_at_k": 0.3730407523510972
+            }
+          },
+          "2": {
+            "n": 4660,
+            "positive": 465,
+            "prevalence": 0.09978540772532189,
+            "pr_auc": 0.5530082451360299,
+            "pr_auc_lift": 5.541975101793331,
+            "roc_auc": 0.8468714675689184,
+            "brier": 0.061747066150936614,
+            "f1_at_0_5": 0.49295774647887325,
+            "precision_at_0_5": 0.7142857142857143,
+            "recall_at_0_5": 0.3763440860215054,
+            "top5": {
+              "budget": 0.05,
+              "k": 233,
+              "positive_found": 169,
+              "precision_at_k": 0.7253218884120172,
+              "recall_at_k": 0.3634408602150538
+            },
+            "top10": {
+              "budget": 0.1,
+              "k": 466,
+              "positive_found": 259,
+              "precision_at_k": 0.555793991416309,
+              "recall_at_k": 0.556989247311828
+            }
+          },
+          "3": {
+            "n": 4479,
+            "positive": 456,
+            "prevalence": 0.10180843938379103,
+            "pr_auc": 0.6641726468157211,
+            "pr_auc_lift": 6.523748432209681,
+            "roc_auc": 0.85852019746109,
+            "brier": 0.05313955696831087,
+            "f1_at_0_5": 0.5895953757225434,
+            "precision_at_0_5": 0.864406779661017,
+            "recall_at_0_5": 0.4473684210526316,
+            "top5": {
+              "budget": 0.05,
+              "k": 224,
+              "positive_found": 199,
+              "precision_at_k": 0.8883928571428571,
+              "recall_at_k": 0.43640350877192985
+            },
+            "top10": {
+              "budget": 0.1,
+              "k": 448,
+              "positive_found": 267,
+              "precision_at_k": 0.5959821428571429,
+              "recall_at_k": 0.5855263157894737
+            }
+          }
+        }
+      },
+      "timing": {
+        "train_sec": 1.2066419000002497,
+        "val_predict_sec": 0.06370830000014394
+      },
+      "model_bytes_estimate": 12166
+    },
+    {
+      "trial": "RF_A",
+      "family": "RandomForest",
+      "params": {
+        "n_estimators": 80,
+        "max_depth": 10,
+        "min_samples_leaf": 10,
+        "max_features": "sqrt",
+        "class_weight": "balanced_subsample"
+      },
+      "metrics": {
+        "pooled": {
+          "n": 13981,
+          "positive": 1240,
+          "prevalence": 0.08869179600886919,
+          "pr_auc": 0.5325017040852459,
+          "pr_auc_lift": 6.003956713561147,
+          "roc_auc": 0.8269996404799339,
+          "brier": 0.11047905193222204,
+          "f1_at_0_5": 0.4731610337972167,
+          "precision_at_0_5": 0.4015748031496063,
+          "recall_at_0_5": 0.5758064516129032,
+          "top5": {
+            "budget": 0.05,
+            "k": 700,
+            "positive_found": 473,
+            "precision_at_k": 0.6757142857142857,
+            "recall_at_k": 0.3814516129032258
+          },
+          "top10": {
+            "budget": 0.1,
+            "k": 1399,
+            "positive_found": 643,
+            "precision_at_k": 0.45961401000714797,
+            "recall_at_k": 0.5185483870967742
+          }
+        },
+        "by_term": {
+          "1": {
+            "n": 4842,
+            "positive": 319,
+            "prevalence": 0.06588186699710863,
+            "pr_auc": 0.23997133388416048,
+            "pr_auc_lift": 3.6424488986429626,
+            "roc_auc": 0.7425398711011708,
+            "brier": 0.11827501014802827,
+            "f1_at_0_5": 0.29579067121729236,
+            "precision_at_0_5": 0.23214285714285715,
+            "recall_at_0_5": 0.40752351097178685,
+            "top5": {
+              "budget": 0.05,
+              "k": 243,
+              "positive_found": 75,
+              "precision_at_k": 0.30864197530864196,
+              "recall_at_k": 0.23510971786833856
+            },
+            "top10": {
+              "budget": 0.1,
+              "k": 485,
+              "positive_found": 122,
+              "precision_at_k": 0.2515463917525773,
+              "recall_at_k": 0.3824451410658307
+            }
+          },
+          "2": {
+            "n": 4660,
+            "positive": 465,
+            "prevalence": 0.09978540772532189,
+            "pr_auc": 0.5587394958169861,
+            "pr_auc_lift": 5.59941086130571,
+            "roc_auc": 0.8474712599484794,
+            "brier": 0.11236392319420636,
+            "f1_at_0_5": 0.5235137533274179,
+            "precision_at_0_5": 0.44561933534743203,
+            "recall_at_0_5": 0.6344086021505376,
+            "top5": {
+              "budget": 0.05,
+              "k": 233,
+              "positive_found": 169,
+              "precision_at_k": 0.7253218884120172,
+              "recall_at_k": 0.3634408602150538
+            },
+            "top10": {
+              "budget": 0.1,
+              "k": 466,
+              "positive_found": 254,
+              "precision_at_k": 0.5450643776824035,
+              "recall_at_k": 0.546236559139785
+            }
+          },
+          "3": {
+            "n": 4479,
+            "positive": 456,
+            "prevalence": 0.10180843938379103,
+            "pr_auc": 0.6650781981622388,
+            "pr_auc_lift": 6.5326430911593585,
+            "roc_auc": 0.8639451443672567,
+            "brier": 0.10009023081996923,
+            "f1_at_0_5": 0.5711462450592886,
+            "precision_at_0_5": 0.5197841726618705,
+            "recall_at_0_5": 0.6337719298245614,
+            "top5": {
+              "budget": 0.05,
+              "k": 224,
+              "positive_found": 195,
+              "precision_at_k": 0.8705357142857143,
+              "recall_at_k": 0.4276315789473684
+            },
+            "top10": {
+              "budget": 0.1,
+              "k": 448,
+              "positive_found": 267,
+              "precision_at_k": 0.5959821428571429,
+              "recall_at_k": 0.5855263157894737
+            }
+          }
+        }
+      },
+      "timing": {
+        "train_sec": 2.412665500000003,
+        "val_predict_sec": 0.13686600000073668
+      },
+      "model_bytes_estimate": 4069371
+    },
+    {
+      "trial": "RF_B",
+      "family": "RandomForest",
+      "params": {
+        "n_estimators": 120,
+        "max_depth": 12,
+        "min_samples_leaf": 10,
+        "max_features": "sqrt",
+        "class_weight": null
+      },
+      "metrics": {
+        "pooled": {
+          "n": 13981,
+          "positive": 1240,
+          "prevalence": 0.08869179600886919,
+          "pr_auc": 0.5386105390938561,
+          "pr_auc_lift": 6.072833828283228,
+          "roc_auc": 0.8268065250360153,
+          "brier": 0.056871413747889475,
+          "f1_at_0_5": 0.44039929536112743,
+          "precision_at_0_5": 0.8099352051835853,
+          "recall_at_0_5": 0.3024193548387097,
+          "top5": {
+            "budget": 0.05,
+            "k": 700,
+            "positive_found": 478,
+            "precision_at_k": 0.6828571428571428,
+            "recall_at_k": 0.38548387096774195
+          },
+          "top10": {
+            "budget": 0.1,
+            "k": 1399,
+            "positive_found": 650,
+            "precision_at_k": 0.46461758398856323,
+            "recall_at_k": 0.5241935483870968
+          }
+        },
+        "by_term": {
+          "1": {
+            "n": 4842,
+            "positive": 319,
+            "prevalence": 0.06588186699710863,
+            "pr_auc": 0.2533998664883923,
+            "pr_auc_lift": 3.8462763433755347,
+            "roc_auc": 0.7440133570181523,
+            "brier": 0.055924236456804506,
+            "f1_at_0_5": 0.018633540372670808,
+            "precision_at_0_5": 1.0,
+            "recall_at_0_5": 0.009404388714733543,
+            "top5": {
+              "budget": 0.05,
+              "k": 243,
+              "positive_found": 79,
+              "precision_at_k": 0.32510288065843623,
+              "recall_at_k": 0.2476489028213166
+            },
+            "top10": {
+              "budget": 0.1,
+              "k": 485,
+              "positive_found": 127,
+              "precision_at_k": 0.2618556701030928,
+              "recall_at_k": 0.3981191222570533
+            }
+          },
+          "2": {
+            "n": 4660,
+            "positive": 465,
+            "prevalence": 0.09978540772532189,
+            "pr_auc": 0.5652554408260977,
+            "pr_auc_lift": 5.664710439246484,
+            "roc_auc": 0.8486052263959911,
+            "brier": 0.061128637704529296,
+            "f1_at_0_5": 0.4928774928774929,
+            "precision_at_0_5": 0.729957805907173,
+            "recall_at_0_5": 0.3720430107526882,
+            "top5": {
+              "budget": 0.05,
+              "k": 233,
+              "positive_found": 170,
+              "precision_at_k": 0.7296137339055794,
+              "recall_at_k": 0.3655913978494624
+            },
+            "top10": {
+              "budget": 0.1,
+              "k": 466,
+              "positive_found": 255,
+              "precision_at_k": 0.5472103004291845,
+              "recall_at_k": 0.5483870967741935
+            }
+          },
+          "3": {
+            "n": 4479,
+            "positive": 456,
+            "prevalence": 0.10180843938379103,
+            "pr_auc": 0.6642308884448984,
+            "pr_auc_lift": 6.524320502948903,
+            "roc_auc": 0.8612860918141738,
+            "brier": 0.05346609309718437,
+            "f1_at_0_5": 0.5861561119293078,
+            "precision_at_0_5": 0.8923766816143498,
+            "recall_at_0_5": 0.43640350877192985,
+            "top5": {
+              "budget": 0.05,
+              "k": 224,
+              "positive_found": 199,
+              "precision_at_k": 0.8883928571428571,
+              "recall_at_k": 0.43640350877192985
+            },
+            "top10": {
+              "budget": 0.1,
+              "k": 448,
+              "positive_found": 268,
+              "precision_at_k": 0.5982142857142857,
+              "recall_at_k": 0.5877192982456141
+            }
+          }
+        }
+      },
+      "timing": {
+        "train_sec": 3.7493169000008493,
+        "val_predict_sec": 0.14443910000045435
+      },
+      "model_bytes_estimate": 6971275
+    },
+    {
+      "trial": "XGB_A",
+      "family": "XGBoost",
+      "params": {
+        "n_estimators": 240,
+        "max_depth": 4,
+        "learning_rate": 0.06,
+        "min_child_weight": 5,
+        "subsample": 0.85,
+        "colsample_bytree": 0.85,
+        "reg_lambda": 5
+      },
+      "metrics": {
+        "pooled": {
+          "n": 13981,
+          "positive": 1240,
+          "prevalence": 0.08869179600886919,
+          "pr_auc": 0.5371349973329844,
+          "pr_auc_lift": 6.056197094929399,
+          "roc_auc": 0.8245226231799296,
+          "brier": 0.056944262812176724,
+          "f1_at_0_5": 0.446242774566474,
+          "precision_at_0_5": 0.7877551020408163,
+          "recall_at_0_5": 0.31129032258064515,
+          "top5": {
+            "budget": 0.05,
+            "k": 700,
+            "positive_found": 472,
+            "precision_at_k": 0.6742857142857143,
+            "recall_at_k": 0.38064516129032255
+          },
+          "top10": {
+            "budget": 0.1,
+            "k": 1399,
+            "positive_found": 640,
+            "precision_at_k": 0.45746962115796996,
+            "recall_at_k": 0.5161290322580645
+          }
+        },
+        "by_term": {
+          "1": {
+            "n": 4842,
+            "positive": 319,
+            "prevalence": 0.06588186699710863,
+            "pr_auc": 0.23224635852810557,
+            "pr_auc_lift": 3.5251939435519977,
+            "roc_auc": 0.7380528777678975,
+            "brier": 0.05640350772224551,
+            "f1_at_0_5": 0.06470588235294118,
+            "precision_at_0_5": 0.5238095238095238,
+            "recall_at_0_5": 0.034482758620689655,
+            "top5": {
+              "budget": 0.05,
+              "k": 243,
+              "positive_found": 74,
+              "precision_at_k": 0.3045267489711934,
+              "recall_at_k": 0.23197492163009403
+            },
+            "top10": {
+              "budget": 0.1,
+              "k": 485,
+              "positive_found": 117,
+              "precision_at_k": 0.24123711340206186,
+              "recall_at_k": 0.3667711598746082
+            }
+          },
+          "2": {
+            "n": 4660,
+            "positive": 465,
+            "prevalence": 0.09978540772532189,
+            "pr_auc": 0.561576390186943,
+            "pr_auc_lift": 5.627840813486354,
+            "roc_auc": 0.8452484396426878,
+            "brier": 0.06137035254017989,
+            "f1_at_0_5": 0.504225352112676,
+            "precision_at_0_5": 0.7306122448979592,
+            "recall_at_0_5": 0.3849462365591398,
+            "top5": {
+              "budget": 0.05,
+              "k": 233,
+              "positive_found": 173,
+              "precision_at_k": 0.7424892703862661,
+              "recall_at_k": 0.3720430107526882
+            },
+            "top10": {
+              "budget": 0.1,
+              "k": 466,
+              "positive_found": 251,
+              "precision_at_k": 0.5386266094420601,
+              "recall_at_k": 0.5397849462365591
+            }
+          },
+          "3": {
+            "n": 4479,
+            "positive": 456,
+            "prevalence": 0.10180843938379103,
+            "pr_auc": 0.6657600421264456,
+            "pr_auc_lift": 6.539340413781469,
+            "roc_auc": 0.862063965531527,
+            "brier": 0.052923891750098616,
+            "f1_at_0_5": 0.5764705882352941,
+            "precision_at_0_5": 0.875,
+            "recall_at_0_5": 0.4298245614035088,
+            "top5": {
+              "budget": 0.05,
+              "k": 224,
+              "positive_found": 196,
+              "precision_at_k": 0.875,
+              "recall_at_k": 0.4298245614035088
+            },
+            "top10": {
+              "budget": 0.1,
+              "k": 448,
+              "positive_found": 269,
+              "precision_at_k": 0.6004464285714286,
+              "recall_at_k": 0.5899122807017544
+            }
+          }
+        }
+      },
+      "timing": {
+        "train_sec": 1.7639390000003914,
+        "val_predict_sec": 0.105114500001946
+      },
+      "model_bytes_estimate": 376171
+    },
+    {
+      "trial": "XGB_B",
+      "family": "XGBoost",
+      "params": {
+        "n_estimators": 350,
+        "max_depth": 3,
+        "learning_rate": 0.04,
+        "min_child_weight": 10,
+        "subsample": 1.0,
+        "colsample_bytree": 1.0,
+        "reg_lambda": 10
+      },
+      "metrics": {
+        "pooled": {
+          "n": 13981,
+          "positive": 1240,
+          "prevalence": 0.08869179600886919,
+          "pr_auc": 0.5392903676324892,
+          "pr_auc_lift": 6.080498895056315,
+          "roc_auc": 0.8263353512029996,
+          "brier": 0.05683649262063605,
+          "f1_at_0_5": 0.4484149855907781,
+          "precision_at_0_5": 0.7858585858585858,
+          "recall_at_0_5": 0.31370967741935485,
+          "top5": {
+            "budget": 0.05,
+            "k": 700,
+            "positive_found": 475,
+            "precision_at_k": 0.6785714285714286,
+            "recall_at_k": 0.38306451612903225
+          },
+          "top10": {
+            "budget": 0.1,
+            "k": 1399,
+            "positive_found": 651,
+            "precision_at_k": 0.4653323802716226,
+            "recall_at_k": 0.525
+          }
+        },
+        "by_term": {
+          "1": {
+            "n": 4842,
+            "positive": 319,
+            "prevalence": 0.06588186699710863,
+            "pr_auc": 0.23752551746563264,
+            "pr_auc_lift": 3.6053246256068756,
+            "roc_auc": 0.7424871970984942,
+            "brier": 0.05624155783409619,
+            "f1_at_0_5": 0.07602339181286549,
+            "precision_at_0_5": 0.5652173913043478,
+            "recall_at_0_5": 0.04075235109717868,
+            "top5": {
+              "budget": 0.05,
+              "k": 243,
+              "positive_found": 73,
+              "precision_at_k": 0.3004115226337449,
+              "recall_at_k": 0.22884012539184953
+            },
+            "top10": {
+              "budget": 0.1,
+              "k": 485,
+              "positive_found": 119,
+              "precision_at_k": 0.24536082474226803,
+              "recall_at_k": 0.3730407523510972
+            }
+          },
+          "2": {
+            "n": 4660,
+            "positive": 465,
+            "prevalence": 0.09978540772532189,
+            "pr_auc": 0.5632419061322601,
+            "pr_auc_lift": 5.644531790486735,
+            "roc_auc": 0.8454406807899828,
+            "brier": 0.061385950658353505,
+            "f1_at_0_5": 0.5021037868162693,
+            "precision_at_0_5": 0.7217741935483871,
+            "recall_at_0_5": 0.3849462365591398,
+            "top5": {
+              "budget": 0.05,
+              "k": 233,
+              "positive_found": 171,
+              "precision_at_k": 0.7339055793991416,
+              "recall_at_k": 0.36774193548387096
+            },
+            "top10": {
+              "budget": 0.1,
+              "k": 466,
+              "positive_found": 253,
+              "precision_at_k": 0.5429184549356223,
+              "recall_at_k": 0.5440860215053763
+            }
+          },
+          "3": {
+            "n": 4479,
+            "positive": 456,
+            "prevalence": 0.10180843938379103,
+            "pr_auc": 0.6683412303740406,
+            "pr_auc_lift": 6.564693795713438,
+            "roc_auc": 0.8640263659397062,
+            "brier": 0.0527463385194221,
+            "f1_at_0_5": 0.5794117647058824,
+            "precision_at_0_5": 0.8794642857142857,
+            "recall_at_0_5": 0.43201754385964913,
+            "top5": {
+              "budget": 0.05,
+              "k": 224,
+              "positive_found": 197,
+              "precision_at_k": 0.8794642857142857,
+              "recall_at_k": 0.43201754385964913
+            },
+            "top10": {
+              "budget": 0.1,
+              "k": 448,
+              "positive_found": 271,
+              "precision_at_k": 0.6049107142857143,
+              "recall_at_k": 0.5942982456140351
+            }
+          }
+        }
+      },
+      "timing": {
+        "train_sec": 1.9419858999972348,
+        "val_predict_sec": 0.10536759999740752
+      },
+      "model_bytes_estimate": 401266
+    },
+    {
+      "trial": "LGBM_A",
+      "family": "LightGBM",
+      "params": {
+        "n_estimators": 250,
+        "num_leaves": 15,
+        "learning_rate": 0.05,
+        "min_child_samples": 40,
+        "subsample": 0.9,
+        "subsample_freq": 1,
+        "colsample_bytree": 0.9,
+        "reg_lambda": 3
+      },
+      "metrics": {
+        "pooled": {
+          "n": 13981,
+          "positive": 1240,
+          "prevalence": 0.08869179600886919,
+          "pr_auc": 0.5385997383408442,
+          "pr_auc_lift": 6.072712049793018,
+          "roc_auc": 0.8236287600861836,
+          "brier": 0.056818475870765946,
+          "f1_at_0_5": 0.4468949506674405,
+          "precision_at_0_5": 0.7971014492753623,
+          "recall_at_0_5": 0.31048387096774194,
+          "top5": {
+            "budget": 0.05,
+            "k": 700,
+            "positive_found": 477,
+            "precision_at_k": 0.6814285714285714,
+            "recall_at_k": 0.38467741935483873
+          },
+          "top10": {
+            "budget": 0.1,
+            "k": 1399,
+            "positive_found": 643,
+            "precision_at_k": 0.45961401000714797,
+            "recall_at_k": 0.5185483870967742
+          }
+        },
+        "by_term": {
+          "1": {
+            "n": 4842,
+            "positive": 319,
+            "prevalence": 0.06588186699710863,
+            "pr_auc": 0.23328420886356963,
+            "pr_auc_lift": 3.5409471451956245,
+            "roc_auc": 0.7433660212484156,
+            "brier": 0.05620864165872539,
+            "f1_at_0_5": 0.0641399416909621,
+            "precision_at_0_5": 0.4583333333333333,
+            "recall_at_0_5": 0.034482758620689655,
+            "top5": {
+              "budget": 0.05,
+              "k": 243,
+              "positive_found": 78,
+              "precision_at_k": 0.32098765432098764,
+              "recall_at_k": 0.2445141065830721
+            },
+            "top10": {
+              "budget": 0.1,
+              "k": 485,
+              "positive_found": 118,
+              "precision_at_k": 0.24329896907216494,
+              "recall_at_k": 0.36990595611285265
+            }
+          },
+          "2": {
+            "n": 4660,
+            "positive": 465,
+            "prevalence": 0.09978540772532189,
+            "pr_auc": 0.5614033375605503,
+            "pr_auc_lift": 5.626106565660568,
+            "roc_auc": 0.8418029656400989,
+            "brier": 0.06139076339660569,
+            "f1_at_0_5": 0.5049645390070922,
+            "precision_at_0_5": 0.7416666666666667,
+            "recall_at_0_5": 0.3827956989247312,
+            "top5": {
+              "budget": 0.05,
+              "k": 233,
+              "positive_found": 174,
+              "precision_at_k": 0.7467811158798283,
+              "recall_at_k": 0.3741935483870968
+            },
+            "top10": {
+              "budget": 0.1,
+              "k": 466,
+              "positive_found": 254,
+              "precision_at_k": 0.5450643776824035,
+              "recall_at_k": 0.546236559139785
+            }
+          },
+          "3": {
+            "n": 4479,
+            "positive": 456,
+            "prevalence": 0.10180843938379103,
+            "pr_auc": 0.6672948659748715,
+            "pr_auc_lift": 6.554416019082126,
+            "roc_auc": 0.8594692361029344,
+            "brier": 0.05272067667100868,
+            "f1_at_0_5": 0.5807407407407408,
+            "precision_at_0_5": 0.8949771689497716,
+            "recall_at_0_5": 0.4298245614035088,
+            "top5": {
+              "budget": 0.05,
+              "k": 224,
+              "positive_found": 199,
+              "precision_at_k": 0.8883928571428571,
+              "recall_at_k": 0.43640350877192985
+            },
+            "top10": {
+              "budget": 0.1,
+              "k": 448,
+              "positive_found": 269,
+              "precision_at_k": 0.6004464285714286,
+              "recall_at_k": 0.5899122807017544
+            }
+          }
+        }
+      },
+      "timing": {
+        "train_sec": 1.2589695999995456,
+        "val_predict_sec": 0.16980210000110674
+      },
+      "model_bytes_estimate": 455647
+    },
+    {
+      "trial": "LGBM_B",
+      "family": "LightGBM",
+      "params": {
+        "n_estimators": 320,
+        "num_leaves": 31,
+        "learning_rate": 0.035,
+        "min_child_samples": 60,
+        "subsample": 1.0,
+        "subsample_freq": 0,
+        "colsample_bytree": 1.0,
+        "reg_lambda": 8
+      },
+      "metrics": {
+        "pooled": {
+          "n": 13981,
+          "positive": 1240,
+          "prevalence": 0.08869179600886919,
+          "pr_auc": 0.5331014268047165,
+          "pr_auc_lift": 6.010718587223178,
+          "roc_auc": 0.8215210104032955,
+          "brier": 0.05723731608878894,
+          "f1_at_0_5": 0.4351367073880163,
+          "precision_at_0_5": 0.7807933194154488,
+          "recall_at_0_5": 0.3016129032258065,
+          "top5": {
+            "budget": 0.05,
+            "k": 700,
+            "positive_found": 471,
+            "precision_at_k": 0.6728571428571428,
+            "recall_at_k": 0.37983870967741934
+          },
+          "top10": {
+            "budget": 0.1,
+            "k": 1399,
+            "positive_found": 643,
+            "precision_at_k": 0.45961401000714797,
+            "recall_at_k": 0.5185483870967742
+          }
+        },
+        "by_term": {
+          "1": {
+            "n": 4842,
+            "positive": 319,
+            "prevalence": 0.06588186699710863,
+            "pr_auc": 0.232897799355114,
+            "pr_auc_lift": 3.535081957609599,
+            "roc_auc": 0.7338521260544331,
+            "brier": 0.056375032095403614,
+            "f1_at_0_5": 0.058997050147492625,
+            "precision_at_0_5": 0.5,
+            "recall_at_0_5": 0.03134796238244514,
+            "top5": {
+              "budget": 0.05,
+              "k": 243,
+              "positive_found": 75,
+              "precision_at_k": 0.30864197530864196,
+              "recall_at_k": 0.23510971786833856
+            },
+            "top10": {
+              "budget": 0.1,
+              "k": 485,
+              "positive_found": 116,
+              "precision_at_k": 0.23917525773195877,
+              "recall_at_k": 0.36363636363636365
+            }
+          },
+          "2": {
+            "n": 4660,
+            "positive": 465,
+            "prevalence": 0.09978540772532189,
+            "pr_auc": 0.5563937141242019,
+            "pr_auc_lift": 5.575902597459744,
+            "roc_auc": 0.8423448293539415,
+            "brier": 0.06206100482994177,
+            "f1_at_0_5": 0.4851063829787234,
+            "precision_at_0_5": 0.7125,
+            "recall_at_0_5": 0.36774193548387096,
+            "top5": {
+              "budget": 0.05,
+              "k": 233,
+              "positive_found": 169,
+              "precision_at_k": 0.7253218884120172,
+              "recall_at_k": 0.3634408602150538
+            },
+            "top10": {
+              "budget": 0.1,
+              "k": 466,
+              "positive_found": 251,
+              "precision_at_k": 0.5386266094420601,
+              "recall_at_k": 0.5397849462365591
+            }
+          },
+          "3": {
+            "n": 4479,
+            "positive": 456,
+            "prevalence": 0.10180843938379103,
+            "pr_auc": 0.6647044297824657,
+            "pr_auc_lift": 6.528971800429087,
+            "roc_auc": 0.8594517925437506,
+            "brier": 0.053150865890574904,
+            "f1_at_0_5": 0.5718518518518518,
+            "precision_at_0_5": 0.8812785388127854,
+            "recall_at_0_5": 0.4232456140350877,
+            "top5": {
+              "budget": 0.05,
+              "k": 224,
+              "positive_found": 193,
+              "precision_at_k": 0.8616071428571429,
+              "recall_at_k": 0.4232456140350877
+            },
+            "top10": {
+              "budget": 0.1,
+              "k": 448,
+              "positive_found": 271,
+              "precision_at_k": 0.6049107142857143,
+              "recall_at_k": 0.5942982456140351
+            }
+          }
+        }
+      },
+      "timing": {
+        "train_sec": 1.8791366999976162,
+        "val_predict_sec": 0.2397054000030039
+      },
+      "model_bytes_estimate": 1134095
+    }
+  ],
+  "F_recommendation": {
+    "shortlist_for_G": [
+      "RF_B",
+      "RF_A",
+      "XGB_B"
+    ],
+    "preliminary_recommendation": "RF_B",
+    "reason": "HK1 PR-AUC improves by >=0.010 absolute vs LR_B5 on Validation",
+    "policy": "Exploratory Validation-only Phase F; final selection/calibration in G"
+  },
+  "run_finished_utc": "2026-11-02T16:24:12.107771+00:00"
+}

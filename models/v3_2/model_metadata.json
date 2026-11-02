@@ -1,0 +1,462 @@
+{
+  "schema_version": "2-J-1",
+  "status": "FROZEN",
+  "model_file": "frozen_rf_b_pipeline.joblib",
+  "model_sha256": "5c45deb380e011ff8ecfe94628d19e07db589ea75eed22c14bf08259887ed5c4",
+  "model_id": "RF_B",
+  "model_version": "v3.2-rf-b-platt-g1",
+  "target": "dropout_next_2_terms",
+  "horizon": "next 2 academic terms",
+  "features_ordered": [
+    "gpa4_term",
+    "gpa4_cumulative",
+    "gpa4_previous",
+    "gpa_delta_1term",
+    "gpa_mean_last3",
+    "gpa_slope_last3",
+    "credits_registered_term",
+    "credits_failed_term",
+    "failed_credit_ratio",
+    "credits_owed_cumulative",
+    "credits_owed_delta",
+    "credits_earned_cumulative",
+    "curriculum_progress_ratio",
+    "courses_failed_term",
+    "courses_failed_total_to_date",
+    "retake_count_to_date",
+    "warning_current",
+    "warnings_total_to_date",
+    "warning_streak",
+    "counted_duration_semesters",
+    "attendance_rate_term",
+    "unexcused_absence_rate_term",
+    "attendance_delta_1term",
+    "lms_logins_4weeks",
+    "lms_active_days_4weeks",
+    "days_since_last_lms_activity",
+    "assignment_on_time_rate_term",
+    "assignment_completion_rate_term",
+    "lms_activity_delta_last4w",
+    "lms_decline_ratio_4w",
+    "assignment_miss_streak_weeks",
+    "process_score10_mean_term",
+    "process_failure_course_rate",
+    "lms_slope_last6w",
+    "attendance_slope_last4w",
+    "assignment_missed_streak",
+    "longest_inactive_streak_6w",
+    "observed_concern_reports_term",
+    "lms_first6_mean",
+    "lms_last6_mean",
+    "tuition_debt_to_due_ratio",
+    "tuition_debt_end_vnd",
+    "tuition_overdue_days_end",
+    "tuition_overdue_terms_to_date",
+    "advisor_contacts_to_date",
+    "tutoring_sessions_to_date",
+    "academic_recovery_flag",
+    "leave_semesters_to_date",
+    "major_code",
+    "degree_type",
+    "education_mode",
+    "credits_required",
+    "admission_method",
+    "admission_score_normalized",
+    "enrollment_age",
+    "living_status_at_cutoff",
+    "scholarship_percent_at_cutoff",
+    "snapshot_term_index"
+  ],
+  "feature_count": 58,
+  "feature_roles": {
+    "numeric": [
+      "gpa4_term",
+      "gpa4_cumulative",
+      "gpa4_previous",
+      "gpa_delta_1term",
+      "gpa_mean_last3",
+      "gpa_slope_last3",
+      "credits_registered_term",
+      "credits_failed_term",
+      "failed_credit_ratio",
+      "credits_owed_cumulative",
+      "credits_owed_delta",
+      "credits_earned_cumulative",
+      "curriculum_progress_ratio",
+      "courses_failed_term",
+      "courses_failed_total_to_date",
+      "retake_count_to_date",
+      "warning_current",
+      "warnings_total_to_date",
+      "warning_streak",
+      "counted_duration_semesters",
+      "attendance_rate_term",
+      "unexcused_absence_rate_term",
+      "attendance_delta_1term",
+      "lms_logins_4weeks",
+      "lms_active_days_4weeks",
+      "days_since_last_lms_activity",
+      "assignment_on_time_rate_term",
+      "assignment_completion_rate_term",
+      "lms_activity_delta_last4w",
+      "lms_decline_ratio_4w",
+      "assignment_miss_streak_weeks",
+      "process_score10_mean_term",
+      "process_failure_course_rate",
+      "lms_slope_last6w",
+      "attendance_slope_last4w",
+      "assignment_missed_streak",
+      "longest_inactive_streak_6w",
+      "observed_concern_reports_term",
+      "lms_first6_mean",
+      "lms_last6_mean",
+      "tuition_debt_to_due_ratio",
+      "tuition_debt_end_vnd",
+      "tuition_overdue_days_end",
+      "tuition_overdue_terms_to_date",
+      "advisor_contacts_to_date",
+      "tutoring_sessions_to_date",
+      "academic_recovery_flag",
+      "leave_semesters_to_date",
+      "credits_required",
+      "admission_score_normalized",
+      "enrollment_age",
+      "scholarship_percent_at_cutoff",
+      "snapshot_term_index"
+    ],
+    "categorical": [
+      "major_code",
+      "degree_type",
+      "education_mode",
+      "admission_method",
+      "living_status_at_cutoff"
+    ]
+  },
+  "observed_train_input_dtypes": {
+    "gpa4_term": "float64",
+    "gpa4_cumulative": "float64",
+    "gpa4_previous": "float64",
+    "gpa_delta_1term": "float64",
+    "gpa_mean_last3": "float64",
+    "gpa_slope_last3": "float64",
+    "credits_registered_term": "int64",
+    "credits_failed_term": "int64",
+    "failed_credit_ratio": "float64",
+    "credits_owed_cumulative": "int64",
+    "credits_owed_delta": "float64",
+    "credits_earned_cumulative": "int64",
+    "curriculum_progress_ratio": "float64",
+    "courses_failed_term": "int64",
+    "courses_failed_total_to_date": "int64",
+    "retake_count_to_date": "int64",
+    "warning_current": "bool",
+    "warnings_total_to_date": "int64",
+    "warning_streak": "int64",
+    "counted_duration_semesters": "int64",
+    "attendance_rate_term": "float64",
+    "unexcused_absence_rate_term": "float64",
+    "attendance_delta_1term": "float64",
+    "lms_logins_4weeks": "int64",
+    "lms_active_days_4weeks": "int64",
+    "days_since_last_lms_activity": "int64",
+    "assignment_on_time_rate_term": "float64",
+    "assignment_completion_rate_term": "float64",
+    "lms_activity_delta_last4w": "int64",
+    "lms_decline_ratio_4w": "float64",
+    "assignment_miss_streak_weeks": "int64",
+    "process_score10_mean_term": "float64",
+    "process_failure_course_rate": "float64",
+    "lms_slope_last6w": "float64",
+    "attendance_slope_last4w": "float64",
+    "assignment_missed_streak": "int64",
+    "longest_inactive_streak_6w": "int64",
+    "observed_concern_reports_term": "int64",
+    "lms_first6_mean": "float64",
+    "lms_last6_mean": "float64",
+    "tuition_debt_to_due_ratio": "float64",
+    "tuition_debt_end_vnd": "float64",
+    "tuition_overdue_days_end": "int64",
+    "tuition_overdue_terms_to_date": "int64",
+    "advisor_contacts_to_date": "int64",
+    "tutoring_sessions_to_date": "int64",
+    "academic_recovery_flag": "bool",
+    "leave_semesters_to_date": "int64",
+    "major_code": "str",
+    "degree_type": "str",
+    "education_mode": "str",
+    "credits_required": "int64",
+    "admission_method": "str",
+    "admission_score_normalized": "float64",
+    "enrollment_age": "int64",
+    "living_status_at_cutoff": "str",
+    "scholarship_percent_at_cutoff": "int64",
+    "snapshot_term_index": "int64"
+  },
+  "dtype_compatibility": "Numeric pandas numeric dtypes, categorical pandas object/string; no implicit coerce or fill at API boundary",
+  "missing_policy": {
+    "numeric": "median fit on TRAIN_2022_23 only",
+    "categorical": "most_frequent fit on TRAIN_2022_23 only",
+    "source_missing_allowed": "Existing NaN only; never insert missing columns"
+  },
+  "category_policy": "OneHotEncoder(handle_unknown=ignore), fit on Train only",
+  "preprocessing": "ColumnTransformer, numeric imputer+scaler; categorical object-NaN normalization+imputer+OneHotEncoder",
+  "estimator": "RandomForestClassifier",
+  "hyperparameters": {
+    "n_estimators": 120,
+    "max_depth": 12,
+    "min_samples_leaf": 10,
+    "max_features": "sqrt",
+    "class_weight": null
+  },
+  "calibration": {
+    "method": "Platt sigmoid on clipped logit(raw_probability)",
+    "fit_source": "Validation 2024 calibration UID subset only",
+    "uid_count": 1453,
+    "rows": 4183
+  },
+  "threshold": 0.27,
+  "alert_policy": {
+    "threshold_kind": "calibrated_probability",
+    "threshold_selection": "maximize pooled policy-UID Validation F1 on 0.05..0.80 step 0.01; tie higher threshold",
+    "top_budgets": [
+      0.05,
+      0.1
+    ],
+    "count": "ceil(N * budget)",
+    "ranking": "calibrated_probability DESC, record_uid ASC, snapshot_term_index ASC",
+    "scope": "per snapshot term for HK1/HK2/HK3, optionally pooled",
+    "topk_independent_of_threshold": true
+  },
+  "seed": 221026,
+  "train_split": "TRAIN_2022_23",
+  "training_cohorts": [
+    2022,
+    2023
+  ],
+  "training_max_snapshot_cutoff": "2025-02-03",
+  "validation_split": "VALIDATION_2024",
+  "test_split": "TEST_2025",
+  "serving_max_asof": "2026-10-01",
+  "source": {
+    "scenario": "V3_2_MAIN/FULL_SIMULATION synthetic",
+    "source_archive_sha256_phase1_provenance": "5DF81F995347B167C4996F3A83C63C11637F78674834F76DD3D28A0548E6ECD6",
+    "source_archive_sha256_reverified_in_J": false,
+    "generation_manifest_sha256": "b721e0bb466ccda20dc9b7452da309401f18b94c89ea89238110e22ee54e8faf",
+    "generation_config_sha256": "3bc378ed146755a71c38668002d4f3a5125676c6b1f42e96afd54ed8072ca73e",
+    "train_validation_input_sha256": {
+      "X_TRAIN_2022_23.csv.gz": "9ab830105e879382d3b5de5eeb2da09373e0d8fb6b87c06b4f4d9a2aa4533e6c",
+      "X_VALIDATION_2024.csv.gz": "bb312d58e27aa0601694c9ae12fd75eacf2e55328cc223899f7d35142bd2fb63",
+      "y_TRAIN_2022_23.csv.gz": "9a1b31edfd5b59fbcb448865ddb3c8628672059655820cdab7c660a7a0688311",
+      "y_VALIDATION_2024.csv.gz": "d7ee4169f8739322e4ffb74cf5c9631d818f8b202010dd11c126048bf15eac10"
+    },
+    "test_input_sha256_h_evidence": {
+      "X_TEST_2025.csv.gz": "e201107a4eed59963b9a0bd36fcd518130cb7496bafc06391bec6093fa107f1f",
+      "y_TEST_2025.csv.gz": "76818609ecc9f4919c009c82be691c4de58afe8f26c96b7ae4f87e71e6558111"
+    },
+    "labels_permitted_in_serving": false
+  },
+  "training_versions": {
+    "python": "3.14.7",
+    "numpy": "2.5.4",
+    "pandas": "3.1.0",
+    "scikit-learn": "1.9.1",
+    "xgboost": "3.4.1",
+    "lightgbm": "4.7.0",
+    "joblib": "1.6.0"
+  },
+  "pretest_selection_f_report_sha256": "d274b6f50eaded63f41793289e4f04b0135856385c5fd885f280e0241715b630",
+  "evaluation": {
+    "train_rows": 34304,
+    "validation_rows": 13981,
+    "validation_policy_metrics": {
+      "n": 9798,
+      "positive": 884,
+      "prevalence": 0.09022249438660951,
+      "pr_auc": 0.5485022426666881,
+      "roc_auc": 0.8329989837532501,
+      "brier": 0.05711712938976157,
+      "ece_10bin": 0.005361077638109385,
+      "top5": {
+        "budget": 0.05,
+        "k": 490,
+        "positive_found": 348,
+        "precision_at_k": 0.710204081632653,
+        "recall_at_k": 0.3936651583710407
+      },
+      "top10": {
+        "budget": 0.1,
+        "k": 980,
+        "positive_found": 465,
+        "precision_at_k": 0.4744897959183674,
+        "recall_at_k": 0.5260180995475113
+      }
+    },
+    "test_pooled_metrics": {
+      "n": 9284,
+      "positive": 911,
+      "prevalence": 0.09812580784144766,
+      "pr_auc": 0.5439055507677624,
+      "pr_auc_lift": 5.542940870831949,
+      "roc_auc": 0.828459780620973,
+      "brier": 0.0627003341691487,
+      "ece10": 0.008074950026362661,
+      "threshold": 0.27,
+      "f1_at_threshold": 0.5024813895781638,
+      "precision_at_threshold": 0.5777460770328102,
+      "recall_at_threshold": 0.4445664105378705,
+      "confusion_matrix": [
+        [
+          8077,
+          296
+        ],
+        [
+          506,
+          405
+        ]
+      ],
+      "alerts_at_threshold": 701,
+      "top5": {
+        "budget": 0.05,
+        "k": 465,
+        "positive_found": 328,
+        "precision_at_k": 0.7053763440860215,
+        "recall_at_k": 0.3600439077936334
+      },
+      "top10": {
+        "budget": 0.1,
+        "k": 929,
+        "positive_found": 469,
+        "precision_at_k": 0.5048439181916039,
+        "recall_at_k": 0.5148188803512623
+      }
+    },
+    "test_by_term": {
+      "1": {
+        "n": 3234,
+        "positive": 248,
+        "prevalence": 0.0766852195423624,
+        "pr_auc": 0.27536674093601626,
+        "pr_auc_lift": 3.590871129786599,
+        "roc_auc": 0.7718465743361493,
+        "brier": 0.06307799788173485,
+        "ece10": 0.008335052001623317,
+        "threshold": 0.27,
+        "f1_at_threshold": 0.27154046997389036,
+        "precision_at_threshold": 0.3851851851851852,
+        "recall_at_threshold": 0.20967741935483872,
+        "confusion_matrix": [
+          [
+            2903,
+            83
+          ],
+          [
+            196,
+            52
+          ]
+        ],
+        "alerts_at_threshold": 135,
+        "top5": {
+          "budget": 0.05,
+          "k": 162,
+          "positive_found": 60,
+          "precision_at_k": 0.37037037037037035,
+          "recall_at_k": 0.24193548387096775
+        },
+        "top10": {
+          "budget": 0.1,
+          "k": 324,
+          "positive_found": 105,
+          "precision_at_k": 0.32407407407407407,
+          "recall_at_k": 0.42338709677419356
+        }
+      },
+      "2": {
+        "n": 3090,
+        "positive": 327,
+        "prevalence": 0.10582524271844661,
+        "pr_auc": 0.5732879520428059,
+        "pr_auc_lift": 5.417308170679726,
+        "roc_auc": 0.8456603811174532,
+        "brier": 0.06412967543909939,
+        "ece10": 0.005093652557777749,
+        "threshold": 0.27,
+        "f1_at_threshold": 0.5593495934959349,
+        "precision_at_threshold": 0.5972222222222222,
+        "recall_at_threshold": 0.5259938837920489,
+        "confusion_matrix": [
+          [
+            2647,
+            116
+          ],
+          [
+            155,
+            172
+          ]
+        ],
+        "alerts_at_threshold": 288,
+        "top5": {
+          "budget": 0.05,
+          "k": 155,
+          "positive_found": 119,
+          "precision_at_k": 0.7677419354838709,
+          "recall_at_k": 0.363914373088685
+        },
+        "top10": {
+          "budget": 0.1,
+          "k": 309,
+          "positive_found": 177,
+          "precision_at_k": 0.5728155339805825,
+          "recall_at_k": 0.5412844036697247
+        }
+      },
+      "3": {
+        "n": 2960,
+        "positive": 336,
+        "prevalence": 0.11351351351351352,
+        "pr_auc": 0.6557268661034722,
+        "pr_auc_lift": 5.776641439482969,
+        "roc_auc": 0.8534316927990708,
+        "brier": 0.06079559465203683,
+        "ece10": 0.012357473910658716,
+        "threshold": 0.27,
+        "f1_at_threshold": 0.5895765472312704,
+        "precision_at_threshold": 0.6510791366906474,
+        "recall_at_threshold": 0.5386904761904762,
+        "confusion_matrix": [
+          [
+            2527,
+            97
+          ],
+          [
+            155,
+            181
+          ]
+        ],
+        "alerts_at_threshold": 278,
+        "top5": {
+          "budget": 0.05,
+          "k": 148,
+          "positive_found": 136,
+          "precision_at_k": 0.918918918918919,
+          "recall_at_k": 0.40476190476190477
+        },
+        "top10": {
+          "budget": 0.1,
+          "k": 296,
+          "positive_found": 186,
+          "precision_at_k": 0.6283783783783784,
+          "recall_at_k": 0.5535714285714286
+        }
+      }
+    },
+    "test_frozen_before_eval": true,
+    "test_evaluated_at_utc": "2026-11-02T16:47:59.887161+00:00",
+    "subgroup_support_counts": {
+      "SUFFICIENT": 34,
+      "INSUFFICIENT_SUPPORT": 18
+    }
+  },
+  "artifact_frozen_at_utc": "2026-11-02T16:35:21.284430+00:00",
+  "disclaimer": "Synthetic simulation only; not validated for real CMC student decisions",
+  "security": "Trusted local joblib only. SHA pinning detects accidental drift; not a defense against a malicious file+metadata replacement"
+}

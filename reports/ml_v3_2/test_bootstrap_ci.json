@@ -1,0 +1,30 @@
+{
+  "method": "cluster_percentile_95pct",
+  "cluster": "record_uid",
+  "sampling": "UID with replacement; all HK snapshots preserved per draw",
+  "seed": 221027,
+  "requested_reps": 400,
+  "valid_reps": 400,
+  "intervals": {
+    "pooled_pr_auc": {
+      "ci_2_5": 0.5033583125285785,
+      "ci_97_5": 0.5820427887550395
+    },
+    "pooled_brier": {
+      "ci_2_5": 0.05710344333665405,
+      "ci_97_5": 0.06783319163122019
+    },
+    "pooled_f1_at_threshold": {
+      "ci_2_5": 0.4679859742290713,
+      "ci_97_5": 0.5392395843787985
+    },
+    "hk1_pr_auc": {
+      "ci_2_5": 0.22761597256541838,
+      "ci_97_5": 0.33190166049795444
+    },
+    "hk1_recall_at_top10": {
+      "ci_2_5": 0.3660331339162448,
+      "ci_97_5": 0.47175280842694745
+    }
+  }
+}

@@ -41,3 +41,5 @@ desktop.ini
 
 # Generated models
 /models/**/*.joblib
+
+/reports/ml_v3_2/test_predictions_frozen.csv.gz
