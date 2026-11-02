@@ -1,9 +1,43 @@
-streamlit>=1.32.0
-pandas>=2.0.0
-numpy>=1.24.0
-scikit-learn>=1.3.0
-joblib>=1.3.0
-pypdf>=4.0.0
-faiss-cpu>=1.7.4
-sentence-transformers>=2.5.0
-google-generativeai>=0.5.0
+# Python environments
+.venv/
+venv/
+env/
+
+# Python cache
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Testing and tooling
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Environment variables and secrets
+.env
+.env.*
+!.env.example
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Streamlit secrets
+/.streamlit/secrets.toml
+
+# CMC Dataset V3.2
+/data/external/
+/data/processed/
+
+# Generated models
+/models/**/*.joblib
