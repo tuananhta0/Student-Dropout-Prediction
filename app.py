@@ -1,21 +1,12 @@
-from fastapi import FastAPI, HTTPException
-from fastapi.responses import HTMLResponse
-from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel
-from typing import Optional, Dict, Any
+import traceback
 from pathlib import Path
-from chatbot_engine import CMCChatbotEngine
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.responses import HTMLResponse, JSONResponse
+from pydantic import BaseModel
+from chatbot_engine import CMCChatbotEngine, row_to_clean_dict, df_to_clean_records
 
-#khoi tao app
-app = FastAPI(title="CMC University Multi-Tier AI Portal V3.2")
-
-if Path("static").exists():
-    app.mount("/static", StaticFiles(directory="static"), name="static")
-
-if Path("regulations").exists():
-    app.mount("/regulations", StaticFiles(directory="regulations"), name="regulations")
-
-engine = CMCChatbotEngine("artifacts_model")
+app = FastAPI(title="CMC Academic AI Portal V3.2.1")
+engine = CMCChatbotEngine(artifact_dir="artifacts_model")
 
 class LoginRequest(BaseModel):
     username: str
@@ -24,11 +15,14 @@ class LoginRequest(BaseModel):
 class ChatRequest(BaseModel):
     message: str
     role: str = "student"
-    user_id: str = ""
+    logged_in_user: str = ""
 
 @app.get("/", response_class=HTMLResponse)
-async def index():
-    return Path("templates/index.html").read_text(encoding="utf-8")
+def index():
+    html_path = Path("templates/index.html")
+    if not html_path.exists():
+        return HTMLResponse("<h3>Thiếu file templates/index.html</h3>", status_code=404)
+    return HTMLResponse(content=html_path.read_text(encoding="utf-8"))
 
 @app.post("/api/login")
 def login(req: LoginRequest):
@@ -61,81 +55,64 @@ def login(req: LoginRequest):
     if p != u:
         raise HTTPException(status_code=401, detail=f"Mật khẩu mặc định của sinh viên trùng với Mã SV ({u}).")
 
-    latest = records.iloc[-1]
+    latest = row_to_clean_dict(records.iloc[-1])
     return {
-        "user_id": str(latest["student_id"]),
+        "user_id": str(latest.get("student_id", u)),
         "role": "student",
-        "role_label": f"Sinh viên Lớp {latest.get('class_code', '')} ({latest.get('major_name', '')})",
+        "role_label": f"Sinh viên Lớp {latest.get('class_code', 'IT25-18')} ({latest.get('major_name', 'CNTT')})",
         "permissions": ["Chỉ xem bảng điểm & biểu đồ của bản thân", "Tra cứu Quy chế đào tạo PDF"]
     }
-@app.get("/api/student-self/{student_id}")
-async def get_student_self(student_id: str):
-    records = engine.get_student_records(student_id)
+
+@app.get("/api/student/me")
+def get_student_me(user_id: str, role: str = "student"):
+    records = engine.get_student_records(user_id)
     if records.empty:
-        raise HTTPException(status_code=404, detail="Không tìm thấy sinh viên")
-    latest_row = records.iloc[-1].fillna(0).to_dict()
-    uid = str(latest_row.get("record_uid", ""))
-    profile = {
-        "student_id": str(latest_row.get("student_id", "")),
-        "class_code": str(latest_row.get("class_code", "")),
-        "major_name": str(latest_row.get("major_name", "")),
-        "degree_type": str(latest_row.get("degree_type", "")),
-        "education_mode": str(latest_row.get("education_mode", "")),
-        "cohort_year": int(latest_row.get("cohort_year", 2025)),
-        "home_province": str(latest_row.get("home_province", "")),
-        "credits_earned": int(latest_row.get("credits_earned_cumulative", 0)),
-        "credits_required": int(latest_row.get("credits_required", 150)),
-        "failed_ratio": round(float(latest_row.get("failed_credit_ratio", 0)), 3),
-        "attendance": round(float(latest_row.get("attendance_rate_term", 0)), 1)
+        raise HTTPException(status_code=404, detail="Không tìm thấy hồ sơ sinh viên.")
+    latest = row_to_clean_dict(records.iloc[-1])
+    history = df_to_clean_records(records)
+    warnings = engine.evaluate_student_warnings(latest)
+    courses = engine.get_student_courses(str(latest.get("record_uid", "")))
+    return {
+        "latest": latest,
+        "history": history,
+        "warnings": warnings,
+        "courses": courses
     }
-    warnings = engine.evaluate_student_warnings(latest_row)
-    courses = engine.get_student_courses(uid)
-    history = []
-    for _, r in records.iterrows():
-        history.append({
-            "snapshot_term_index": int(r.get("snapshot_term_index", 1)),
-            "gpa4_term": round(float(r.get("gpa4_term", 0)), 2),
-            "gpa4_cumulative": round(float(r.get("gpa4_cumulative", 0)), 2),
-            "credits_registered_term": int(r.get("credits_registered_term", 0)),
-            "credits_failed_term": int(r.get("credits_failed_term", 0)),
-            "failed_credit_ratio": round(float(r.get("failed_credit_ratio", 0)), 3),
-            "credits_earned_cumulative": int(r.get("credits_earned_cumulative", 0)),
-            "credits_owed_cumulative": int(r.get("credits_owed_cumulative", 0)),
-            "warning_streak": int(r.get("warning_streak", 0)),
-            "attendance_rate_term": round(float(r.get("attendance_rate_term", 0)), 1),
-            "tuition_debt_end_vnd": float(r.get("tuition_debt_end_vnd", 0))
-        })
-    return {"profile": profile, "warnings": warnings, "history": history, "courses": courses}
 
 @app.get("/api/advisor/classes")
-async def get_classes(major_code: Optional[str] = ""):
-    classes = engine.get_all_classes_summary(major_code or "")
-    return {"total_classes": len(classes), "classes": classes[:200]}
+def get_advisor_classes(role: str = "advisor", major_code: str = ""):
+    if role not in ["advisor", "admin"]:
+        raise HTTPException(status_code=403, detail="Chỉ Cố vấn học tập và Admin mới có quyền xem danh sách lớp.")
+    return {"classes": engine.get_all_classes_summary(major_code)}
 
 @app.get("/api/advisor/class/{class_code}")
-async def get_class_detail(class_code: str):
+def get_advisor_class_detail(class_code: str, role: str = "advisor"):
+    if role not in ["advisor", "admin"]:
+        raise HTTPException(status_code=403, detail="Không có quyền truy cập.")
     detail = engine.get_class_detail(class_code)
     if not detail:
-        raise HTTPException(status_code=404, detail=f"Không tìm thấy lớp {class_code}")
+        raise HTTPException(status_code=404, detail="Không tìm thấy lớp học.")
     return detail
 
 @app.get("/api/admin/faculties")
-async def get_faculties():
-    facs = engine.get_faculties_overview()
-    return {
-        "total_faculties": len(facs),
-        "total_students": int(len(engine.latest_df)),
-        "total_classes": int(engine.latest_df['class_code'].nunique()),
-        "faculties": facs
-    }
+def get_admin_faculties(role: str = "admin"):
+    if role != "admin":
+        raise HTTPException(status_code=403, detail="Chỉ Admin mới có quyền xem tổng kết 19 Khoa.")
+    return {"faculties": engine.get_faculties_overview()}
 
 @app.get("/api/admin/faculty/{major_code}")
-async def get_faculty_detail(major_code: str):
+def get_admin_faculty_detail(major_code: str, role: str = "admin"):
+    if role not in ["admin", "advisor"]:
+        raise HTTPException(status_code=403, detail="Không có quyền truy cập.")
     detail = engine.get_faculty_detail(major_code)
     if not detail:
-        raise HTTPException(status_code=404, detail=f"Không tìm thấy khoa {major_code}")
+        raise HTTPException(status_code=404, detail="Không tìm thấy Khoa.")
     return detail
 
 @app.post("/api/chat")
-async def chat_endpoint(req: ChatRequest):
-    return engine.answer_query(req.message, req.role, req.user_id)
+def chat_endpoint(req: ChatRequest):
+    try:
+        return engine.answer_query(req.message, role=req.role, logged_in_user=req.logged_in_user)
+    except Exception as e:
+        traceback.print_exc()
+        return JSONResponse(status_code=200, content={"reply": f"<div class='text-xs text-rose-400'>Lỗi xử lý câu hỏi: {str(e)}</div>", "student": None, "regulations": []})
