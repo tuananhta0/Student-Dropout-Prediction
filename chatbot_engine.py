@@ -736,7 +736,18 @@ class CMCChatbotEngine:
         if any(k in q_ascii for k in ["thieu nhung dieu kien nao de xet tot nghiep", "chung chi the chat", "chuan tieng anh dau ra chua", "thong tin nganh, he dao tao", "ma sinh vien va lop"]):
             certs = str(latest.get('verified_certificates', 'Chưa hoàn thành'))
             matched_lines.append(f"• **Thông tin khóa học & Chứng chỉ (Điều 20):** Mã SV `{latest['student_id']}` • Lớp `{latest.get('class_code','')}` • Ngành `{latest.get('major_name','')}` (Hệ `{latest.get('education_mode','')}`, Khóa `{int(latest.get('cohort_year',2025))}`) • Chứng chỉ đã xác nhận: **{certs}**.")
-
+        # Kiem tra cau hoi Dac quyen Admin (Tai chinh vi mo toan truong, ROI du an, Tong ket cac khoa 2022-2025 toan truong)
+        admin_only_kw = [
+            "tong no hoc phi toan truong", "that thu hoc phi", "chi phi du an", "ngan sach phu dao",
+            "tong sv tung khoa", "tong so sinh vien theo tung khoa", "so sanh ty le thoi hoc giua cac khoa",
+            "19 khoa", "bao lau can huan luyen lai mo hinh"
+        ]
+        if role != "admin" and any(k in q_ascii for k in admin_only_kw):
+            return {
+                "reply": f"<div class='text-xs text-amber-300 font-semibold bg-[#131314] border border-amber-500/40 p-3.5 rounded-2xl'>🔒 <b>Giới hạn thẩm quyền ({role.upper()}):</b> Các báo cáo Vĩ mô Toàn trường (Tổng công nợ học phí toàn trường, Đánh giá ngân sách/ROI dự án, So sánh toàn bộ 19 Khoa & Quản trị chu kỳ huấn luyện mô hình) là <b>đặc quyền chỉ dành cho Quản trị viên cấp Trường (ADMIN)</b>.</div>",
+                "student": None,
+                "regulations": []
+            }
         if not matched_lines:
             return ""
         return f"""

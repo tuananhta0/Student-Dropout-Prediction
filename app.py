@@ -48,14 +48,14 @@ async def login(req: LoginRequest):
             "permissions": ["Xem tổng kết 19 Khoa", "Xem 2.258 Lớp & Cảnh báo", "Tra cứu mọi SV & Quy chế PDF"]
         }
 
-    if u in ["GV001", "ADVISOR", "COVAN"]:
+    if u in ["GV001", "GV002", "GV003", "ADVISOR", "COVAN"]:
         if p != u:
             raise HTTPException(status_code=401, detail=f"Mật khẩu Cố vấn mặc định là {u}")
         return {
             "user_id": u,
             "role": "advisor",
-            "role_label": "Cố vấn Học tập (Quản lý Lớp & Sinh viên)",
-            "permissions": ["Xem số liệu tóm tắt từng Lớp", "Xem chi tiết & Cảnh báo từng SV", "Tra cứu Quy chế PDF"]
+            "role_label": f"Cố vấn Học tập ({u} - Quản lý Lớp & Khoa)",
+            "permissions": ["Xem số liệu tóm tắt từng Lớp & Khoa", "Xem chi tiết & Cảnh báo từng SV", "Tra cứu Quy chế PDF"]
         }
 
     records = engine.get_student_records(u)
