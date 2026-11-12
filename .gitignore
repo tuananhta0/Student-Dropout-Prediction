@@ -1,0 +1,20 @@
+# Môi trường ảo và bộ nhớ đệm Python
+.venv/
+venv/
+__pycache__/
+*.pyc
+.env
+
+# Loại bỏ bộ dữ liệu gốc quá nặng và đường dẫn dài
+dataset_full/
+data/
+*.7z
+*.zip
+*.rar
+
+# Giữ lại toàn bộ mô hình và dữ liệu rút gọn đã chấm điểm trong artifacts_model/
+!artifacts_model/
+!artifacts_model/*.joblib
+!artifacts_model/*.json
+!artifacts_model/*.csv.gz
+!regulations/*.pdf

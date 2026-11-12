@@ -1,0 +1,181 @@
+[
+  {
+    "rule_id": "DIEU_3",
+    "title": "Điều 3: Thời gian và khối lượng đào tạo (QĐ22/2023)",
+    "source": "Quy-dinh-thoi-hoc-DH-CMC.pdf & Quy-che-dao-tao-trinh-do-dai-hoc.pdf",
+    "keywords": [
+      "thời gian đào tạo",
+      "tối đa",
+      "cử nhân",
+      "kỹ sư",
+      "điều 3",
+      "kéo dài",
+      "mấy kỳ"
+    ],
+    "content": "Chương trình Cử nhân (120–135 tín chỉ): thiết kế 9 học kỳ, thời gian học tối đa không quá 18 học kỳ. Chương trình Kỹ sư (150–164 tín chỉ): thiết kế 11 học kỳ, thời gian học tối đa không quá 22 học kỳ."
+  },
+  {
+    "rule_id": "DIEU_12",
+    "title": "Điều 12: Đăng ký tín chỉ, Rút học phần và Tự ý bỏ học",
+    "source": "Quy-dinh-thoi-hoc-DH-CMC.pdf (Mục 5)",
+    "keywords": [
+      "đăng ký tín chỉ",
+      "tối thiểu",
+      "tối đa",
+      "rút học phần",
+      "tự ý bỏ học",
+      "điều 12",
+      "điểm f"
+    ],
+    "content": "Khối lượng đăng ký mỗi kỳ tối thiểu 9 tín chỉ (2/3 chuẩn) và tối đa 20 tín chỉ (3/2 chuẩn 15 tín chỉ). Rút học phần chỉ thực hiện trong 01 tuần đầu học kỳ; sau hạn này nếu không đi học bị tính là tự ý bỏ học, nhận điểm F và tính 100% học phí."
+  },
+  {
+    "rule_id": "DIEU_13_15_17",
+    "title": "Điều 13, 14, 15, 17: Điểm học phần, Điểm liệt, Học lại và Xếp loại",
+    "source": "Quy-dinh-thoi-hoc-DH-CMC.pdf (Mục 6)",
+    "keywords": [
+      "học lại",
+      "điểm liệt",
+      "quy đổi điểm",
+      "thang 4",
+      "xếp loại",
+      "điều 13",
+      "điều 14",
+      "điều 15",
+      "điều 17",
+      "trượt môn"
+    ],
+    "content": "Phải học lại khi: (a) nghỉ học quá 20% số giờ kế hoạch; (b) điểm thi cuối kỳ <= 2.0/10 (điểm liệt); (c) điểm tổng kết dưới 4.0/10 (điểm F). Quy đổi: A+/A (4.0), B+ (3.5), B (3.0), C+ (2.5), C (2.0), D+ (1.5), D (1.0), F (0). Xếp loại: Xuất sắc (3.6–4.0), Giỏi (3.2–<3.6), Khá (2.5–<3.2), Trung bình (2.0–<2.5), Yếu (1.0–<2.0), Kém (<1.0)."
+  },
+  {
+    "rule_id": "DIEU_18_1",
+    "title": "Điều 18 (Khoản 1): Cảnh báo kết quả học tập",
+    "source": "Quy-dinh-thoi-hoc-DH-CMC.pdf (Mục 2)",
+    "keywords": [
+      "cảnh báo",
+      "cảnh cáo",
+      "cảnh báo học tập",
+      "cảnh báo học vụ",
+      "điều 18",
+      "nợ môn",
+      "gpa thấp"
+    ],
+    "content": "Cuối mỗi học kỳ, sinh viên bị cảnh báo học tập nếu: (1) GPA học kỳ (thang 4) < 0.8 ở học kỳ đầu khóa học, hoặc < 1.0 ở các học kỳ tiếp theo; (2) Tín chỉ không đạt (trượt) trong kỳ > 50% khối lượng đăng ký trong kỳ; HOẶC (3) Tổng số tín chỉ nợ đọng từ đầu khóa > 24 tín chỉ."
+  },
+  {
+    "rule_id": "DIEU_18_2",
+    "title": "Điều 18 (Khoản 2–4): Buộc thôi học do kết quả học tập",
+    "source": "Quy-dinh-thoi-hoc-DH-CMC.pdf (Mục 3)",
+    "keywords": [
+      "buộc thôi học",
+      "thôi học",
+      "đuổi học",
+      "quá số lần cảnh báo",
+      "liên tiếp"
+    ],
+    "content": "Sinh viên bị buộc thôi học nếu: (1) Số lần cảnh báo học tập vượt quá 2 lần liên tiếp hoặc vượt quá 3 lần không liên tiếp; (2) Vượt quá thời gian tối đa được phép học tại Trường (18 kỳ với Cử nhân, 22 kỳ với Kỹ sư)."
+  },
+  {
+    "rule_id": "DIEU_20",
+    "title": "Điều 20: Công nhận tốt nghiệp và Quyền lợi sau thôi học",
+    "source": "Quy-dinh-thoi-hoc-DH-CMC.pdf (Mục 8)",
+    "keywords": [
+      "tốt nghiệp",
+      "ra trường",
+      "chứng chỉ",
+      "tiếng anh",
+      "quốc phòng",
+      "thể chất",
+      "học phí",
+      "điều 20"
+    ],
+    "content": "Đủ điều kiện tốt nghiệp khi: Tích lũy đủ tín chỉ, GPA tích lũy >= 2.00, không nợ môn, hoàn thành GD Thể chất (PE), GD Quốc phòng (DEFENSE), chuẩn Tiếng Anh (ENGLISH), công nợ học phí = 0 VNĐ và không bị kỷ luật."
+  },
+  {
+    "rule_id": "DIEU_21",
+    "title": "Điều 21: Nghỉ học tạm thời (Bảo lưu) và Tự xin thôi học",
+    "source": "Quy-dinh-thoi-hoc-DH-CMC.pdf (Mục 4)",
+    "keywords": [
+      "bảo lưu",
+      "nghỉ học tạm thời",
+      "xin thôi học",
+      "điều 21",
+      "ốm đau"
+    ],
+    "content": "Nghỉ học tạm thời (bảo lưu) khi nhập ngũ, thi quốc tế, ốm/tai nạn dài ngày (không tính vào thời gian chậm tiến độ nếu <= 6 kỳ), hoặc vì lý do cá nhân (đã học tối thiểu 01 kỳ, nghỉ tối đa 03 kỳ và tính vào thời gian học chính thức tối đa)."
+  },
+  {
+    "rule_id": "DIEU_25",
+    "title": "Điều 25: Xử lý kỷ luật sinh viên (Cấm thi, Đình chỉ, Buộc thôi học)",
+    "source": "Quy-dinh-thoi-hoc-DH-CMC.pdf (Mục 7)",
+    "keywords": [
+      "kỷ luật",
+      "cấm thi",
+      "nghỉ quá 20%",
+      "thi hộ",
+      "học hộ",
+      "tài liệu",
+      "điều 25",
+      "vắng học"
+    ],
+    "content": "Nghỉ không phép > 20% số giờ môn học (hoặc tổng nghỉ > 30%): Cấm thi và phải học lại. Sử dụng tài liệu phòng thi: Lần 1 hủy điểm môn, Lần 2 hủy kết quả cả kỳ, Lần 3 buộc thôi học. Thi hộ/nhờ thi hộ: Lần 1 đình chỉ 1 năm, Lần 2 buộc thôi học."
+  },
+  {
+    "rule_id": "Quy-dinh-thoi-hoc-DH-CMC_P1",
+    "title": "Văn bản Quy-dinh-thoi-hoc-DH-CMC.pdf (Trang 1)",
+    "source": "references\\Quy-dinh-thoi-hoc-DH-CMC.pdf",
+    "keywords": [
+      "điều",
+      "khoản",
+      "cảnh báo",
+      "thôi học",
+      "tín chỉ",
+      "học phí",
+      "kỷ luật",
+      "bảo lưu",
+      "điểm"
+    ],
+    "content": "Tóm tắt Quy chế đào tạo trình độ đại học – Trường Đại học CMC (QĐ số 22/2023/QĐ-ĐHCMC-HĐT) Trang 1 QUY ĐỊNH & QUY CHẾ THÔI HỌC Trường Đại học CMC – Hệ đại học chính quy Trích và tổng hợp từ Quy chế đào tạo trình độ đại học (ban hành kèm QĐ số 22/2023/QĐ-ĐHCMC-HĐT ngày 01/12/2023, áp dụng từ năm học 2023–2024) 1. Tổng quan: các con đường dẫn đến thôi học Hình thức Bản chất Căn cứ Buộc thôi học vì kết quả học tập Bị cảnh báo học tập quá số lần cho phép, hoặc vượt thời gian học tối đa Điều 18, Khoản 2 Buộc thôi học vì kỷ luật Vi phạm nghiêm trọng khi thi/học (dùng tài liệu lần 3, thi hộ lần 2, giả mạo hồ sơ…) Điều 25 Tự xin thôi học Sinh viên tự nguyện, vì lý do cá nhân Điều 21, Khoản 3 Tự ý bỏ học Không đi học sau thời hạn rút học phần: nhận điểm F, tính 100% học phí Điều 12, Khoản 4 Nghỉ học tạm thời (không phải thôi học) Bảo lưu kết quả, được quay lại học tiếp Điều 21, Khoản 1–2 2. Cảnh báo học tập (Điều 18, Khoản 1) Cuối mỗi học kỳ, sinh viên bị cảnh báo học tập nếu vi phạm một trong hai điều kiện sau: Tiêu chí Ngưỡng bị cảnh báo Điểm trung bình học kỳ (thang 4) Dưới 0,8 đối với học kỳ đầu của khóa học; dưới 1,0 đối với các học kỳ tiếp theo Tín chỉ không đạt trong học kỳ Vượt quá "
+  },
+  {
+    "rule_id": "Quy-dinh-thoi-hoc-DH-CMC_P2",
+    "title": "Văn bản Quy-dinh-thoi-hoc-DH-CMC.pdf (Trang 2)",
+    "source": "references\\Quy-dinh-thoi-hoc-DH-CMC.pdf",
+    "keywords": [
+      "điều",
+      "khoản",
+      "cảnh báo",
+      "thôi học",
+      "tín chỉ",
+      "học phí",
+      "kỷ luật",
+      "bảo lưu",
+      "điểm"
+    ],
+    "content": "Tóm tắt Quy chế đào tạo trình độ đại học – Trường Đại học CMC (QĐ số 22/2023/QĐ-ĐHCMC-HĐT) Trang 2 4. Nghỉ học tạm thời và tự xin thôi học (Điều 21) 4.1. Nghỉ học tạm thời và bảo lưu kết quả Lý do Điều kiện / thời hạn Được điều động vào lực lượng vũ trang Được xin nghỉ học tạm thời và bảo lưu kết quả đã học Được cơ quan có thẩm quyền điều động, đại diện quốc gia dự thi, giải đấu quốc tế Được xin nghỉ học tạm thời và bảo lưu kết quả đã học Ốm, thai sản hoặc tai nạn phải điều trị dài ngày Có chứng nhận của cơ sở khám chữa bệnh có thẩm quyền theo quy định của Bộ Y tế. Thời gian nghỉ không tính vào thời gian chậm tiến độ nếu tổng cộng không quá 6 học kỳ chính; trên 6 học kỳ được tính vào thời gian học chậm tiến độ Lý do cá nhân khác Đã học tối thiểu 01 học kỳ tại Trường, không thuộc diện xem xét buộc thôi học hoặc kỷ luật. Làm đơn kèm minh chứng nộp Phòng Đào tạo. Nghỉ tối đa 03 học kỳ (01 năm). Muốn học lại phải viết đơn gửi Phòng Đào tạo ít nhất 02 tuần trước khi bắt đầu học kỳ mới  Thời gian nghỉ học tạm thời vì lý do cá nhân được tính vào thời gian học chính thức tối đa (Khoản 5 Điều 3).  Khi quay lại, sinh viên được bố trí vào lớp khóa học phù hợp với khối lượng kiến thức đã tíc"
+  },
+  {
+    "rule_id": "Quy-dinh-thoi-hoc-DH-CMC_P3",
+    "title": "Văn bản Quy-dinh-thoi-hoc-DH-CMC.pdf (Trang 3)",
+    "source": "references\\Quy-dinh-thoi-hoc-DH-CMC.pdf",
+    "keywords": [
+      "điều",
+      "khoản",
+      "thôi học",
+      "tốt nghiệp",
+      "kỷ luật",
+      "điểm"
+    ],
+    "content": "Tóm tắt Quy chế đào tạo trình độ đại học – Trường Đại học CMC (QĐ số 22/2023/QĐ-ĐHCMC-HĐT) Trang 3 Điểm chữ A+, A B+ B C+ C D+ D F Thang 4 4,0 3,5 3,0 2,5 2,0 1,5 1,0 0 Xếp loại Xuất sắc Giỏi Khá Trung bình Yếu Kém ĐTB (thang 4) 3,6–4,0 3,2 đến <3,6 2,5 đến <3,2 2,0 đến <2,5 1,0 đến <2,0 Dưới 1,0 Điểm học phần thi lại, đánh giá lại chỉ được giới hạn ở mức điểm C trở xuống (Điều 14, Khoản 3). Điểm thi cuối kỳ ≤ 2 (thang 10) là điểm liệt và học phần bị xếp điểm F (Điều 13). 7. Kỷ luật dẫn đến đình chỉ học tập hoặc buộc thôi học (Điều 25) Hành vi vi phạm Mức xử lý Nghỉ không phép quá 20% số giờ môn học, hoặc nghỉ (cả có phép và không phép) quá 30% Không được dự thi và phải học lại học phần Đi học hộ Tùy mức độ: từ đình chỉ học tập đến buộc thôi học Nhờ người khác học hộ Hủy kết quả học tập của môn học nhờ học hộ; vi phạm lần 2 bị đình chỉ học tập 01 học kỳ kế tiếp Làm hộ bài kiểm tra đánh giá thường xuyên Đình chỉ học 01 học kỳ kế tiếp Nhờ người khác làm hộ bài kiểm tra quá trình Hủy kết quả bài kiểm tra và đình chỉ 01 học kỳ; lần 2 hủy toàn bộ kết quả học kỳ đó và đình chỉ 01 học kỳ kế tiếp Nhìn bài, trao đổi bài với bạn Lần 1: khiển trách, trừ 25% điểm bài thi. Lần 2: cảnh cáo, trừ "
+  },
+  {
+    "rule_id": "Quy-dinh-thoi-hoc-DH-CMC_P4",
+    "title": "Văn bản Quy-dinh-thoi-hoc-DH-CMC.pdf (Trang 4)",
+    "source": "references\\Quy-dinh-thoi-hoc-DH-CMC.pdf",
+    "keywords": [
+      "điều",
+      "tín chỉ"
+    ],
+    "content": "Tóm tắt Quy chế đào tạo trình độ đại học – Trường Đại học CMC (QĐ số 22/2023/QĐ-ĐHCMC-HĐT) Trang 4  Kết quả học tập đã tích lũy ở trường này có thể được xem xét công nhận, chuyển đổi tín chỉ khi sinh viên học chương trình khác (Điều 19): tối đa không quá 50% khối lượng học tập tối thiểu của chương trình, học phần phải đạt từ mức \"đạt\" trở lên. Lưu ý: Tài liệu này là bản tóm tắt phục vụ tra cứu nhanh, được tổng hợp từ nội dung Quy chế đào tạo trình độ đại học của Trường Đại học CMC (ban hành lần 02, tháng 12/2023). Khi cần áp dụng chính thức, vui lòng đối chiếu với văn bản gốc hoặc liên hệ Phòng Đào tạo / Phòng Công tác sinh viên / cố vấn học tập."
+  }
+]

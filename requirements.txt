@@ -1,0 +1,12 @@
+﻿#thu vien python
+fastapi
+uvicorn
+pandas
+numpy
+scikit-learn
+joblib
+jinja2
+python-multipart
+pydantic
+google-genai
+python-dotenv

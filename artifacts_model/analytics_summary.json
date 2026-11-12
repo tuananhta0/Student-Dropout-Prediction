@@ -1,0 +1,287 @@
+{
+  "total_students": 20000,
+  "total_snapshots": 57569,
+  "total_classes": 2258,
+  "total_majors": 19,
+  "total_tuition_debt_vnd": 38502003779.06,
+  "overdue_30d_students": 8273,
+  "warning_streak_2_students": 1354,
+  "owed_near_24_students": 439,
+  "owed_over_24_students": 149,
+  "unexcused_over_20_students": 957,
+  "attendance_under_80_students": 2396,
+  "high_risk_no_advisor": 1351,
+  "high_risk_no_tutoring": 1093,
+  "under_min_credits_students": 0,
+  "by_cohort": {
+    "2022": {
+      "n_students": 6316,
+      "gpa_mean": 2.41,
+      "warning_rate_pct": 16.2,
+      "high_risk_count": 836,
+      "high_risk_pct": 13.24,
+      "dropout_rate_pct": 16.69,
+      "hk1_att_under_80_pct": 9.64,
+      "leave_students": 51
+    },
+    "2023": {
+      "n_students": 5608,
+      "gpa_mean": 2.41,
+      "warning_rate_pct": 15.07,
+      "high_risk_count": 691,
+      "high_risk_pct": 12.32,
+      "dropout_rate_pct": 16.44,
+      "hk1_att_under_80_pct": 10.02,
+      "leave_students": 60
+    },
+    "2024": {
+      "n_students": 4842,
+      "gpa_mean": 2.4,
+      "warning_rate_pct": 15.39,
+      "high_risk_count": 563,
+      "high_risk_pct": 11.63,
+      "dropout_rate_pct": 16.01,
+      "hk1_att_under_80_pct": 9.33,
+      "leave_students": 44
+    },
+    "2025": {
+      "n_students": 3234,
+      "gpa_mean": 2.41,
+      "warning_rate_pct": 15.74,
+      "high_risk_count": 432,
+      "high_risk_pct": 13.36,
+      "dropout_rate_pct": 18.06,
+      "hk1_att_under_80_pct": 10.73,
+      "leave_students": 25
+    }
+  },
+  "by_education_mode": {
+    "GM": {
+      "n_students": 6733,
+      "gpa_mean": 2.4,
+      "warning_rate_pct": 15.74,
+      "high_risk_pct": 12.15,
+      "dropout_rate_pct": 16.2
+    },
+    "SM": {
+      "n_students": 13267,
+      "gpa_mean": 2.4,
+      "warning_rate_pct": 15.54,
+      "high_risk_pct": 12.84,
+      "dropout_rate_pct": 16.91
+    }
+  },
+  "by_degree_type": {
+    "Bachelor": {
+      "n_students": 18239,
+      "gpa_mean": 2.4,
+      "warning_rate_pct": 15.69,
+      "dropout_rate_pct": 16.71
+    },
+    "Engineer": {
+      "n_students": 1761,
+      "gpa_mean": 2.4,
+      "warning_rate_pct": 14.82,
+      "dropout_rate_pct": 16.35
+    }
+  },
+  "by_living_status": {
+    "Cùng gia đình": {
+      "n_students": 6578,
+      "gpa_mean": 2.41,
+      "warning_rate_pct": 15.76,
+      "high_risk_pct": 12.19,
+      "dropout_rate_pct": 16.25
+    },
+    "Khác": {
+      "n_students": 1061,
+      "gpa_mean": 2.42,
+      "warning_rate_pct": 13.2,
+      "high_risk_pct": 9.99,
+      "dropout_rate_pct": 14.33
+    },
+    "Ký túc xá": {
+      "n_students": 2793,
+      "gpa_mean": 2.41,
+      "warning_rate_pct": 15.86,
+      "high_risk_pct": 13.53,
+      "dropout_rate_pct": 18.22
+    },
+    "Thuê trọ": {
+      "n_students": 9044,
+      "gpa_mean": 2.4,
+      "warning_rate_pct": 15.82,
+      "high_risk_pct": 12.98,
+      "dropout_rate_pct": 16.8
+    }
+  },
+  "by_admission_method": {
+    "CMC100_THPT_30": {
+      "n_students": 6066,
+      "gpa_mean": 2.4,
+      "warning_rate_pct": 15.38,
+      "high_risk_pct": 12.3,
+      "dropout_rate_pct": 16.35
+    },
+    "CMC100_THPT_40": {
+      "n_students": 1127,
+      "gpa_mean": 2.42,
+      "warning_rate_pct": 16.42,
+      "high_risk_pct": 13.4,
+      "dropout_rate_pct": 19.08
+    },
+    "CMC200_HocBa_30": {
+      "n_students": 8860,
+      "gpa_mean": 2.4,
+      "warning_rate_pct": 15.79,
+      "high_risk_pct": 12.53,
+      "dropout_rate_pct": 16.44
+    },
+    "CMC200_HocBa_40": {
+      "n_students": 1431,
+      "gpa_mean": 2.41,
+      "warning_rate_pct": 14.74,
+      "high_risk_pct": 12.65,
+      "dropout_rate_pct": 17.19
+    },
+    "CMC303_TuyenThang": {
+      "n_students": 756,
+      "gpa_mean": 2.38,
+      "warning_rate_pct": 14.29,
+      "high_risk_pct": 12.17,
+      "dropout_rate_pct": 16.14
+    },
+    "CMC401_CMCTEST_80": {
+      "n_students": 579,
+      "gpa_mean": 2.4,
+      "warning_rate_pct": 17.44,
+      "high_risk_pct": 14.85,
+      "dropout_rate_pct": 17.79
+    },
+    "CMC402_HSA_150": {
+      "n_students": 702,
+      "gpa_mean": 2.4,
+      "warning_rate_pct": 15.81,
+      "high_risk_pct": 12.82,
+      "dropout_rate_pct": 15.81
+    },
+    "CMC402_VNUHCM_1200": {
+      "n_students": 479,
+      "gpa_mean": 2.44,
+      "warning_rate_pct": 15.45,
+      "high_risk_pct": 13.78,
+      "dropout_rate_pct": 18.58
+    }
+  },
+  "exit_reasons": {
+    "VOLUNTARY_WITHDRAWAL": 1916,
+    "FORCED_ACADEMIC_WITHDRAWAL": 843,
+    "CONFIRMED_INSTITUTIONAL_ABANDONMENT": 524,
+    "DISCIPLINARY_WITHDRAWAL": 52
+  },
+  "grade_distribution_pct": {
+    "A+": 18.02,
+    "F": 15.83,
+    "B": 15.09,
+    "C": 14.1,
+    "D": 9.18,
+    "C+": 7.6,
+    "B+": 7.1,
+    "A": 7.06,
+    "D+": 6.01
+  },
+  "ineligible_exam_attempts": 39865,
+  "exam_dead_point_pct": 3.01,
+  "top_failed_courses": [
+    {
+      "course_id": "CURR_2022_PR_GM_Bachelor_C004",
+      "attempts": 40,
+      "fail_count": 17,
+      "fail_rate_pct": 42.5
+    },
+    {
+      "course_id": "CURR_2023_DA_GM_Bachelor_C002",
+      "attempts": 37,
+      "fail_count": 15,
+      "fail_rate_pct": 40.5
+    },
+    {
+      "course_id": "CURR_2024_SE_GM_Engineer_C007",
+      "attempts": 82,
+      "fail_count": 33,
+      "fail_rate_pct": 40.2
+    },
+    {
+      "course_id": "CURR_2023_EM_GM_Bachelor_C011",
+      "attempts": 40,
+      "fail_count": 16,
+      "fail_rate_pct": 40.0
+    },
+    {
+      "course_id": "CURR_2025_CL_GM_Bachelor_C009",
+      "attempts": 51,
+      "fail_count": 20,
+      "fail_rate_pct": 39.2
+    },
+    {
+      "course_id": "CURR_2025_CL_GM_Bachelor_C008",
+      "attempts": 54,
+      "fail_count": 21,
+      "fail_rate_pct": 38.9
+    },
+    {
+      "course_id": "CURR_2022_EC_GM_Bachelor_C013",
+      "attempts": 31,
+      "fail_count": 12,
+      "fail_rate_pct": 38.7
+    },
+    {
+      "course_id": "CURR_2025_MC_SM_Bachelor_C006",
+      "attempts": 73,
+      "fail_count": 28,
+      "fail_rate_pct": 38.4
+    },
+    {
+      "course_id": "CURR_2024_CL_GM_Bachelor_C002",
+      "attempts": 89,
+      "fail_count": 34,
+      "fail_rate_pct": 38.2
+    },
+    {
+      "course_id": "CURR_2022_MK_GM_Bachelor_C008",
+      "attempts": 56,
+      "fail_count": 21,
+      "fail_rate_pct": 37.5
+    },
+    {
+      "course_id": "CURR_2023_EC_GM_Bachelor_C007",
+      "attempts": 48,
+      "fail_count": 18,
+      "fail_rate_pct": 37.5
+    },
+    {
+      "course_id": "CURR_2024_EC_GM_Engineer_C006",
+      "attempts": 40,
+      "fail_count": 15,
+      "fail_rate_pct": 37.5
+    },
+    {
+      "course_id": "CURR_2024_AI_SM_Engineer_C007",
+      "attempts": 49,
+      "fail_count": 18,
+      "fail_rate_pct": 36.7
+    },
+    {
+      "course_id": "CURR_2023_DA_GM_Bachelor_C004",
+      "attempts": 33,
+      "fail_count": 12,
+      "fail_rate_pct": 36.4
+    },
+    {
+      "course_id": "CURR_2024_AI_SM_Engineer_C001",
+      "attempts": 55,
+      "fail_count": 20,
+      "fail_rate_pct": 36.4
+    }
+  ]
+}
