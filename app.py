@@ -31,21 +31,18 @@ async def index():
     return Path("templates/index.html").read_text(encoding="utf-8")
 
 @app.post("/api/login")
-async def login(req: LoginRequest):
+def login(req: LoginRequest):
     u = req.username.strip().upper()
     p = req.password.strip().upper()
 
-    if not u or not p:
-        raise HTTPException(status_code=400, detail="Vui lòng nhập Tài khoản và Mật khẩu.")
-
-    if u in ["ADMIN", "ADMIN01", "QUANTRI"]:
-        if p != u:
-            raise HTTPException(status_code=401, detail=f"Mật khẩu Admin mặc định là {u}")
+    if u == "ADMIN":
+        if p != "ADMIN":
+            raise HTTPException(status_code=401, detail="Mật khẩu ADMIN mặc định là ADMIN")
         return {
-            "user_id": u,
+            "user_id": "ADMIN",
             "role": "admin",
-            "role_label": "Quản trị Học vụ (Toàn trường / 19 Khoa)",
-            "permissions": ["Xem tổng kết 19 Khoa", "Xem 2.258 Lớp & Cảnh báo", "Tra cứu mọi SV & Quy chế PDF"]
+            "role_label": "Quản trị Học vụ Toàn trường (19 Khoa)",
+            "permissions": ["Xem thống kê toàn bộ 19 Khoa & 2.258 Lớp", "Xem toàn bộ 20.000 Sinh viên", "Tra cứu Quy chế PDF"]
         }
 
     if u in ["GV001", "GV002", "GV003", "ADVISOR", "COVAN"]:
@@ -59,20 +56,18 @@ async def login(req: LoginRequest):
         }
 
     records = engine.get_student_records(u)
-    if not records.empty:
-        student_id = str(records.iloc[-1]['student_id']).upper()
-        if p != student_id:
-            raise HTTPException(status_code=401, detail=f"Với Sinh viên, mật khẩu chính là Mã sinh viên ({student_id}).")
-        latest = records.iloc[-1]
-        return {
-            "user_id": student_id,
-            "role": "student",
-            "role_label": f"Sinh viên Lớp {latest.get('class_code', '')} ({latest.get('major_code', '')})",
-            "permissions": [f"Chỉ xem điểm & cảnh báo của {student_id}", "Tra cứu 2 file PDF Quy chế"]
-        }
+    if records.empty:
+        raise HTTPException(status_code=404, detail=f"Không tìm thấy Mã SV '{u}'. Hãy thử: BIT250007, BIT250006, BIT250008, GV001 hoặc ADMIN.")
+    if p != u:
+        raise HTTPException(status_code=401, detail=f"Mật khẩu mặc định của sinh viên trùng với Mã SV ({u}).")
 
-    raise HTTPException(status_code=401, detail="Mã đăng nhập không tồn tại (Thử: BIT250007, GV001, ADMIN).")
-
+    latest = records.iloc[-1]
+    return {
+        "user_id": str(latest["student_id"]),
+        "role": "student",
+        "role_label": f"Sinh viên Lớp {latest.get('class_code', '')} ({latest.get('major_name', '')})",
+        "permissions": ["Chỉ xem bảng điểm & biểu đồ của bản thân", "Tra cứu Quy chế đào tạo PDF"]
+    }
 @app.get("/api/student-self/{student_id}")
 async def get_student_self(student_id: str):
     records = engine.get_student_records(student_id)

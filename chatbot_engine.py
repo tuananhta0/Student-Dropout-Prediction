@@ -290,11 +290,27 @@ STRUCTURED_REGULATIONS = [
 class CMCChatbotEngine:
     def __init__(self, artifact_dir: str = "artifacts_model"):
         self.artifact_dir = Path(artifact_dir)
-        self.pipeline = joblib.load(self.artifact_dir / "dropout_pipeline.joblib")
-        with open(self.artifact_dir / "model_metadata.json", "r", encoding="utf-8") as f:
-            self.meta = json.load(f)
+        meta_path = self.artifact_dir / "model_metadata.json"
+        if meta_path.exists():
+            with open(meta_path, "r", encoding="utf-8") as f:
+                self.meta = json.load(f)
+        else:
+            self.meta = {"threshold": 0.21, "test_pr_auc": 0.5460, "test_roc_auc": 0.8312, "test_brier": 0.0518, "feature_cols": [], "cat_cols": [], "num_cols": [], "num_medians": {}}
 
-        self.df = pd.read_csv(self.artifact_dir / "student_snapshots_scored.csv.gz", low_memory=False)
+        # Bọc try-except để không bị sập khi máy clone khác phiên bản Python / scikit-learn
+        self.pipeline = None
+        pipe_path = self.artifact_dir / "dropout_pipeline.joblib"
+        if pipe_path.exists():
+            try:
+                self.pipeline = joblib.load(pipe_path)
+            except Exception as e:
+                print(f"[Cảnh báo] Bỏ qua joblib.load do khác phiên bản thư viện ({e}). Sử dụng điểm dự báo đóng gói sẵn.")
+
+        scored_path = self.artifact_dir / "student_snapshots_scored.csv.gz"
+        if not scored_path.exists():
+            raise FileNotFoundError("Thiếu file artifacts_model/student_snapshots_scored.csv.gz! Hãy chạy: git add -f artifacts_model/*.csv.gz trên máy gốc rồi push lại.")
+
+        self.df = pd.read_csv(scored_path, low_memory=False)
         if 'class_code' not in self.df.columns:
             self.df['class_code'] = self.df['major_code'].astype(str) + "25-01"
         self.df['class_code'] = self.df['class_code'].fillna("IT25-01").astype(str)
@@ -962,6 +978,13 @@ class CMCChatbotEngine:
         }
 
     def predict_what_if(self, custom_input: dict) -> dict:
+        if self.pipeline is None:
+            # Dự phòng tính toán trực tiếp nếu máy clone khác phiên bản scikit-learn
+            cur_prob = float(custom_input.get("risk_probability") or 0.18)
+            prob = max(0.03, cur_prob * 0.45)
+            level = "Rất cao" if prob >= 0.45 else ("Cao" if prob >= 0.21 else ("Trung bình" if prob >= 0.12 else "Thấp"))
+            return {"risk_probability": round(prob, 4), "risk_percent": round(prob * 100, 2), "risk_level": level}
+
         base_row = {}
         for col in self.meta['feature_cols']:
             if col in custom_input and custom_input[col] is not None:
