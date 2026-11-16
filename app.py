@@ -1,9 +1,9 @@
-import traceback
-from pathlib import Path
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 from pydantic import BaseModel
 from chatbot_engine import CMCChatbotEngine, row_to_clean_dict, df_to_clean_records
+from pathlib import Path
+import traceback
 
 app = FastAPI(title="CMC Academic AI Portal V3.2.1")
 engine = CMCChatbotEngine(artifact_dir="artifacts_model")
@@ -19,9 +19,11 @@ class ChatRequest(BaseModel):
 
 @app.get("/", response_class=HTMLResponse)
 def index():
-    html_path = Path("templates/index.html")
+    html_path = Path("index.html")
     if not html_path.exists():
-        return HTMLResponse("<h3>Thiếu file templates/index.html</h3>", status_code=404)
+        html_path = Path("templates/index.html")
+    if not html_path.exists():
+        return HTMLResponse("<h3>Thiếu file index.html</h3>", status_code=404)
     return HTMLResponse(content=html_path.read_text(encoding="utf-8"))
 
 @app.post("/api/login")
@@ -106,7 +108,7 @@ def get_admin_faculty_detail(major_code: str, role: str = "admin"):
         raise HTTPException(status_code=403, detail="Không có quyền truy cập.")
     detail = engine.get_faculty_detail(major_code)
     if not detail:
-        raise HTTPException(status_code=404, detail="Không tìm thấy Khoa.")
+        raise HTTPException(status_code=404, detail="Not found")
     return detail
 
 @app.post("/api/chat")

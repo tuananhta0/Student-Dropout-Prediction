@@ -20,49 +20,28 @@
       <div class="text-center space-y-2">
         <div class="w-12 h-12 rounded-2xl bg-gradient-to-tr from-blue-600 to-emerald-400 mx-auto flex items-center justify-center text-xl font-bold text-white shadow-lg">✦</div>
         <h1 class="text-xl font-bold text-white tracking-tight">CMC Academic AI</h1>
-        <p class="text-xs text-[#9aa0a6]">Hệ thống Cố vấn Học tập, Quy chế Đào tạo & Dự báo Rủi ro</p>
+        <p class="text-xs text-[#9aa0a6]">Hệ thống Cố vấn Học tập, Quy chế Đào tạo & Dự báo Điểm số</p>
       </div>
 
       <form id="loginForm" onsubmit="handleLogin(event); return false;" class="space-y-4">
         <div>
-          <label class="block text-xs text-[#c4c7c5] mb-1.5">Tài khoản (Mã Sinh viên / GV001 / ADMIN)</label>
-          <input id="inpUsername" type="text" value="BIT250007" required
+          <label class="block text-xs text-[#c4c7c5] mb-1.5">Tài khoản đăng nhập</label>
+          <input id="inpUsername" type="text" placeholder="Nhập mã tài khoản..." autocomplete="off" required
             class="w-full bg-[#131314] border border-[#333537] focus:border-blue-500 rounded-xl px-3.5 py-2.5 text-sm text-white outline-none transition" />
         </div>
         <div>
-          <label class="block text-xs text-[#c4c7c5] mb-1.5">Mật khẩu (Trùng với Mã đăng nhập)</label>
-          <input id="inpPassword" type="password" value="BIT250007" required
+          <label class="block text-xs text-[#c4c7c5] mb-1.5">Mật khẩu</label>
+          <input id="inpPassword" type="password" placeholder="Nhập mật khẩu..." required
             class="w-full bg-[#131314] border border-[#333537] focus:border-blue-500 rounded-xl px-3.5 py-2.5 text-sm text-white outline-none transition" />
         </div>
 
         <div id="loginError" class="hidden text-xs text-rose-400 bg-rose-950/50 border border-rose-700/50 rounded-xl p-2.5"></div>
 
-        <button type="button" onclick="handleLogin(event)"
+        <button type="submit" onclick="handleLogin(event)"
           class="w-full bg-blue-600 hover:bg-blue-500 text-white font-semibold py-2.5 rounded-xl text-sm shadow-lg transition">
           Đăng nhập Hệ thống
         </button>
       </form>
-
-      <div class="border-t border-[#333537] pt-4 space-y-2">
-        <div class="text-[11px] text-[#9aa0a6] text-center">Bấm chọn nhanh tài khoản kiểm thử 3 cấp phân quyền:</div>
-        <div class="grid grid-cols-1 gap-1.5 text-xs">
-          <button type="button" onclick="quickLogin('BIT250007')"
-            class="w-full px-3 py-2 rounded-xl bg-[#131314] hover:bg-[#282a2c] border border-[#333537] flex justify-between items-center transition">
-            <span>🎓 <b>Sinh viên</b> (<span class="text-blue-400">BIT250007</span> / <span class="text-emerald-400">BIT250006</span>)</span>
-            <span class="text-[11px] text-[#9aa0a6]">Bảng điểm & Quy chế</span>
-          </button>
-          <button type="button" onclick="quickLogin('GV001')"
-            class="w-full px-3 py-2 rounded-xl bg-[#131314] hover:bg-[#282a2c] border border-[#333537] flex justify-between items-center transition">
-            <span>🏫 <b>Cố vấn học tập</b> (<span class="text-emerald-400">GV001</span> / <span class="text-emerald-400">GV002</span>)</span>
-            <span class="text-[11px] text-[#9aa0a6]">Quản lý Lớp & Khoa</span>
-          </button>
-          <button type="button" onclick="quickLogin('ADMIN')"
-            class="w-full px-3 py-2 rounded-xl bg-[#131314] hover:bg-[#282a2c] border border-[#333537] flex justify-between items-center transition">
-            <span>🏛️ <b>Quản trị viên</b> (<span class="text-amber-400">ADMIN</span> / MK: <span class="text-amber-400">ADMIN</span>)</span>
-            <span class="text-[11px] text-[#9aa0a6]">Tổng kết 19 Khoa & Trường</span>
-          </button>
-        </div>
-      </div>
     </div>
   </div>
 
@@ -93,7 +72,7 @@
           </button>
           <button type="button" id="btnTabData" onclick="switchTab('data')"
             class="w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-semibold flex items-center gap-2.5 text-[#9aa0a6] hover:bg-[#282a2c]/60 transition">
-            <span>📊</span><span id="lblTabData">Bảng điểm sinh viên</span>
+            <span>📊</span><span id="lblTabData">Bảng điểm & Dự đoán</span>
           </button>
         </nav>
       </div>
@@ -112,7 +91,7 @@
         <div id="headerTitle" class="text-sm font-semibold text-white">Trợ lý chatbot</div>
         <button type="button" id="btnHeaderQuickSwitch" onclick="switchTab('data')"
           class="text-xs px-3 py-1.5 rounded-full bg-[#1e1f20] hover:bg-[#282a2c] border border-[#333537] text-[#c4c7c5] transition">
-          Bảng điểm & Thống kê ➔
+          Bảng điểm & Tra cứu Lớp ➔
         </button>
       </header>
 
@@ -134,15 +113,103 @@
       <!-- VIEW 2: DU LIEU THEO PHAN QUYEN -->
       <section id="viewData" class="hidden flex-1 overflow-y-auto p-6 space-y-6">
 
-        <!-- PANEL 2A: SINH VIEN -->
+        <!-- PANEL 2C: QUAN TRI VIEN (ADMIN - 19 KHOA) -->
+        <div id="panelAdminData" class="hidden space-y-5 max-w-6xl mx-auto">
+          <div class="bg-[#1e1f20] border border-[#333537] rounded-2xl p-4 space-y-3">
+            <div class="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <div class="text-sm font-bold text-amber-300">🏛️ Tổng kết 19 Khoa / Ngành Đào tạo Toàn trường (20.000 Sinh viên)</div>
+                <div class="text-xs text-[#9aa0a6]">Bấm <b>"🏫 Xem Lớp & SV"</b> ở bất kỳ Khoa nào để lọc danh sách các lớp và thành viên của Khoa đó ngay bên dưới</div>
+              </div>
+              <button type="button" onclick="initAdvisorClasses('')"
+                class="px-3 py-1.5 rounded-xl bg-[#131314] hover:bg-[#282a2c] border border-[#333537] text-xs text-emerald-300 font-semibold">
+                🔄 Hiển thị tất cả Lớp toàn trường
+              </button>
+            </div>
+            <div class="overflow-x-auto">
+              <table class="w-full text-left text-xs">
+                <thead>
+                  <tr class="border-b border-[#333537] text-[#9aa0a6]">
+                    <th class="py-2 px-2.5">Mã Khoa</th>
+                    <th class="py-2 px-2.5">Tên Khoa / Ngành</th>
+                    <th class="py-2 px-2.5">Số Lớp</th>
+                    <th class="py-2 px-2.5">Tổng SV</th>
+                    <th class="py-2 px-2.5">GPA TB</th>
+                    <th class="py-2 px-2.5">SV Cảnh báo</th>
+                    <th class="py-2 px-2.5">Cần hỗ trợ sớm</th>
+                    <th class="py-2 px-2.5">Tổng nợ HP (Tỷ)</th>
+                    <th class="py-2 px-2.5 text-right">Thao tác</th>
+                  </tr>
+                </thead>
+                <tbody id="admFacultiesTable" class="divide-y divide-[#282a2c]"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- PANEL 2B: CO VAN HOC TAP & TRA CUU LOP NHANH -->
+        <div id="panelAdvisorData" class="hidden space-y-5 max-w-6xl mx-auto">
+          <div class="bg-[#1e1f20] border border-[#333537] rounded-2xl p-4 space-y-3">
+            <div class="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <div class="text-sm font-bold text-emerald-300">🏫 Tra cứu Nhanh Lớp hành chính & Dự đoán Điểm Kỳ sau</div>
+                <div id="advClassSummaryText" class="text-xs text-[#9aa0a6]">Chọn lớp hoặc gõ tìm mã lớp để xem toàn bộ thành viên và điểm dự đoán kỳ sau</div>
+              </div>
+              <div class="flex flex-wrap items-center gap-2">
+                <input id="inpSearchClass" type="text" placeholder="🔍 Gõ tìm lớp (VD: IT25-18, BA24...)"
+                  oninput="filterClassDropdown(this.value)"
+                  class="bg-[#131314] border border-[#333537] focus:border-emerald-500 rounded-xl px-3 py-2 text-xs text-white outline-none w-52" />
+                <select id="selAdvisorClass" onchange="loadAdvisorClassDetail(this.value)"
+                  class="bg-[#131314] border border-[#333537] rounded-xl px-3 py-2 text-xs text-white outline-none"></select>
+              </div>
+            </div>
+            <div class="flex flex-wrap items-center gap-1.5 pt-1 text-xs">
+              <span class="text-[#9aa0a6] text-[11px] mr-1">Chọn nhanh lớp tiêu biểu:</span>
+              <button type="button" onclick="selectClassQuick('IT25-18')" class="px-2.5 py-1 rounded-lg bg-[#131314] hover:bg-[#282a2c] border border-[#333537] text-emerald-300">IT25-18 (Có SV cảnh báo)</button>
+              <button type="button" onclick="selectClassQuick('IT25-16')" class="px-2.5 py-1 rounded-lg bg-[#131314] hover:bg-[#282a2c] border border-[#333537] text-blue-300">IT25-16 (Lớp Giỏi)</button>
+              <button type="button" onclick="selectClassQuick('IT25-20')" class="px-2.5 py-1 rounded-lg bg-[#131314] hover:bg-[#282a2c] border border-[#333537] text-purple-300">IT25-20</button>
+              <button type="button" onclick="askFromData('Xem lớp')" class="px-2.5 py-1 rounded-lg bg-emerald-950 hover:bg-emerald-900 text-emerald-300 font-semibold">📋 Mở Danh mục Lớp 19 Khoa trên Chat</button>
+            </div>
+          </div>
+
+          <div class="bg-[#1e1f20] border border-[#333537] rounded-2xl p-4 space-y-3">
+            <div class="text-xs font-bold text-blue-300">Danh sách Thành viên trong Lớp (Kèm Dự đoán GPA Kỳ sau & Mức độ Cảnh báo Sớm)</div>
+            <div class="overflow-x-auto">
+              <table class="w-full text-left text-xs">
+                <thead>
+                  <tr class="border-b border-[#333537] text-[#9aa0a6]">
+                    <th class="py-2 px-2.5">Mã SV</th>
+                    <th class="py-2 px-2.5">Kỳ hiện tại</th>
+                    <th class="py-2 px-2.5">GPA Kỳ / TL</th>
+                    <th class="py-2 px-2.5">Dự đoán GPA Kỳ sau</th>
+                    <th class="py-2 px-2.5">TC Tích lũy</th>
+                    <th class="py-2 px-2.5">TC Nợ đọng</th>
+                    <th class="py-2 px-2.5">Chuyên cần</th>
+                    <th class="py-2 px-2.5">Cảnh báo sớm</th>
+                    <th class="py-2 px-2.5 text-right">Thao tác</th>
+                  </tr>
+                </thead>
+                <tbody id="advStudentsTable" class="divide-y divide-[#282a2c]"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- PANEL 2A: SINH VIEN (HO SO CHI TIET & DU DOAN KY SAU) -->
         <div id="panelStudentData" class="hidden space-y-5 max-w-6xl mx-auto">
           <div class="flex flex-wrap justify-between items-center gap-2 bg-[#1e1f20] border border-[#333537] rounded-2xl p-4">
             <div>
               <div id="stuHeaderInfo" class="text-sm font-bold text-white">Sinh viên</div>
               <div id="stuSubInfo" class="text-xs text-[#9aa0a6]">Thông tin khóa học</div>
             </div>
-            <div id="stuRiskBadge" class="text-xs px-3 py-1 rounded-full bg-blue-950 text-blue-300 font-bold">Mức rủi ro</div>
+            <div class="flex flex-wrap items-center gap-2">
+              <span id="stuPredBadge" class="text-xs px-3 py-1 rounded-full bg-emerald-950 text-emerald-300 font-bold">Dự đoán GPA Kỳ sau</span>
+              <span id="stuRiskBadge" class="text-xs px-3 py-1 rounded-full bg-blue-950 text-blue-300 font-bold">Trạng thái học vụ</span>
+            </div>
           </div>
+
+          <!-- KHUNG DU DOAN DIEM GPA KY SAU TRUC QUAN -->
+          <div id="stuNextTermBanner" class="bg-[#1e1f20] border border-blue-500/40 rounded-2xl p-4 space-y-2 text-xs"></div>
 
           <div class="bg-[#1e1f20] border border-[#333537] rounded-2xl p-4 space-y-3">
             <div class="text-xs font-bold text-blue-300">1. Bảng tổng hợp kết quả học tập qua các học kỳ</div>
@@ -167,7 +234,7 @@
 
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div class="bg-[#1e1f20] border border-[#333537] rounded-2xl p-4">
-              <div class="text-xs font-bold text-emerald-300 mb-3">2. Biểu đồ GPA qua các học kỳ (Thang 4.0)</div>
+              <div class="text-xs font-bold text-emerald-300 mb-3">2. Biểu đồ GPA qua các học kỳ & Dự kiến kỳ tới (Thang 4.0)</div>
               <div id="stuGpaBars" class="flex items-end justify-around pt-2 h-36"></div>
             </div>
             <div id="stuProgressCard" class="bg-[#1e1f20] border border-[#333537] rounded-2xl p-4 space-y-3 text-xs"></div>
@@ -201,79 +268,13 @@
           </div>
         </div>
 
-        <!-- PANEL 2B: CO VAN HOC TAP -->
-        <div id="panelAdvisorData" class="hidden space-y-5 max-w-6xl mx-auto">
-          <div class="bg-[#1e1f20] border border-[#333537] rounded-2xl p-4 flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <div class="text-sm font-bold text-emerald-300">🏫 Quản lý Lớp hành chính & Sinh viên</div>
-              <div id="advClassSummaryText" class="text-xs text-[#9aa0a6]">Chọn lớp để xem danh sách sinh viên và mức rủi ro AI</div>
-            </div>
-            <div class="flex items-center gap-2">
-              <select id="selAdvisorClass" onchange="loadAdvisorClassDetail(this.value)"
-                class="bg-[#131314] border border-[#333537] rounded-xl px-3 py-2 text-xs text-white outline-none"></select>
-            </div>
-          </div>
-
-          <div class="bg-[#1e1f20] border border-[#333537] rounded-2xl p-4 space-y-3">
-            <div class="text-xs font-bold text-blue-300">Danh sách Sinh viên trong Lớp (Sắp xếp theo xác suất rủi ro giảm dần)</div>
-            <div class="overflow-x-auto">
-              <table class="w-full text-left text-xs">
-                <thead>
-                  <tr class="border-b border-[#333537] text-[#9aa0a6]">
-                    <th class="py-2 px-2.5">Mã SV</th>
-                    <th class="py-2 px-2.5">Kỳ hiện tại</th>
-                    <th class="py-2 px-2.5">GPA Kỳ / TL</th>
-                    <th class="py-2 px-2.5">TC Tích lũy</th>
-                    <th class="py-2 px-2.5">TC Nợ đọng</th>
-                    <th class="py-2 px-2.5">Cảnh báo liên tiếp</th>
-                    <th class="py-2 px-2.5">Chuyên cần</th>
-                    <th class="py-2 px-2.5">Dự báo Rủi ro AI</th>
-                    <th class="py-2 px-2.5 text-right">Chi tiết</th>
-                  </tr>
-                </thead>
-                <tbody id="advStudentsTable" class="divide-y divide-[#282a2c]"></tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-
-        <!-- PANEL 2C: QUAN TRI VIEN (ADMIN) -->
-        <div id="panelAdminData" class="hidden space-y-5 max-w-6xl mx-auto">
-          <div class="bg-[#1e1f20] border border-[#333537] rounded-2xl p-4 space-y-3">
-            <div class="text-sm font-bold text-amber-300">🏛️ Tổng kết 19 Khoa / Ngành Đào tạo Toàn trường (20.000 Sinh viên)</div>
-            <div class="overflow-x-auto">
-              <table class="w-full text-left text-xs">
-                <thead>
-                  <tr class="border-b border-[#333537] text-[#9aa0a6]">
-                    <th class="py-2 px-2.5">Mã Khoa</th>
-                    <th class="py-2 px-2.5">Tên Khoa / Ngành</th>
-                    <th class="py-2 px-2.5">Số Lớp</th>
-                    <th class="py-2 px-2.5">Tổng SV</th>
-                    <th class="py-2 px-2.5">GPA TB</th>
-                    <th class="py-2 px-2.5">SV Cảnh báo</th>
-                    <th class="py-2 px-2.5">SV Nguy cơ cao (AI)</th>
-                    <th class="py-2 px-2.5">Tổng nợ HP (Tỷ)</th>
-                    <th class="py-2 px-2.5 text-right">Thao tác</th>
-                  </tr>
-                </thead>
-                <tbody id="admFacultiesTable" class="divide-y divide-[#282a2c]"></tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-
       </section>
     </main>
   </div>
 
   <script>
     let currentUser = null;
-
-    function quickLogin(account) {
-      document.getElementById('inpUsername').value = account;
-      document.getElementById('inpPassword').value = account;
-      handleLogin(new Event('submit'));
-    }
+    let allAdvisorClassesCache = [];
 
     async function handleLogin(e) {
       if (e && e.preventDefault) e.preventDefault();
@@ -306,6 +307,8 @@
 
     function logout() {
       currentUser = null;
+      document.getElementById('inpUsername').value = '';
+      document.getElementById('inpPassword').value = '';
       document.getElementById('mainApp').classList.add('hidden');
       document.getElementById('loginScreen').classList.remove('hidden');
     }
@@ -344,79 +347,115 @@
       const chatInput = document.getElementById('chatInput');
 
       if (currentUser.role === 'student') {
-        document.getElementById('lblTabData').innerText = "Bảng điểm sinh viên";
-        chatInput.placeholder = "Nhập câu hỏi (VD: xem điểm của tôi, điểm từng môn, em có nguy cơ thôi học không, quy chế 18, kỹ sư với cử nhân khác nhau ra sao...)";
+        document.getElementById('lblTabData').innerText = "Bảng điểm & Dự đoán";
+        chatInput.placeholder = "Nhập câu hỏi (VD: dự đoán điểm kì sau, xem điểm của tôi, quy chế 18...)";
         document.getElementById('chatMessages').innerHTML = `
           <div class="flex items-start gap-3">
             <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-blue-600 to-emerald-400 flex items-center justify-center text-xs font-bold shrink-0">✦</div>
-            <div class="bg-[#1e1f20] border border-[#333537] text-[#e3e3e3] px-5 py-4 rounded-3xl rounded-tl-sm max-w-2xl text-xs space-y-3 leading-relaxed">
+            <div class="bg-[#1e1f20] border border-[#333537] text-[#e3e3e3] px-5 py-4 rounded-3xl rounded-tl-sm max-w-2xl text-xs space-y-2 leading-relaxed">
               <div class="text-sm font-semibold text-white">Xin chào Sinh viên ${currentUser.user_id}! 👋</div>
-              <div class="text-[#c4c7c5]">Bạn có thể hỏi trực tiếp về <b>Bảng điểm & 45 chỉ số cá nhân</b>, <b>Dự báo nguy cơ học vụ (What-If)</b> hoặc <b>Tình huống Quy chế đào tạo (QĐ 22/2023)</b>. Chọn nhanh câu hỏi mẫu bên dưới:</div>
-              <div class="flex flex-wrap gap-2 pt-1">
-                <button type="button" onclick="askFromData('Xem bảng điểm của tôi')" class="px-3 py-1.5 rounded-xl bg-[#131314] hover:bg-[#282a2c] border border-[#333537] text-blue-300">📊 Xem bảng điểm & biểu đồ của tôi</button>
-                <button type="button" onclick="askFromData('Xem điểm từng môn của tôi')" class="px-3 py-1.5 rounded-xl bg-[#131314] hover:bg-[#282a2c] border border-[#333537] text-purple-300">📚 Điểm chi tiết từng học phần</button>
-                <button type="button" onclick="askFromData('Em có nguy cơ bị thôi học không?')" class="px-3 py-1.5 rounded-xl bg-[#131314] hover:bg-[#282a2c] border border-[#333537] text-rose-300">🎯 Dự báo nguy cơ & Kịch bản cải thiện</button>
-                <button type="button" onclick="askFromData('Kỹ sư với cử nhân khác nhau ra sao?')" class="px-3 py-1.5 rounded-xl bg-[#131314] hover:bg-[#282a2c] border border-[#333537] text-emerald-300">🎓 Kỹ sư vs Cử nhân khác nhau ra sao?</button>
-              </div>
+              <div class="text-[#c4c7c5]">Bạn có thể nhập trực tiếp câu hỏi vào ô chat bên dưới để tra cứu <b>Dự đoán GPA kỳ sau</b>, <b>Bảng điểm</b> hoặc <b>Quy chế đào tạo</b>.</div>
             </div>
           </div>
         `;
         document.getElementById('panelStudentData').classList.remove('hidden');
-        await loadStudentSelfData();
+        await loadStudentSelfData(currentUser.user_id);
 
       } else if (currentUser.role === 'advisor') {
         document.getElementById('lblTabData').innerText = "Quản lý Lớp & Khoa";
-        chatInput.placeholder = "Nhập câu hỏi quản lý (VD: lớp mạnh nhất với lớp yếu nhất khác nhau chỗ nào, ngành CNTT có bao nhiêu SV nguy cơ cao, môn nào trượt nhiều nhất, tóm tắt lớp IT25-18...)";
+        chatInput.placeholder = "Nhập câu hỏi quản lý (VD: xem lớp, tóm tắt lớp IT25-18...)";
         document.getElementById('chatMessages').innerHTML = `
           <div class="flex items-start gap-3">
             <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-blue-600 to-emerald-400 flex items-center justify-center text-xs font-bold shrink-0">✦</div>
-            <div class="bg-[#1e1f20] border border-[#333537] text-[#e3e3e3] px-5 py-4 rounded-3xl rounded-tl-sm max-w-2xl text-xs space-y-3 leading-relaxed">
-              <div class="text-sm font-semibold text-emerald-300">Xin chào Cố vấn Học tập / Quản lý Khoa (${currentUser.user_id})! 👋</div>
-              <div class="text-[#c4c7c5]">Hệ thống hỗ trợ phân tích <b>Thống kê theo Lớp & Ngành</b>, <b>So sánh điểm mạnh/yếu giữa các lớp</b>, <b>Phổ điểm & Môn học có tỷ lệ trượt cao</b>, và <b>Danh sách sinh viên cần ưu tiên can thiệp sớm</b>:</div>
-              <div class="flex flex-wrap gap-2 pt-1">
-                <button type="button" onclick="askFromData('Lớp mạnh nhất với lớp yếu nhất khác nhau chỗ nào, có phải do đầu vào ko?')" class="px-3 py-1.5 rounded-xl bg-[#131314] hover:bg-[#282a2c] border border-[#333537] text-emerald-300">📈 Lớp mạnh nhất vs yếu nhất khác nhau chỗ nào?</button>
-                <button type="button" onclick="askFromData('Ngành Công nghệ thông tin có bao nhiêu sinh viên thuộc nhóm nguy cơ thôi học cao?')" class="px-3 py-1.5 rounded-xl bg-[#131314] hover:bg-[#282a2c] border border-[#333537] text-amber-300">🏛️ Thống kê nguy cơ cao & cảnh báo Khoa CNTT</button>
-                <button type="button" onclick="askFromData('Những môn nào có tỷ lệ trượt cao nhất và phổ điểm ra sao?')" class="px-3 py-1.5 rounded-xl bg-[#131314] hover:bg-[#282a2c] border border-[#333537] text-blue-300">📚 Môn có tỷ lệ trượt cao nhất & Phổ điểm</button>
-                <button type="button" onclick="askFromData('Tóm tắt lớp IT25-18')" class="px-3 py-1.5 rounded-xl bg-[#131314] hover:bg-[#282a2c] border border-[#333537] text-purple-300">🏫 Báo cáo chi tiết Lớp IT25-18</button>
-              </div>
+            <div class="bg-[#1e1f20] border border-[#333537] text-[#e3e3e3] px-5 py-4 rounded-3xl rounded-tl-sm max-w-2xl text-xs space-y-2 leading-relaxed">
+              <div class="text-sm font-semibold text-emerald-300">Xin chào Cố vấn Học tập (${currentUser.user_id})! 👋</div>
+              <div class="text-[#c4c7c5]">Bạn có thể nhập câu hỏi để tra cứu thông tin lớp, sinh viên nguy cơ cao hoặc gõ <b>"xem lớp"</b>.</div>
             </div>
           </div>
         `;
         document.getElementById('panelAdvisorData').classList.remove('hidden');
-        await initAdvisorClasses();
+        await initAdvisorClasses('');
 
       } else {
-        document.getElementById('lblTabData').innerText = "Thống kê Toàn trường";
-        chatInput.placeholder = "Nhập câu hỏi quản trị toàn trường (VD: tổng sv từng khóa 2022 đến 2025, gm với sm khác nhau thế nào về thôi học, tổng nợ học phí toàn trường, mô hình pr-auc và recall top 10% bao nhiêu...)";
+        document.getElementById('lblTabData').innerText = "Thống kê Toàn trường & Lớp";
+        chatInput.placeholder = "Nhập câu hỏi quản trị toàn trường (VD: xem lớp, tổng sv từng khóa...)";
         document.getElementById('chatMessages').innerHTML = `
           <div class="flex items-start gap-3">
             <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-blue-600 to-emerald-400 flex items-center justify-center text-xs font-bold shrink-0">✦</div>
-            <div class="bg-[#1e1f20] border border-[#333537] text-[#e3e3e3] px-5 py-4 rounded-3xl rounded-tl-sm max-w-2xl text-xs space-y-3 leading-relaxed">
-              <div class="text-sm font-semibold text-amber-300">Xin chào Quản trị Học vụ Toàn trường (${currentUser.user_id})! 👋</div>
-              <div class="text-[#c4c7c5]">Hệ thống cung cấp báo cáo vĩ mô trên toàn bộ <b>19 Khoa/Ngành (20.000 SV)</b>, <b>Thống kê theo Khóa 2022–2025, Hệ GM/SM, Nơi ở, Phương thức tuyển sinh</b>, <b>Tài chính học phí</b>, <b>Đánh giá mô hình AI (PR-AUC, Fairness)</b> và <b>Tuân thủ pháp lý dữ liệu</b>:</div>
-              <div class="flex flex-wrap gap-2 pt-1">
-                <button type="button" onclick="askFromData('Tổng số sinh viên và tỷ lệ thôi học từng khóa 2022 đến 2025 là bao nhiêu?')" class="px-3 py-1.5 rounded-xl bg-[#131314] hover:bg-[#282a2c] border border-[#333537] text-amber-300">📊 Thống kê toàn trường theo Khóa 2022–2025</button>
-                <button type="button" onclick="askFromData('Hệ GM với hệ SM và Kỹ sư với Cử nhân khác nhau thế nào về tỷ lệ thôi học?')" class="px-3 py-1.5 rounded-xl bg-[#131314] hover:bg-[#282a2c] border border-[#333537] text-emerald-300">🌐 So sánh Hệ GM vs SM & Kỹ sư vs Cử nhân</button>
-                <button type="button" onclick="askFromData('Tổng nợ học phí toàn trường hiện tại là bao nhiêu và học bổng có giữ chân SV không?')" class="px-3 py-1.5 rounded-xl bg-[#131314] hover:bg-[#282a2c] border border-[#333537] text-blue-300">💰 Công nợ học phí, Học bổng & Chi phí can thiệp</button>
-                <button type="button" onclick="askFromData('Mô hình đạt PR-AUC và Recall@Top10% bao nhiêu, hệ thống có hợp pháp về bảo vệ dữ liệu cá nhân không?')" class="px-3 py-1.5 rounded-xl bg-[#131314] hover:bg-[#282a2c] border border-[#333537] text-purple-300">🤖 Đánh giá Mô hình AI & Pháp lý dữ liệu</button>
-              </div>
+            <div class="bg-[#1e1f20] border border-[#333537] text-[#e3e3e3] px-5 py-4 rounded-3xl rounded-tl-sm max-w-2xl text-xs space-y-2 leading-relaxed">
+              <div class="text-sm font-semibold text-amber-300">Xin chào Quản trị viên Toàn trường (${currentUser.user_id})! 👋</div>
+              <div class="text-[#c4c7c5]">Bạn có toàn quyền truy xuất báo cáo 19 Khoa, thống kê vĩ mô toàn trường và tra cứu lớp học.</div>
             </div>
           </div>
         `;
         document.getElementById('panelAdminData').classList.remove('hidden');
+        document.getElementById('panelAdvisorData').classList.remove('hidden');
         await initAdminFaculties();
+        await initAdvisorClasses('');
       }
     }
 
-    async function loadStudentSelfData() {
-      const res = await fetch(`/api/student/me?user_id=${encodeURIComponent(currentUser.user_id)}&role=${encodeURIComponent(currentUser.role)}`);
+    function calcClientNextTermGpa(row) {
+      const gpaT = Number(row.gpa4_term || 0);
+      const gpaC = Number(row.gpa4_cumulative || 0);
+      const earnTc = Number(row.credits_earned_cumulative || 15);
+      const att = Number(row.attendance_rate_term || 85);
+      const lmsDays = Number(row.lms_active_days_4weeks || 12);
+      const workH = Number(row.part_time_work_hours_week || 0);
+      const nextTc = 15;
+
+      const baseGpa = 0.55 * gpaT + 0.45 * gpaC;
+      const attAdj = (att - 80.0) * 0.015;
+      const lmsAdj = (lmsDays - 12.0) * 0.012;
+      const workPen = Math.max(0.0, (workH - 12.0) * 0.02);
+
+      const predCur = Math.max(0.50, Math.min(4.00, baseGpa + attAdj + lmsAdj - workPen));
+      const predCumCur = Math.max(0.50, Math.min(4.00, (gpaC * earnTc + predCur * nextTc) / Math.max(1, earnTc + nextTc)));
+      const predImp = Math.max(2.15, Math.min(4.00, baseGpa + 0.65 + (gpaT < 2.0 ? 0.25 : 0.15)));
+      const predCumImp = Math.max(0.50, Math.min(4.00, (gpaC * earnTc + predImp * nextTc) / Math.max(1, earnTc + nextTc)));
+
+      return {
+        nextTerm: Number(row.snapshot_term_index || 1) + 1,
+        predCur: predCur.toFixed(2),
+        predCumCur: predCumCur.toFixed(2),
+        predImp: predImp.toFixed(2),
+        predCumImp: predCumImp.toFixed(2)
+      };
+    }
+
+    async function loadStudentSelfData(targetStudentId) {
+      const stuId = targetStudentId || currentUser.user_id;
+      const res = await fetch(`/api/student/me?user_id=${encodeURIComponent(stuId)}&role=${encodeURIComponent(currentUser.role)}`);
       if (!res.ok) return;
       const data = await res.json();
       const latest = data.latest;
+      const proj = calcClientNextTermGpa(latest);
 
-      document.getElementById('stuHeaderInfo').innerText = `🎓 Sinh viên: ${latest.student_id} • Lớp: ${latest.class_code}`;
+      document.getElementById('panelStudentData').classList.remove('hidden');
+      document.getElementById('stuHeaderInfo').innerText = `🎓 Hồ sơ Sinh viên: ${latest.student_id} • Lớp: ${latest.class_code}`;
       document.getElementById('stuSubInfo').innerText = `Ngành: ${latest.major_name} (${latest.degree_type} - Hệ ${latest.education_mode})`;
-      document.getElementById('stuRiskBadge').innerText = `Rủi ro AI: ${(latest.risk_probability * 100).toFixed(1)}% (${latest.risk_level})`;
+      document.getElementById('stuPredBadge').innerText = `🔮 Dự đoán GPA HK${proj.nextTerm}: ${proj.predCur} ➔ ${proj.predImp}/4.00`;
+      document.getElementById('stuRiskBadge').innerText = `Cảnh báo sớm: ${(latest.risk_probability * 100).toFixed(1)}% (${latest.risk_level})`;
+
+      document.getElementById('stuNextTermBanner').innerHTML = `
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <div class="font-bold text-blue-300 text-sm">🔮 Dự đoán Kết quả Học kỳ tiếp theo (HK${proj.nextTerm} - Dự kiến 15 tín chỉ)</div>
+          <button type="button" onclick="askFromData('Dự đoán điểm kỳ sau của sinh viên ${latest.student_id}')"
+            class="px-3 py-1 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs transition">
+            Xem chi tiết Công thức & Kịch bản trên Chat ➔
+          </button>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+          <div class="bg-[#131314] border border-[#333537] rounded-xl p-3">
+            <div class="text-[#9aa0a6] text-[11px]">Kịch bản 1: Giữ nguyên thói quen học tập hiện tại</div>
+            <div class="text-sm font-bold text-amber-300 mt-0.5">GPA HK${proj.nextTerm} dự kiến: ${proj.predCur}/4.00 • GPA Tích lũy: ${proj.predCumCur}/4.00</div>
+          </div>
+          <div class="bg-[#131314] border border-emerald-500/30 rounded-xl p-3">
+            <div class="text-[#9aa0a6] text-[11px]">Kịch bản 2: Cải thiện (Chuyên cần &ge; 92%, LMS tích cực, Làm thêm &le; 8h/tuần)</div>
+            <div class="text-sm font-bold text-emerald-300 mt-0.5">GPA HK${proj.nextTerm} dự kiến: ${proj.predImp}/4.00 • GPA Tích lũy: ${proj.predCumImp}/4.00</div>
+          </div>
+        </div>
+      `;
 
       document.getElementById('stuTermTable').innerHTML = (data.history || []).map(r => `
         <tr class="hover:bg-[#282a2c]/50">
@@ -431,7 +470,7 @@
         </tr>
       `).join('');
 
-      document.getElementById('stuGpaBars').innerHTML = (data.history || []).map(r => {
+      const historyBars = (data.history || []).map(r => {
         const g = Number(r.gpa4_term);
         const h = Math.max(10, Math.min(100, Math.round((g / 4.0) * 100)));
         const col = g < 1.0 ? 'bg-rose-500' : (g < 2.0 ? 'bg-amber-400' : 'bg-emerald-400');
@@ -445,6 +484,18 @@
           </div>
         `;
       }).join('');
+
+      const predH = Math.max(10, Math.min(100, Math.round((Number(proj.predCur) / 4.0) * 100)));
+      const predBar = `
+        <div class="flex flex-col items-center flex-1">
+          <span class="text-xs font-bold text-blue-300 mb-1">${proj.predCur}</span>
+          <div class="w-10 bg-[#131314] h-24 rounded-xl flex items-end p-1 border border-dashed border-blue-400">
+            <div class="bg-blue-500/80 w-full rounded-lg" style="height:${predH}%"></div>
+          </div>
+          <span class="text-[11px] text-blue-300 font-semibold mt-1">HK${proj.nextTerm} (Dự báo)</span>
+        </div>
+      `;
+      document.getElementById('stuGpaBars').innerHTML = historyBars + predBar;
 
       const earn = Number(latest.credits_earned_cumulative || 0);
       const req = Math.max(1, Number(latest.credits_required || 135));
@@ -490,18 +541,49 @@
       `).join('');
     }
 
-    async function initAdvisorClasses() {
-      const res = await fetch(`/api/advisor/classes?role=${encodeURIComponent(currentUser.role)}`);
+    async function inspectStudentInTab(studentId) {
+      await loadStudentSelfData(studentId);
+      document.getElementById('panelStudentData').scrollIntoView({ behavior: 'smooth' });
+    }
+
+    async function initAdvisorClasses(majorCode = '') {
+      const url = `/api/advisor/classes?role=${encodeURIComponent(currentUser.role)}` + (majorCode ? `&major_code=${encodeURIComponent(majorCode)}` : '');
+      const res = await fetch(url);
       if (!res.ok) return;
       const data = await res.json();
+      allAdvisorClassesCache = data.classes || [];
+      renderClassDropdownOptions(allAdvisorClassesCache);
+
       const sel = document.getElementById('selAdvisorClass');
-      sel.innerHTML = (data.classes || []).slice(0, 150).map(c =>
-        `<option value="${c.class_code}">${c.class_code} - ${c.major_name} (${c.n_students} SV | Nguy cơ cao: ${c.high_risk_count})</option>`
-      ).join('');
-      const hasIT2518 = (data.classes || []).some(c => c.class_code === 'IT25-18');
-      const defaultCls = hasIT2518 ? 'IT25-18' : ((data.classes && data.classes[0]) ? data.classes[0].class_code : 'IT25-01');
+      const hasIT2518 = allAdvisorClassesCache.some(c => c.class_code === 'IT25-18');
+      const defaultCls = (!majorCode && hasIT2518) ? 'IT25-18' : (allAdvisorClassesCache[0] ? allAdvisorClassesCache[0].class_code : 'IT25-01');
       sel.value = defaultCls;
       await loadAdvisorClassDetail(defaultCls);
+      if (majorCode) {
+        document.getElementById('panelAdvisorData').scrollIntoView({ behavior: 'smooth' });
+      }
+    }
+
+    function renderClassDropdownOptions(list) {
+      const sel = document.getElementById('selAdvisorClass');
+      sel.innerHTML = list.slice(0, 300).map(c =>
+        `<option value="${c.class_code}">${c.class_code} - ${c.major_name} (${c.n_students} SV | Cần hỗ trợ: ${c.high_risk_count})</option>`
+      ).join('');
+    }
+
+    function filterClassDropdown(keyword) {
+      const kw = keyword.trim().toUpperCase();
+      const filtered = kw ? allAdvisorClassesCache.filter(c => c.class_code.toUpperCase().includes(kw) || c.major_name.toUpperCase().includes(kw)) : allAdvisorClassesCache;
+      renderClassDropdownOptions(filtered);
+      if (filtered.length > 0) {
+        loadAdvisorClassDetail(filtered[0].class_code);
+      }
+    }
+
+    function selectClassQuick(classCode) {
+      const sel = document.getElementById('selAdvisorClass');
+      sel.value = classCode;
+      loadAdvisorClassDetail(classCode);
     }
 
     async function loadAdvisorClassDetail(classCode) {
@@ -509,22 +591,26 @@
       if (!res.ok) return;
       const d = await res.json();
       document.getElementById('advClassSummaryText').innerText = d.summary_text || '';
-      document.getElementById('advStudentsTable').innerHTML = (d.students || []).map(s => `
+      document.getElementById('advStudentsTable').innerHTML = (d.students || []).map(s => {
+        const predGpa = Math.max(0.5, Math.min(4.0, 0.55 * s.gpa4_term + 0.45 * s.gpa4_cumulative + (s.attendance_rate_term - 80) * 0.015)).toFixed(2);
+        return `
         <tr class="hover:bg-[#282a2c]/50">
           <td class="py-2 px-2.5 font-bold text-blue-300">${s.student_id}</td>
           <td class="py-2 px-2.5">HK${s.snapshot_term_index}</td>
           <td class="py-2 px-2.5">${s.gpa4_term.toFixed(2)} / <b>${s.gpa4_cumulative.toFixed(2)}</b></td>
+          <td class="py-2 px-2.5 font-bold text-emerald-300">${predGpa} / 4.00</td>
           <td class="py-2 px-2.5">${s.credits_earned_cumulative} TC</td>
           <td class="py-2 px-2.5 ${s.credits_owed_cumulative > 0 ? 'text-amber-300 font-bold' : 'text-slate-400'}">${s.credits_owed_cumulative} TC</td>
-          <td class="py-2 px-2.5 ${s.warning_streak > 0 ? 'text-rose-400 font-bold' : 'text-slate-400'}">${s.warning_streak} kỳ</td>
           <td class="py-2 px-2.5">${s.attendance_rate_term}%</td>
-          <td class="py-2 px-2.5 font-bold ${s.risk_probability >= 0.21 ? 'text-rose-400' : 'text-emerald-300'}">${(s.risk_probability * 100).toFixed(1)}%</td>
-          <td class="py-2 px-2.5 text-right">
-            <button type="button" onclick="askFromData('Xem hồ sơ sinh viên ${s.student_id}')"
-              class="px-2.5 py-1 rounded-lg bg-blue-950 hover:bg-blue-900 text-blue-300 font-semibold">Phân tích AI</button>
+          <td class="py-2 px-2.5 font-bold ${s.risk_probability >= 0.21 ? 'text-rose-400' : 'text-emerald-300'}">${(s.risk_probability * 100).toFixed(1)}% (${s.risk_level})</td>
+          <td class="py-2 px-2.5 text-right space-x-1 whitespace-nowrap">
+            <button type="button" onclick="inspectStudentInTab('${s.student_id}')"
+              class="px-2.5 py-1 rounded-lg bg-emerald-950 hover:bg-emerald-900 text-emerald-300 font-semibold">📊 Bảng điểm</button>
+            <button type="button" onclick="askFromData('Dự đoán điểm kỳ sau của sinh viên ${s.student_id}')"
+              class="px-2.5 py-1 rounded-lg bg-blue-950 hover:bg-blue-900 text-blue-300 font-semibold">🔮 Dự đoán GPA</button>
           </td>
-        </tr>
-      `).join('');
+        </tr>`;
+      }).join('');
     }
 
     async function initAdminFaculties() {
@@ -541,9 +627,11 @@
           <td class="py-2 px-2.5 text-amber-300 font-semibold">${f.warning_count} SV</td>
           <td class="py-2 px-2.5 text-rose-400 font-bold">${f.high_risk_count} SV (${f.high_risk_pct}%)</td>
           <td class="py-2 px-2.5">${f.total_debt_billion.toFixed(2)} tỷ</td>
-          <td class="py-2 px-2.5 text-right">
+          <td class="py-2 px-2.5 text-right space-x-1 whitespace-nowrap">
+            <button type="button" onclick="initAdvisorClasses('${f.major_code}')"
+              class="px-2.5 py-1 rounded-lg bg-emerald-950 hover:bg-emerald-900 text-emerald-300 font-semibold">🏫 Xem Lớp & SV</button>
             <button type="button" onclick="askFromData('Tổng kết Khoa ${f.major_code}')"
-              class="px-2.5 py-1 rounded-lg bg-amber-950 hover:bg-amber-900 text-amber-300 font-semibold">Báo cáo Khoa</button>
+              class="px-2.5 py-1 rounded-lg bg-amber-950 hover:bg-amber-900 text-amber-300 font-semibold">📊 Báo cáo Khoa</button>
           </td>
         </tr>
       `).join('');
