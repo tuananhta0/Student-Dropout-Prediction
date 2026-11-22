@@ -1,92 +1,78 @@
 # 🎓 CMC Academic AI Portal & Student Dropout Prediction (V3.2.1)
 
-Hệ thống **Trợ lý AI Học vụ, Tra cứu Quy chế Đào tạo (PDF) và Dự báo Sớm Rủi ro Thôi học** dành cho Trường Đại học CMC. Dự án kết hợp mô hình Học máy Tổ hợp (`Random Forest` + `HistGradientBoosting`) với hệ thống suy luận Quy chế QĐ 22/2023 và kiểm soát phân quyền 3 cấp (**Sinh viên – Cố vấn học tập – Quản trị viên**).
-
----
+Hệ thống **Trợ lý học vụ, tra cứu quy chế đào tạo và cảnh báo sớm nguy cơ thôi học** cho bài tập lớn Trí tuệ nhân tạo. Sử dụng dữ liệu mô phỏng 20.000 sinh viên, mô hình tổ hợp Random Forest + HistGradientBoosting và bộ quy tắc học vụ QĐ 22/2023.
 
 ## ✨ Tính năng chính
 
-1. **Dành cho Sinh viên (`STUDENT`)**:
-   - Xem bảng điểm tổng hợp qua các kỳ, biểu đồ cột GPA (thang 4.0), tiến độ tích lũy tín chỉ và tỷ lệ chuyên cần.
-   - Xem cảnh báo học tập tự động và giả lập kịch bản cải thiện nguy cơ thôi học (**What-If Simulation**).
-   - Hỏi đáp trực tiếp Quy chế đào tạo (QĐ 22/2023) và giải các tình huống tính điểm liệt, học lại, cấm thi, bảo lưu, xét tốt nghiệp.
-2. **Dành cho Cố vấn học tập / Quản lý Khoa (`ADVISOR`)**:
-   - Quản lý danh sách lớp hành chính, xem thống kê sĩ số, GPA trung bình, số tín chỉ nợ và danh sách sinh viên có nguy cơ thôi học cao.
-   - Phân tích so sánh lớp mạnh/yếu, phổ điểm và các môn học có tỷ lệ trượt cao.
-3. **Dành cho Quản trị viên toàn trường (`ADMIN`)**:
-   - Thống kê vĩ mô toàn bộ **19 Khoa/Ngành đào tạo**, **2.258 Lớp** và **20.000 Sinh viên** theo Khóa (2022–2025), Hệ đào tạo (`GM`/`SM`), Nơi ở và Phương thức tuyển sinh.
-   - Theo dõi công nợ học phí toàn trường và các chỉ số đánh giá mô hình AI (`ROC-AUC = 0.8312`, `PR-AUC = 0.5460`).
+- **Sinh viên:** hồ sơ học kỳ, bảng điểm, tín chỉ, kịch bản GPA (kể cả học lại), cảnh báo quy chế và tra cứu điều kiện tốt nghiệp.
+- **Cố vấn học tập:** thống kê lớp, hồ sơ sinh viên và danh sách nguy cơ còn hiệu lực.
+- **Quản trị:** thống kê theo khoa, khóa, hệ đào tạo và tình trạng học tập.
 
----
+Chatbot hiện dùng quy tắc và từ khóa; chưa phải RAG hoàn chỉnh. Xác thực phân quyền phía máy chủ chưa hoàn thiện: chỉ chạy localhost với dữ liệu mô phỏng. Xác suất không phải quyết định buộc thôi học hoặc bảo đảm kết quả tương lai. Model hiện có ROC-AUC 0,8309; Average Precision 0,5455 trên tập kiểm thử mô phỏng, chưa kiểm chứng với dữ liệu thực.
 
-## 🚀 Hướng dẫn Cài đặt & Chạy Web (Chạy ngay không cần train lại)
+## 🚀 Cài đặt và chạy (PowerShell, Python 3.11)
 
-Kho lưu trữ đã đóng gói sẵn mô hình (`dropout_pipeline.joblib`) và dữ liệu chấm điểm rút gọn trong thư mục `artifacts_model/`, giúp bạn tải về và khởi chạy ngay lập tức.
-
-### 1. Tải dự án về máy (Clone Repository)
-```bash
-git clone https://github.com/tuananhta0/Student-Dropout-Prediction.git
-cd Student-Dropout-Prediction
-```
-
-### 2. Tạo môi trường ảo và cài đặt thư viện
-
-**Trên Windows (PowerShell):**
 ```powershell
+git clone -b Dung https://github.com/tuananhta0/Student-Dropout-Prediction.git
+cd Student-Dropout-Prediction
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
-python -m pip install --upgrade pip
-pip install -r requirements.txt
+python -m pip install -r requirements.txt
+python -m scripts.install_dataset "$HOME\Downloads\CMC_Synthetic_Dataset_V3_2_1_CMC_IDS_RESEARCH_CANDIDATE.zip"
 ```
 
-**Trên macOS / Linux (Terminal):**
-```bash
-python3 -m venv .venv
-source .venv/bin/activate
-pip install --upgrade pip
-pip install -r requirements.txt
+Nếu đã cài dataset, bổ sung bảng xét tốt nghiệp thay vì cài lại:
+
+```powershell
+python -m scripts.install_dataset "$HOME\Downloads\CMC_Synthetic_Dataset_V3_2_1_CMC_IDS_RESEARCH_CANDIDATE.zip" --supplement
 ```
 
-### 3. Khởi chạy máy chủ Web
-```bash
-python -m uvicorn app:app --reload --host 127.0.0.1 --port 8000
+```powershell
+$env:CMC_DATA_MODE = 'DEMO'
+python -m uvicorn app:app --host 127.0.0.1 --port 8000
 ```
-Sau khi Terminal hiện thông báo `Application startup complete`, mở trình duyệt và truy cập:
-👉 **http://127.0.0.1:8000**
 
----
+Mở http://127.0.0.1:8000. Mặc định trình diễn tại mốc mô phỏng 03/02/2027 để có kết quả HK3 của khóa 2025. Ngày này không phải ngày hiện tại ngoài đời. Hai chế độ nghiên cứu cũ vẫn dùng được. Không cần huấn luyện lại để chạy demo.
 
-## 🔑 Tài khoản Demo đăng nhập nhanh
+## 🔑 Tài khoản demo
 
-Tại màn hình đăng nhập, bạn có thể bấm chọn trực tiếp 1 trong 3 nút tài khoản mẫu hoặc tự nhập:
-
-| Phân quyền | Tài khoản (`Username`) | Mật khẩu (`Password`) | Ghi chú |
-| :--- | :---: | :---: | :--- |
-| **Sinh viên (Có cảnh báo)** | `BIT250007` | `BIT250007` | SV ngành CNTT (Lớp `IT25-18`), có môn trượt & nợ tín chỉ |
-| **Sinh viên (Học lực Giỏi)** | `BIT250006` | `BIT250006` | SV ngành CNTT (Lớp `IT25-16`), GPA cao, học tập an toàn |
-| **Cố vấn học tập** | `GV001` | `GV001` | Xem báo cáo các Lớp học, Khoa & Hồ sơ từng Sinh viên |
-| **Quản trị viên (Admin)** | `ADMIN` | `ADMIN` | Xem thống kê vĩ mô 19 Khoa/Ngành và toàn trường |
-
----
+| Vai trò | Tài khoản | Mật khẩu |
+|---|---|---|
+| Sinh viên | `BIT250093` | `BIT250093` |
+| Sinh viên | `BIT250006` | `BIT250006` |
+| Sinh viên | `BIT250007` | `BIT250007` |
+| Cố vấn | `GV001` | `GV001` |
+| Quản trị | `ADMIN` | `ADMIN` |
 
 ## 📂 Cấu trúc thư mục
 
 ```text
 Student-Dropout-Prediction/
-├── app.py                              # Máy chủ FastAPI & API phân quyền 3 cấp
-├── chatbot_engine.py                   # Lõi NLP, giải bẫy quy chế, thống kê & mô phỏng What-If
-├── train_model.py                      # Script huấn luyện mô hình Ensemble & xuất chỉ mục
-├── regulations_scanner.py              # Công cụ quét văn bản từ PDF quy chế
-├── requirements.txt                    # Danh sách thư viện Python
-├── templates/
-│   └── index.html                      # Giao diện Web (Login, Chatbot, Bảng điểm & Biểu đồ)
-├── regulations/                        # Văn bản PDF Quy chế đào tạo & Thôi học ĐH CMC
-└── artifacts_model/                    # Mô hình .joblib, metadata & dữ liệu đã chấm điểm
+├── core/                 # Quy tắc, chatbot, dữ liệu
+│   ├── academic_rules.py
+│   ├── chatbot_engine.py
+│   └── data_pipeline.py
+├── scripts/              # Cài dữ liệu, kiểm tra, huấn luyện, quét PDF
+├── tests/                # Kiểm thử đơn vị và tích hợp
+├── docs/                 # Tài liệu hướng dẫn tiếng Việt
+├── templates/            # Giao diện web
+├── regulations/          # Văn bản quy chế
+├── artifacts_model/      # Model và dữ liệu chấm điểm
+├── app.py                # Điểm khởi chạy FastAPI
+├── requirements.txt
+└── README.md
 ```
-### Phase 2: Dataset integration
 
-The runtime now requires the verified V3.2.1 MAIN data. See [PHASE2_DATA.md](PHASE2_DATA.md) for installation, data modes, audit and smoke tests. The default is the synthetic `ASOF_2026_DEMO` view (2026-10-01); the model itself is unchanged.
+`dataset_full/`, `data/` và `.venv/` chỉ tồn tại trên máy, không commit vào Git.
 
-### Phase 3: Academic rules
+## 🧪 Kiểm thử
 
-See [PHASE3_RULES.md](PHASE3_RULES.md) for the policy checks, exact GPA ledger, scenario calculator, source-review reports and prediction horizon limitations.
+```powershell
+python -B -X utf8 -m scripts.audit_dataset
+python -B -X utf8 -m scripts.review_policy
+python -B -X utf8 -m unittest discover -s tests -v
+python -B -X utf8 -m tests.smoke_runtime
+python -B -X utf8 -m tests.smoke_academic_rules
+```
+
+Xem [hướng dẫn dữ liệu](docs/huong_dan_du_lieu.md) và [quy chế, công thức tính toán](docs/quy_che_va_tinh_toan.md). Không chạy huấn luyện khi chưa giải quyết sai lệch làm tròn điểm và các dữ liệu phụ thuộc.

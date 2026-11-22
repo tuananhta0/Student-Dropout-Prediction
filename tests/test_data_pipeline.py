@@ -1,12 +1,12 @@
 import unittest
 import pandas as pd
-from data_pipeline import certificates, asof_state, visible_attempts, course_features, unique, merge_exact, Dataset
+from core.data_pipeline import certificates, asof_state, visible_attempts, course_features, unique, merge_exact, Dataset
 from pathlib import Path
 import tempfile
 import json
 
 
-class Phase2Tests(unittest.TestCase):
+class DataPipelineTests(unittest.TestCase):
     def setUp(self):
         self.snap = pd.DataFrame({'record_uid':['A','A'],'snapshot_term_index':[1,2],
                                   'snapshot_cutoff':['2026-02-03','2026-07-15']})
@@ -50,3 +50,10 @@ class Phase2Tests(unittest.TestCase):
             p=Path(root)/'manifests';p.mkdir(); (p/'generation_manifest.json').write_text(json.dumps({'scenario_id':'V3_2_STRESS'}))
             with self.assertRaises(ValueError):
                 Dataset(root)
+
+    def test_graduation_asof(self):
+        from core.data_pipeline import graduation_asof
+        frame=pd.DataFrame({'record_uid':['A','A'],'snapshot_cutoff':['2026-01-01','2026-02-01']})
+        records=pd.DataFrame({'record_uid':['A'],'available_at':['2026-02-01'],'status':['PENDING'],'clear_finance':[False]})
+        result=graduation_asof(frame,records)
+        self.assertTrue(pd.isna(result.iloc[0].clear_finance));self.assertFalse(result.iloc[1].clear_finance)

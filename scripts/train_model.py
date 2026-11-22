@@ -1,5 +1,5 @@
 import os
-from data_pipeline import Dataset, main_run, course_features, enrich, runtime_view, visible_attempts, KEY
+from core.data_pipeline import Dataset, main_run, course_features, enrich, runtime_view, visible_attempts, KEY, ROOT
 import json
 import joblib
 import pypdf
@@ -14,7 +14,7 @@ from sklearn.metrics import average_precision_score, roc_auc_score, brier_score_
 
 MAIN_RUN = main_run()
 DATASET_ROOT = MAIN_RUN.parents[2]
-OUTPUT_DIR = Path("artifacts_model")
+OUTPUT_DIR = ROOT / "artifacts_model"
 
 def find_file(rel_path: str, fallback_name: str = "") -> Path:
     candidates = [
@@ -25,20 +25,20 @@ def find_file(rel_path: str, fallback_name: str = "") -> Path:
     for candidate in candidates:
         if candidate.is_file():
             if candidate.stat().st_size == 0:
-                raise ValueError(f"Empty input file: {candidate}")
+                raise ValueError(f"File đầu vào rỗng: {candidate}")
             return candidate
 
     checked = ", ".join(str(path) for path in candidates)
     raise FileNotFoundError(
-        f"Required dataset file not found: {rel_path}. Checked: {checked}"
+        f"Không tìm thấy file dữ liệu: {rel_path}. Đã kiểm tra: {checked}"
     )
 
 
 #tong hop thong ke toan truong va khoa luu vao analytics_summary.json
-def build_analytics_summary(df_all: pd.DataFrame, df_ca: pd.DataFrame = None) -> dict:
+def build_analytics_summary(df_all: pd.DataFrame, df_ca: pd.DataFrame = None, threshold=0.21) -> dict:
     latest = df_all.sort_values('snapshot_term_index').drop_duplicates('record_uid', keep='last').copy()
     latest['warn_bool'] = latest['warning_current'].astype(str).str.lower() == 'true'
-    latest['high_risk_bool'] = (latest['risk_probability'] >= 0.21) & latest['state_as_of'].eq('ENROLLED') & latest['prediction_status'].eq('VALID')
+    latest['high_risk_bool'] = (latest['risk_probability'] >= threshold) & latest['state_as_of'].eq('ENROLLED') & latest['prediction_status'].eq('VALID')
     latest['dropout_bool'] = latest['state_as_of'].eq('DROPOUT')
 
     summary = {
@@ -167,7 +167,7 @@ def build_analytics_summary(df_all: pd.DataFrame, df_ca: pd.DataFrame = None) ->
     return summary
 
 def main():
-    # Training remains FULL_SIMULATION research only, independent of runtime mode.
+    # Chỉ huấn luyện nghiên cứu với FULL_SIMULATION, độc lập chế độ giao diện.
     source = Dataset(main_run())
     df_X = source.table('prediction_snapshots')
     df_y = source.table('snapshot_labels_FULL_SIMULATION')
@@ -175,9 +175,9 @@ def main():
     df_stu = source.table('students')
     df_ca = source.table('course_attempts')
     if not df_y.label_observed.all() or df_y.dropout_next_2_terms.isna().any():
-        raise ValueError('FULL_SIMULATION contains unobserved labels')
+        raise ValueError('FULL_SIMULATION chứa nhãn chưa quan sát')
     ca_agg = course_features(df_X, df_ca)
-    from data_pipeline import merge_exact
+    from core.data_pipeline import merge_exact
     df = merge_exact(df_X, df_y[KEY + ['dropout_next_2_terms', 'exit_reason_for_evaluation']], KEY, 'full labels')
     df = merge_exact(df, ca_agg, KEY, 'course aggregates')
 
@@ -201,7 +201,6 @@ def main():
         X_train[c] = X_train[c].astype(str)
         X_val[c] = X_val[c].astype(str)
         X_test[c] = X_test[c].astype(str)
-        df[c] = df[c].astype(str)
 
     preprocessor = ColumnTransformer(
         transformers=[
@@ -239,11 +238,15 @@ def main():
         "num_medians": {c: float(train_df[c].median()) for c in num_cols}
     }
 
-    df['risk_probability'] = ensemble_pipeline.predict_proba(df[feature_cols])[:, 1]
+    X_all = df[feature_cols].copy()
+    for c in cat_cols:
+        X_all[c] = X_all[c].astype(str)
+    df['risk_probability'] = ensemble_pipeline.predict_proba(X_all)[:, 1]
     df['risk_level'] = pd.cut(
         df['risk_probability'],
         bins=[-0.01, 0.12, 0.21, 0.45, 1.01],
-        labels=['Thấp (An toàn)', 'Trung bình (Theo dõi)', 'Cao (Cảnh báo)', 'Rất cao (Can thiệp khẩn)']
+        right=False,
+        labels=['Thấp', 'Trung bình (Theo dõi)', 'Cao (Cảnh báo)', 'Rất cao (Can thiệp khẩn)']
     ).astype(str)
 
     stu_extra_cols = [c for c in ['record_uid', 'major_name', 'gender', 'home_province', 'enrollment_date', 'class_code', 'living_status', 'admission_method', 'admission_score_ratio', 'current_state'] if c in df_stu.columns]

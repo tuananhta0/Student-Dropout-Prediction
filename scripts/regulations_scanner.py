@@ -142,12 +142,12 @@ def scan_and_save_regulations() -> list:
                         "content": " ".join(raw_txt.split())
                     })
         except Exception as e:
-            print(f"Skip {pdf_file.name}: {e}")
+            print(f"Bỏ qua {pdf_file.name}: {e}")
 
     out_path = OUT_DIR / "regulations_index.json"
     with open(out_path, "w", encoding="utf-8") as f:
         json.dump(kb, f, ensure_ascii=False, indent=2)
-    print(f"Da quet va luu {len(kb)} dieu khoan quy che vao {out_path}")
+    print(f"Đã quét và lưu {len(kb)} điều khoản quy chế vào {out_path}")
     return kb
 
 if __name__ == "__main__":

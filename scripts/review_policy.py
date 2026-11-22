@@ -1,10 +1,10 @@
-"""Review actual MAIN source against QĐ22 and published admission methods.
-No mutation of dataset, feature values or model artifacts.
+"""Đối chiếu dữ liệu MAIN với QĐ 22 và phương thức tuyển sinh đã công bố.
+Không thay đổi dữ liệu, đặc trưng hoặc artifact mô hình.
 """
 from pathlib import Path
 import json
 import numpy as np
-from data_pipeline import Dataset, ROOT, gpa_ledger
+from core.data_pipeline import Dataset, ROOT, gpa_ledger, admission_evidence
 
 METHODS = {
     2022: {'CMC100_THPT_30','CMC200_HocBa_30','CMC303_TuyenThang','CMC402_HSA_150','CMC402_VNUHCM_1200'},
@@ -16,7 +16,7 @@ METHODS = {
 
 def main():
     source = Dataset()
-    output = ROOT / 'data/phase3_review'
+    output = ROOT / 'data/doi_chieu_quy_che'
     output.mkdir(parents=True, exist_ok=True)
     t = source.table('term_academics').sort_values(['record_uid','term_index']).copy()
     s = source.table('students')
@@ -29,7 +29,7 @@ def main():
     t['remaining_before'] = t.credits_required-t.groupby('record_uid').credits_earned_cumulative.shift().fillna(0)
     ex = t.loc[(t.credits_registered_term < low)|(t.credits_registered_term > high)].copy()
     final = (ex.remaining_before < ex.registration_min_credits) & (ex.credits_registered_term <= ex.remaining_before)
-    ex['review_status'] = np.where(final,'FINAL_REMAINDER_PENDING_APPROVAL','LOW_LOAD_PENDING_APPROVAL')
+    ex['review_status'] = np.where(final,'FINAL_REMAINDER_SIMULATION_EXCEPTION','LOW_LOAD_UNVERIFIED')
     ex[['record_uid','term_index','remaining_before','credits_registered_term','registration_min_credits','registration_max_credits','review_status']].to_csv(output/'registration.csv',index=False)
     report['registration'] = ex.review_status.value_counts().to_dict()
     barred = (5*a.unexcused_absent_hours > a.scheduled_hours) | (10*(a.unexcused_absent_hours+a.excused_absent_hours)>3*a.scheduled_hours)
@@ -37,7 +37,7 @@ def main():
     exam['review_status'] = 'ATTENDANCE_DOES_NOT_EXPLAIN_RECORDED_STATUS'
     exam.to_csv(output/'exam.csv',index=False)
     report['exam_reviews'] = len(exam)
-    # Source scores have two decimal places. Round half-up to one before grading.
+    # Làm tròn điểm gốc đến một chữ số thập phân trước khi quy đổi.
     hundredths = np.rint(a.course_final_score10*100).astype(int)
     rounded = ((hundredths+5)//10)/10
     expected = np.select([~a.exam_eligible|a.exam_final_score10.le(2),rounded>=9,rounded>=8.5,rounded>=8,rounded>=7,rounded>=6.5,rounded>=5.5,rounded>=5,rounded>=4],['F','A+','A','B+','B','C+','C','D+','D'],default='F')
@@ -60,31 +60,29 @@ def main():
     report['direct_not_applicable'] = int((direct & s.admission_score.isna()).sum())
     s.loc[missing,['record_uid','cohort_year','admission_method','admission_score_missing_reason']].to_csv(output/'admission_missing.csv',index=False)
     s.groupby(['cohort_year','admission_method']).admission_score.agg(['size','count','min','max']).to_csv(output/'admission_method_summary.csv')
-    # Only explicitly published, comparable floors. A review is not a rejection decision.
-    floor = np.full(len(s), np.nan)
-    for year, method, major, minimum in [
-        (2022,'CMC100_THPT_30',None,17),(2022,'CMC200_HocBa_30',None,18),
-        (2022,'CMC402_HSA_150',None,80),(2022,'CMC402_VNUHCM_1200',None,650),
-        (2023,'CMC100_THPT_30',None,18),(2023,'CMC200_HocBa_30','IT',20),
-        (2024,'CMC100_THPT_30',None,18),(2024,'CMC100_THPT_30','IT',20),
-        (2024,'CMC100_THPT_30','CS',20),(2024,'CMC100_THPT_30','EC',20),
-        (2025,'CMC100_THPT_40','IT',24),(2025,'CMC200_HocBa_40','IT',26),
-        (2025,'CMC401_CMCTEST_80','IT',48),
-    ]:
-        mask = s.cohort_year.eq(year) & s.admission_method.eq(method)
-        if major is not None:
-            mask &= s.major_code.eq(major)
-        floor[mask] = minimum
-    comparable = s.admission_score.notna() & np.isfinite(floor)
-    below = comparable & s.admission_score.lt(floor)
+    # Chỉ đối chiếu ngưỡng công bố có thể so sánh, không kết luận trượt tuyển sinh.
+    evidence = admission_evidence(s)
+    floor = evidence.published_floor
+    comparable = s.admission_score.notna() & floor.notna()
+    below = evidence.admission_evidence_status.eq('BELOW_REVIEWED_FLOOR')
+    evidence.to_csv(output/'admission_evidence.csv',index=False)
     out = s.loc[below,['record_uid','cohort_year','major_code','admission_method','admission_score']].copy()
     out['published_floor'] = floor[below]
     out.to_csv(output/'admission_floor_review.csv',index=False)
     report['admission_scores_with_comparable_floor'] = int(comparable.sum())
     report['admission_below_published_floor'] = int(below.sum())
-    report['scope'] = 'Methods, scales and selected published comparable floors; no individual admission or exception approval inferred.'
+    report['scope'] = 'Đối chiếu phương thức, thang điểm và các ngưỡng công bố có thể so sánh. Không suy ra quyết định của trường.'
+    report['xu_ly'] = {'dang_ky_cuoi_chuong_trinh':'Ngoại lệ giả định mô phỏng; không quy kết vi phạm tự động',
+        'dang_ky_thap':'Thiếu căn cứ; không tự tạo tín chỉ hoặc quyết định',
+        'dieu_kien_thi':'Không kết luận cấm thi chỉ từ chuyên cần; giữ kết quả lịch sử',
+        'tuyen_sinh_thieu':'Giữ giá trị thiếu, không điền điểm giả',
+        'tuyen_sinh_duoi_nguong':'Đánh dấu không dùng để kết luận đủ điều kiện tuyển sinh',
+        'lam_tron':'Chờ tái tạo đồng bộ điểm, lịch sử học lại, GPA, feature và nhãn trước khi huấn luyện'}
     (output/'review.json').write_text(json.dumps(report,ensure_ascii=False,indent=2,default=int),encoding='utf-8')
-    print(json.dumps(report,ensure_ascii=False,indent=2,default=int))
+    print('Kết quả đối chiếu quy chế (chi tiết trong data/doi_chieu_quy_che/review.json):')
+    for label,key in [('Ngoại lệ đăng ký','registration'),('Điều kiện thi cần đối chiếu','exam_reviews'),('Điểm chữ cần hiệu chỉnh','grade_rounding_reviews'),('Thiếu điểm tuyển sinh','missing_non_direct'),('Dưới ngưỡng đã đối chiếu','admission_below_published_floor')]:
+        print(f'{label}: {report[key]}')
+    print('Không thay đổi dữ liệu nguồn hoặc quyết định học vụ.')
 
 
 if __name__ == '__main__':

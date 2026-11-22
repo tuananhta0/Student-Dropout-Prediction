@@ -1,4 +1,4 @@
-"""V3.2.1 source contract and point-in-time views. No model training here."""
+"""Kiểm tra dữ liệu V3.2.1 và dựng hồ sơ theo thời điểm, không huấn luyện model."""
 import hashlib
 import json
 import os
@@ -8,7 +8,7 @@ import numpy as np
 import pandas as pd
 
 KEY = ['record_uid', 'snapshot_term_index']
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parents[1]
 MAIN = Path('artifacts/runs/V3_2_MAIN')
 MODES = {'ASOF_2026_DEMO': 'demo_as_of', 'FULL_SIMULATION': 'simulation_as_of'}
 EXIT_TYPES = {'VOLUNTARY_WITHDRAWAL', 'FORCED_ACADEMIC_WITHDRAWAL',
@@ -33,6 +33,7 @@ TABLES = {
     'prediction_snapshots': ('features/prediction_snapshots.csv.gz', [*KEY, 'snapshot_cutoff', 'feature_source_latest_at', 'student_id', 'cohort_year']),
     'snapshot_labels_FULL_SIMULATION': ('labels/snapshot_labels_full_simulation.csv.gz', [*KEY, 'snapshot_cutoff', 'scenario_id', 'observation_view_id', 'dropout_next_2_terms', 'label_observed', 'label_observation_end', 'observation_as_of', 'split', 'first_dropout_event_id']),
     'snapshot_labels_ASOF_2026_DEMO': ('labels/snapshot_labels_asof_2026_demo.csv.gz', [*KEY, 'snapshot_cutoff', 'scenario_id', 'observation_view_id', 'dropout_next_2_terms', 'label_observed', 'label_observation_end', 'observation_as_of', 'split', 'first_dropout_event_id']),
+    'graduation_clearance': ('master/graduation_clearance.csv.gz', ['record_uid','term_index','available_at','status','clear_credits','clear_gpa4','clear_no_outstanding_academic_debt','clear_pe','clear_defense','clear_english','clear_finance','clear_discipline']),
     'feature_registry': ('docs/feature_registry.csv', ['feature_name', 'role']),
 }
 
@@ -49,12 +50,12 @@ def digest(path):
 
 def unique(df, keys, name):
     require(not df[keys].isna().any().any() and not df.duplicated(keys).any(),
-            f'{name}: null or duplicate key {keys}')
+            f'{name}: khóa rỗng hoặc trùng {keys}')
 
 
 def dates(values):
     result = pd.to_datetime(values, format='%Y-%m-%d', errors='raise')
-    require(result.notna().all(), 'Missing required timestamp')
+    require(result.notna().all(), 'Thiếu thời điểm bắt buộc')
     return result
 
 
@@ -67,12 +68,12 @@ class Dataset:
         self.run = Path(run) if run is not None else main_run()
         manifest = self.run / 'manifests/generation_manifest.json'
         if not manifest.is_file():
-            raise FileNotFoundError(f'MAIN dataset missing: {manifest}; run python install_dataset.py <archive>')
+            raise FileNotFoundError(f'Thiếu dữ liệu MAIN: {manifest}; chạy python -m scripts.install_dataset <archive>')
         self.manifest = json.loads(manifest.read_text(encoding='utf-8'))
         require(self.manifest.get('scenario_id') == 'V3_2_MAIN' and
                 self.manifest.get('identity_migration_version') == '3.2.1' and
                 self.manifest.get('n_students') == 20000 and self.manifest.get('is_synthetic') is True,
-                'Expected synthetic V3.2.1 MAIN (not BASE/STRESS)')
+                'Yêu cầu dữ liệu mô phỏng V3.2.1 MAIN, không dùng BASE/STRESS')
         self.cache = {}
 
     def table(self, name):
@@ -80,27 +81,30 @@ class Dataset:
             rel, columns = TABLES[name]
             path = self.run / rel
             contract = self.manifest['documentation_artifacts' if name == 'feature_registry' else 'table_artifacts'][name]
-            require(path.is_file() and digest(path) == contract['sha256'], f'Invalid source hash: {rel}')
+            require(path.is_file() and digest(path) == contract['sha256'], f'SHA256 nguồn không hợp lệ: {rel}')
             df = pd.read_csv(path, low_memory=False)
-            require(set(columns) <= set(df.columns), f'{rel}: missing {set(columns)-set(df.columns)}')
-            require(len(df) == contract['rows'] and len(df.columns) == contract['columns'], f'{rel}: shape mismatch')
+            require(set(columns) <= set(df.columns), f'{rel}: thiếu các trường {set(columns)-set(df.columns)}')
+            require(len(df) == contract['rows'] and len(df.columns) == contract['columns'], f'{rel}: không khớp kích thước')
             self.cache[name] = df
         return self.cache[name]
 
     def cutoff(self, mode):
-        require(mode in MODES, f'Invalid CMC_DATA_MODE: {mode}')
+        if mode == 'DEMO':
+            # Mốc minh họa sau khi khóa 2025 có kết quả HK3; không phải ngày hiện tại.
+            return pd.Timestamp('2027-02-03')
+        require(mode in MODES, f'CMC_DATA_MODE không hợp lệ: {mode}')
         return pd.Timestamp(self.manifest[MODES[mode]])
 
 
 def merge_exact(left, right, keys, name):
     unique(right, keys, name)
     result = left.merge(right, on=keys, how='left', validate='one_to_one', indicator=True)
-    require(result['_merge'].eq('both').all(), f'{name}: missing referenced records')
+    require(result['_merge'].eq('both').all(), f'{name}: thiếu bản ghi tham chiếu')
     return result.drop(columns='_merge')
 
 
 def course_features(snapshots, attempts):
-    """Only grades available AND published at each snapshot's cutoff."""
+    """Chỉ dùng điểm đã khả dụng và công bố tại thời điểm chốt."""
     keys = snapshots[[*KEY, 'snapshot_cutoff']].rename(columns={'snapshot_term_index': 'term_index'})
     unique(keys, ['record_uid', 'term_index'], 'snapshot keys')
     a = attempts.merge(keys, on=['record_uid', 'term_index'], validate='many_to_one')
@@ -121,12 +125,12 @@ def asof_state(frame, states, when):
     right['_effective'] = dates(right.effective_at)
     result = pd.merge_asof(left.sort_values('_date'), right.sort_values('_effective'),
                            left_on='_date', right_on='_effective', by='record_uid', direction='backward')
-    require(result.to_status.notna().all(), 'Missing student state at cutoff')
+    require(result.to_status.notna().all(), 'Thiếu trạng thái sinh viên tại mốc chốt')
     return result.sort_values('_order').to_status.to_numpy()
 
 
 def certificates(frame, events):
-    # Latest known status per student and requirement, not just presence of an event.
+    # Lấy trạng thái mới nhất của từng yêu cầu tại thời điểm chốt.
     unique(events, ['record_uid', 'requirement_type', 'available_at'], 'requirement events')
     results = [[] for _ in range(len(frame))]
     for kind, sub in events.groupby('requirement_type'):
@@ -147,7 +151,7 @@ def enrich(frame, source):
     terms = source.table('term_academics')
     right = terms[['record_uid', 'term_index', 'available_at', *RUNTIME_TERM]].rename(columns={'term_index': 'snapshot_term_index', 'available_at': '_term_available'})
     frame = merge_exact(frame.drop(columns=RUNTIME_TERM, errors='ignore'), right, KEY, 'term academics')
-    require((dates(frame._term_available) <= dates(frame.snapshot_cutoff)).all(), 'Future academic record')
+    require((dates(frame._term_available) <= dates(frame.snapshot_cutoff)).all(), 'Hồ sơ học vụ thuộc tương lai')
     frame = frame.drop(columns='_term_available')
     frame['living_status'] = frame['living_status_at_cutoff']
     frame['verified_certificates'] = certificates(frame, source.table('academic_requirement_events'))
@@ -156,19 +160,19 @@ def enrich(frame, source):
 
 
 def gpa_ledger(source):
-    """Exact cumulative best-grade quality points from published course attempts."""
-    from academic_rules import GRADE_POINTS
+    """Tổng điểm trọng số tích lũy từ điểm chính thức cao nhất đã công bố."""
+    from core.academic_rules import GRADE_POINTS
     a = source.table('course_attempts').merge(
         source.table('courses')[['course_id','is_gpa_eligible','is_certificate_course']],
         on='course_id', validate='many_to_one')
     terms = source.table('term_academics')[['record_uid','term_index','available_at']]
     a = a.merge(terms.rename(columns={'available_at':'term_available'}), on=['record_uid','term_index'], validate='many_to_one')
     require((dates(a.available_at) <= dates(a.term_available)).all() and
-            (dates(a.score_published_at) <= dates(a.term_available)).all(), 'Unpublished grade in GPA ledger')
+            (dates(a.score_published_at) <= dates(a.term_available)).all(), 'Điểm chưa công bố trong sổ GPA')
     a = a.loc[a.is_gpa_eligible & ~a.is_certificate_course & a.grade_letter.isin(GRADE_POINTS)].copy()
     a = a.sort_values(['record_uid','course_id','term_index','attempt_no'])
     groups = ['record_uid','course_id']
-    require(a.groupby(groups).registered_credits.nunique().le(1).all(), 'Changed course credits')
+    require(a.groupby(groups).registered_credits.nunique().le(1).all(), 'Tín chỉ học phần thay đổi')
     a['points'] = a.grade_letter.map(GRADE_POINTS) * a.registered_credits
     a['best'] = a.groupby(groups).points.cummax()
     a['delta'] = a['best'] - a.groupby(groups)['best'].shift().fillna(0)
@@ -195,24 +199,24 @@ def mandatory_course_ledger(source):
 
 
 def runtime_view(scored, source, mode='ASOF_2026_DEMO'):
-    """Keep scores/ML features immutable; replace unsafe display fields only."""
+    """Giữ nguyên đặc trưng ML và xác suất; chỉ bổ sung trường hiển thị."""
     snapshots = source.table('prediction_snapshots')
     unique(scored, KEY, 'scored'); unique(snapshots, KEY, 'snapshots')
-    require(len(scored) == len(snapshots), 'Scored/source population mismatch')
+    require(len(scored) == len(snapshots), 'Quần thể dữ liệu chấm điểm khác nguồn')
     common = snapshots.columns.intersection(scored.columns).difference(KEY)
     check = scored[[*KEY, *common]].merge(snapshots[[*KEY, *common]], on=KEY, validate='one_to_one', suffixes=('_old', '_src'))
-    require(len(check) == len(scored), 'Snapshot keys differ from model artifact')
+    require(len(check) == len(scored), 'Khóa snapshot khác artifact model')
     for c in common:
         a, b = check[c+'_old'], check[c+'_src']
         if pd.api.types.is_numeric_dtype(a) and pd.api.types.is_numeric_dtype(b):
             ok = np.allclose(a.to_numpy(dtype=float), b.to_numpy(dtype=float), equal_nan=True)
         else:
             ok = a.fillna('').astype(str).eq(b.fillna('').astype(str)).all()
-        require(ok, f'Scored/source field mismatch: {c}')
+        require(ok, f'Trường chấm điểm không khớp nguồn: {c}')
     cutoff = source.cutoff(mode)
     frame = scored.loc[dates(scored.snapshot_cutoff) <= cutoff].copy()
     frame = frame.drop(columns=['dropout_next_2_terms', 'exit_reason_for_evaluation', 'label_observed', 'first_dropout_event_id'], errors='ignore')
-    # Runtime never includes labels, even when choosing FULL_SIMULATION.
+    # Không đưa nhãn đánh giá vào dữ liệu runtime.
     frame = enrich(frame, source)
     frame = merge_exact(frame, gpa_ledger(source), KEY, 'GPA ledger')
     frame = merge_exact(frame, mandatory_course_ledger(source), KEY, 'mandatory courses')
@@ -233,3 +237,91 @@ def visible_attempts(attempts, latest):
     return a.loc[(a.term_index <= a.snapshot_term_index) &
                  (dates(a.available_at) <= dates(a.snapshot_cutoff)) &
                  (dates(a.score_published_at) <= dates(a.snapshot_cutoff))].drop(columns=['snapshot_cutoff', 'snapshot_term_index'])
+
+
+def graduation_asof(frame, clearance, when='snapshot_cutoff'):
+    """Ghép kết quả xét tốt nghiệp đã có tại thời điểm tra cứu."""
+    unique(clearance, ['record_uid', 'available_at'], 'xét tốt nghiệp')
+    left = frame[['record_uid', when]].copy()
+    left['_order'] = np.arange(len(left))
+    left['_date'] = dates(left[when])
+    fields = [c for c in clearance if c.startswith('clear_')]
+    right = clearance[['record_uid','available_at','status',*fields]].copy()
+    right['_date_clear'] = dates(right.pop('available_at'))
+    right = right.rename(columns={'status': 'graduation_status'})
+    joined = pd.merge_asof(left.sort_values('_date'), right.sort_values('_date_clear'),
+                           left_on='_date',right_on='_date_clear',by='record_uid',direction='backward')
+    joined = joined.sort_values('_order')
+    result = frame.copy()
+    for c in ['graduation_status',*fields]:
+        result[c] = joined[c].to_numpy()
+    return result
+
+
+def academic_view(ml, source, mode):
+    """Hồ sơ học vụ độc lập với tập đặc trưng ML; không dùng nhãn tương lai."""
+    cutoff = source.cutoff(mode)
+    terms = source.table('term_academics')
+    frame = terms.loc[(dates(terms.available_at) <= cutoff) & (dates(terms.snapshot_cutoff) <= cutoff)].copy()
+    frame = frame.rename(columns={'term_index':'snapshot_term_index', 'duration_counted_to_date':'counted_duration_semesters'})
+    unique(frame, KEY, 'học kỳ')
+    students = source.table('students')
+    static = ['record_uid','student_id','cohort_year','major_code','major_name','class_code','degree_type','education_mode','gender','home_province','enrollment_date','living_status','admission_method','designed_semesters','max_semesters','admission_score_missing_reason','admission_score']
+    frame = frame.merge(students[static+['scholarship_percent']],on='record_uid',validate='many_to_one')
+    evidence = admission_evidence(students)[['record_uid','admission_evidence_status']]
+    frame = frame.merge(evidence,on='record_uid',validate='many_to_one').drop(columns='admission_score')
+    frame = frame.sort_values(['record_uid','snapshot_term_index'])
+    remaining = frame.credits_required - frame.groupby('record_uid').credits_earned_cumulative.shift().fillna(0)
+    out_of_range = frame.credits_registered_term.lt(frame.registration_min_credits) | frame.credits_registered_term.gt(frame.registration_max_credits)
+    final_remainder = out_of_range & remaining.lt(frame.registration_min_credits) & frame.credits_registered_term.le(remaining)
+    frame['registration_assessment'] = np.select([final_remainder,out_of_range],['FINAL_REMAINDER_SIMULATION_EXCEPTION','LOW_LOAD_UNVERIFIED'],default='WITHIN_RANGE')
+    frame['scholarship_percent_at_cutoff'] = frame['scholarship_percent']
+    frame['failed_credit_ratio'] = frame.credits_failed_term.div(frame.credits_registered_term.replace(0,np.nan))
+    frame['verified_certificates'] = certificates(frame, source.table('academic_requirement_events'))
+    frame['current_state'] = asof_state(frame, source.table('state_transitions'), 'snapshot_cutoff')
+    frame = merge_exact(frame,gpa_ledger(source),KEY,'GPA')
+    frame = merge_exact(frame,mandatory_course_ledger(source),KEY,'học phần bắt buộc')
+    # Ghép xác suất lịch sử tại hoặc trước ngày học vụ, không thay đổi feature của model.
+    risk = ml[['record_uid','snapshot_term_index','snapshot_cutoff','risk_probability','risk_level','prediction_valid_until']].rename(columns={'snapshot_term_index':'prediction_term','snapshot_cutoff':'prediction_cutoff'})
+    frame['_date'] = dates(frame.snapshot_cutoff)
+    risk['_prediction_date'] = dates(risk.prediction_cutoff)
+    frame = pd.merge_asof(frame.sort_values('_date'),risk.sort_values('_prediction_date'),left_on='_date',right_on='_prediction_date',by='record_uid',direction='backward').drop(columns=['_date','_prediction_date'])
+    frame['prediction_status'] = np.select([frame.risk_probability.isna(), (pd.to_datetime(frame.prediction_valid_until) <= cutoff) | frame.prediction_term.ne(frame.snapshot_term_index)],['UNKNOWN','STALE'],default='VALID')
+    frame['data_mode'] = mode
+    frame['data_as_of'] = cutoff.date().isoformat()
+    frame = graduation_asof(frame, source.table('graduation_clearance'))
+    latest = frame.sort_values('snapshot_term_index').drop_duplicates('record_uid',keep='last').copy()
+    latest['state_as_of'] = asof_state(latest,source.table('state_transitions'),'data_as_of')
+    frame['state_as_of'] = frame.record_uid.map(latest.set_index('record_uid').state_as_of)
+    # Điều kiện tốt nghiệp có thể được công bố sau ngày chốt bảng điểm.
+    latest = graduation_asof(latest, source.table('graduation_clearance'), 'data_as_of')
+    latest['verified_certificates'] = certificates(latest.assign(snapshot_cutoff=latest.data_as_of),source.table('academic_requirement_events'))
+    # Cập nhật đúng dòng cuối của lịch sử để API hồ sơ và thống kê nhất quán.
+    fields = ['verified_certificates','graduation_status',*[c for c in latest if c.startswith('clear_')]]
+    frame = frame.set_index(KEY); update = latest.set_index(KEY)
+    frame.loc[update.index,fields] = update[fields]
+    return frame.reset_index(),latest
+
+
+def admission_evidence(s):
+    """Phân biệt điểm thiếu, tuyển thẳng, điểm dưới ngưỡng và dữ liệu chưa đủ căn cứ."""
+    floor = np.full(len(s), np.nan)
+    for year, method, major, minimum in [
+        (2022,'CMC100_THPT_30',None,17),(2022,'CMC200_HocBa_30',None,18),
+        (2022,'CMC402_HSA_150',None,80),(2022,'CMC402_VNUHCM_1200',None,650),
+        (2023,'CMC100_THPT_30',None,18),(2023,'CMC200_HocBa_30','IT',20),
+        (2024,'CMC100_THPT_30',None,18),(2024,'CMC100_THPT_30','IT',20),
+        (2024,'CMC100_THPT_30','CS',20),(2024,'CMC100_THPT_30','EC',20),
+        (2025,'CMC100_THPT_40','IT',24),(2025,'CMC200_HocBa_40','IT',26),
+        (2025,'CMC401_CMCTEST_80','IT',48),
+    ]:
+        mask = s.cohort_year.eq(year) & s.admission_method.eq(method)
+        if major is not None:
+            mask &= s.major_code.eq(major)
+        floor[mask] = minimum
+    comparable = s.admission_score.notna() & np.isfinite(floor)
+    below = comparable & s.admission_score.lt(floor)
+    direct = s.admission_method.eq('CMC303_TuyenThang')
+    status = np.select([direct, s.admission_score.isna(), below, comparable],
+        ['DIRECT_NOT_APPLICABLE','MISSING','BELOW_REVIEWED_FLOOR','MEETS_REVIEWED_FLOOR'],default='NO_COMPARABLE_FLOOR')
+    return pd.DataFrame({'record_uid':s.record_uid,'admission_evidence_status':status,'published_floor':floor},index=s.index)

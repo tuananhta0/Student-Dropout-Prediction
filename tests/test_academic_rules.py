@@ -1,11 +1,11 @@
 import unittest
-from academic_rules import (registration_bounds, warning_reasons, withdrawal_reasons,
+from core.academic_rules import (registration_bounds, warning_reasons, withdrawal_reasons,
                             exam_barred, course_grade, official_gpa, projected_gpa,
                             projection, graduation_conditions)
-from chatbot_engine import CMCChatbotEngine
+from core.chatbot_engine import CMCChatbotEngine
 
 
-class Phase3Tests(unittest.TestCase):
+class AcademicRulesTests(unittest.TestCase):
     def test_registration(self):
         self.assertEqual(registration_bounds(15),(10,22))
         self.assertEqual(registration_bounds(18),(12,27))
@@ -86,5 +86,32 @@ class Phase3Tests(unittest.TestCase):
         warnings=engine.evaluate_student_warnings(dict(state_as_of='ENROLLED',snapshot_term_index=1,gpa4_term=3,
             credits_registered_term=15,credits_failed_term=0,credits_owed_cumulative=0,warning_streak=0,
             warnings_total_to_date=0,counted_duration_semesters=1,degree_type='Bachelor',risk_probability=.8,prediction_status='STALE'))
-        self.assertTrue(any('hết horizon' in w['title'] for w in warnings))
+        self.assertTrue(any('hết hạn' in w['title'] for w in warnings))
         self.assertFalse(any('Nguy cơ thôi học dự báo' in w['title'] for w in warnings))
+
+    def test_strict_bool_and_invalid_counts(self):
+        from core.academic_rules import strict_bool, number
+        import numpy as np
+        self.assertIsNone(strict_bool(np.nan))
+        self.assertIsNone(number(True))
+        with self.assertRaises(ValueError):
+            strict_bool('False')
+        with self.assertRaises(ValueError):
+            withdrawal_reasons(3,1,3,'Bachelor')
+        self.assertIsNone(warning_reasons(1.5,0,12,0,0)['gpa'])
+        with self.assertRaises(ValueError):
+            official_gpa([dict(course_id='X',registered_credits=3,grade_letter='A',is_gpa_eligible=np.nan)])
+
+    def test_retake_projection(self):
+        from core.academic_rules import retake_projection
+        rows=[dict(course_id='X',registered_credits=3,grade_letter='F',is_gpa_eligible=True),dict(course_id='Y',registered_credits=3,grade_letter='B',is_gpa_eligible=True)]
+        self.assertEqual(retake_projection(rows,{'X':'B'})['gpa_after'],3)
+        self.assertEqual(retake_projection(rows,{'X':'B'})['gpa_credits'],6)
+        self.assertEqual(retake_projection(rows,{'Y':'D'})['gpa_after'],1.5)
+        self.assertEqual(retake_projection(rows,{'X':'B'},4,3)['gpa_after'],3.33)
+        with self.assertRaises(ValueError):
+            retake_projection(rows,{'Z':'B'})
+
+    def test_clearance_flags(self):
+        c=graduation_conditions(dict(clear_finance=True,clear_discipline=False,clear_english=False,verified_certificates='ENGLISH',clear_no_outstanding_academic_debt=True,credits_owed_cumulative=3))
+        self.assertTrue(c['financial']); self.assertFalse(c['english']); self.assertFalse(c['academic_debt']); self.assertFalse(c['discipline_and_criminal_clearance'])

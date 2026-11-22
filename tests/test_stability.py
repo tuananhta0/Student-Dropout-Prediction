@@ -5,11 +5,11 @@ from unittest.mock import patch
 
 import pandas as pd
 
-from chatbot_engine import CMCChatbotEngine
-import train_model
+from core.chatbot_engine import CMCChatbotEngine
+from scripts import train_model
 
 
-class Phase1Tests(unittest.TestCase):
+class StabilityTests(unittest.TestCase):
 
     def setUp(self):
         self.engine = CMCChatbotEngine.__new__(CMCChatbotEngine)
@@ -19,7 +19,7 @@ class Phase1Tests(unittest.TestCase):
         self.engine.pipeline = None
 
     def test_no_backspace_control_bytes(self):
-        source = Path("chatbot_engine.py").read_bytes()
+        source = Path("core/chatbot_engine.py").read_bytes()
         self.assertNotIn(bytes([8]), source)
 
     def test_student_id(self):
@@ -138,7 +138,7 @@ class Phase1Tests(unittest.TestCase):
                 (root / name).write_bytes(b"test")
 
             with patch(
-                "chatbot_engine.joblib.load",
+                "core.chatbot_engine.joblib.load",
                 side_effect=ValueError("Corrupt artifact")
             ):
                 with self.assertRaises(RuntimeError):
@@ -150,7 +150,7 @@ class Phase1Tests(unittest.TestCase):
             with patch.object(train_model, "DATASET_ROOT", root):
                 with patch.object(train_model, "MAIN_RUN", root):
                     with self.assertRaises(FileNotFoundError):
-                        train_model.find_file("missing_phase1_input.csv")
+                        train_model.find_file("missing_input.csv")
 
     def test_existing_training_input(self):
         with tempfile.TemporaryDirectory() as root:

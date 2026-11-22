@@ -1,7 +1,7 @@
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 from pydantic import BaseModel
-from chatbot_engine import CMCChatbotEngine, row_to_clean_dict, df_to_clean_records
+from core.chatbot_engine import CMCChatbotEngine, row_to_clean_dict, df_to_clean_records, risk_display
 from pathlib import Path
 import traceback
 
@@ -29,7 +29,7 @@ def index():
 @app.get("/api/data-view")
 def data_view():
     return {"mode": engine.data_mode, "as_of": engine.data_as_of,
-            "synthetic": True, "snapshots": len(engine.df),
+            "synthetic": True, "snapshots": len(engine.ml_df), "academic_terms": len(engine.df),
             "active_students": len(engine.active_latest_df),
             "students_with_snapshots": len(engine.latest_df)}
 
@@ -83,6 +83,7 @@ def get_student_me(user_id: str, role: str = "student"):
     courses = engine.get_student_courses(str(latest.get("record_uid", "")))
     return {
         "latest": latest,
+        "risk_display": risk_display(latest, engine.meta["threshold"]),
         "history": history,
         "warnings": warnings,
         "gpa_projection": engine.calc_next_term_gpa_projection(latest),
@@ -121,7 +122,7 @@ def get_admin_faculty_detail(major_code: str, role: str = "admin"):
         raise HTTPException(status_code=403, detail="Không có quyền truy cập.")
     detail = engine.get_faculty_detail(major_code)
     if not detail:
-        raise HTTPException(status_code=404, detail="Not found")
+        raise HTTPException(status_code=404, detail="Không tìm thấy khoa.")
     return detail
 
 @app.post("/api/chat")

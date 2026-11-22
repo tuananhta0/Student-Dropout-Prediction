@@ -1,7 +1,7 @@
 import re
-from academic_rules import number, rounded, registration_bounds, warning_reasons, withdrawal_reasons, exam_barred, course_grade, projection, graduation_conditions
+from core.academic_rules import number, rounded, registration_bounds, warning_reasons, withdrawal_reasons, exam_barred, course_grade, projection, graduation_conditions, retake_projection, strict_bool
 import os
-from data_pipeline import Dataset, runtime_view, visible_attempts
+from core.data_pipeline import Dataset, runtime_view, visible_attempts, academic_view
 import json
 import math
 import unicodedata
@@ -12,6 +12,19 @@ import warnings
 from sklearn.exceptions import InconsistentVersionWarning
 import pandas as pd
 from pathlib import Path
+
+def risk_display(row, threshold):
+    """Nhãn tiếng Việt; không coi dự báo lịch sử là nguy cơ hiện tại."""
+    risk = number(row.get('risk_probability'),0,1)
+    if row.get('state_as_of') not in (None,'ENROLLED'):
+        return 'Hồ sơ lịch sử'
+    if risk is None:
+        return 'Chưa có dự báo'
+    if row.get('prediction_status') != 'VALID':
+        return 'Dự báo đã hết hạn'
+    level = 'Rất cao' if risk >= .45 else 'Cao' if risk >= threshold else 'Trung bình' if risk >= .12 else 'Thấp'
+    return f'Nguy cơ thôi học: {risk*100:.1f}% ({level})'
+
 
 def normalize_vn(text: str) -> str:
     return unicodedata.normalize("NFC", str(text)).strip().lower()
@@ -65,7 +78,7 @@ class CMCChatbotEngine:
         for path in (pipe_path, meta_path, scored_path, summary_path):
             if not path.is_file() or path.stat().st_size == 0:
                 raise FileNotFoundError(
-                    f"Required artifact missing or empty: {path}"
+                    f"Thiếu artifact hoặc file rỗng: {path}"
                 )
 
         try:
@@ -74,22 +87,22 @@ class CMCChatbotEngine:
                 self.pipeline = joblib.load(pipe_path)
 
             if not callable(getattr(self.pipeline, "predict_proba", None)):
-                raise TypeError("Artifact does not support predict_proba")
+                raise TypeError("Artifact không hỗ trợ predict_proba")
         except Exception as exc:
-            raise RuntimeError(f"Cannot load model: {pipe_path}") from exc
+            raise RuntimeError(f"Không tải được mô hình: {pipe_path}") from exc
 
         self.meta = json.loads(meta_path.read_text(encoding="utf-8"))
         self.analytics = json.loads(summary_path.read_text(encoding="utf-8"))
 
         if not isinstance(self.meta, dict) or not self.meta.get("feature_cols"):
-            raise ValueError("Invalid model metadata")
+            raise ValueError("Metadata mô hình không hợp lệ")
 
         if not isinstance(self.analytics, dict) or not self.analytics.get("by_cohort"):
-            raise ValueError("Invalid analytics summary")
+            raise ValueError("Tóm tắt thống kê không hợp lệ")
 
         for key in ("threshold", "test_pr_auc", "test_roc_auc", "test_brier"):
             if key not in self.meta:
-                raise ValueError(f"Missing model metadata field: {key}")
+                raise ValueError(f"Thiếu trường metadata mô hình: {key}")
 
         self.df = pd.read_csv(scored_path, low_memory=False)
 
@@ -101,17 +114,18 @@ class CMCChatbotEngine:
 
         missing = required - set(self.df.columns)
         if missing:
-            raise ValueError(f"Missing snapshot columns: {sorted(missing)}")
+            raise ValueError(f"Thiếu cột snapshot: {sorted(missing)}")
 
         if self.df.empty:
-            raise ValueError("Scored student dataset is empty")
+            raise ValueError("Dữ liệu chấm điểm rỗng")
 
         if not self.df["risk_probability"].between(0, 1).all():
-            raise ValueError("Invalid stored risk probabilities")
+            raise ValueError("Xác suất đã lưu không hợp lệ")
 
-        self.data_mode = os.environ.get("CMC_DATA_MODE", "ASOF_2026_DEMO")
+        self.data_mode = os.environ.get("CMC_DATA_MODE", "DEMO")
         source = Dataset()
-        self.df, self.latest_df = runtime_view(self.df, source, self.data_mode)
+        self.ml_df, _ = runtime_view(self.df, source, self.data_mode)
+        self.df, self.latest_df = academic_view(self.ml_df, source, self.data_mode)
         self.data_as_of = source.cutoff(self.data_mode).date().isoformat()
         self.df["warning_bool"] = self.df["warning_current"].astype(str).str.lower().eq("true")
         self.latest_df["warning_bool"] = self.latest_df["warning_current"].astype(str).str.lower().eq("true")
@@ -120,9 +134,10 @@ class CMCChatbotEngine:
         self.df_attempts = visible_attempts(source.table("course_attempts"), self.latest_df)
         catalog = source.table("courses")
         self.course_names = dict(zip(catalog.course_id, catalog.course_name))
-        # Rebuild statistics for this view; legacy summary is never displayed.
-        from train_model import build_analytics_summary
-        self.analytics = build_analytics_summary(self.df, self.df_attempts)
+        self.course_catalog = catalog.set_index("course_id")
+        # Tính lại thống kê theo mốc dữ liệu, không dùng thống kê cũ.
+        from scripts.train_model import build_analytics_summary
+        self.analytics = build_analytics_summary(self.df, self.df_attempts, self.meta["threshold"])
 
     def resolve_course_info(self, course_id: str) -> tuple:
         cid = str(course_id).strip()
@@ -142,16 +157,7 @@ class CMCChatbotEngine:
 
     @staticmethod
     def _optional_bool(value):
-        if pd.isna(value):
-            return None
-
-        value = str(value).strip().lower()
-
-        if value in ("true", "1", "1.0"):
-            return True
-        if value in ("false", "0", "0.0"):
-            return False
-        return None
+        return strict_bool(value)
 
     def get_student_courses(
         self, record_uid: str, term_filter: int = None,
@@ -226,7 +232,7 @@ class CMCChatbotEngine:
                                   row.get('credits_owed_cumulative'))
         for k, title in [('gpa','GPA học kỳ dưới ngưỡng'),('failed','Trượt quá 50% tín chỉ'),('owed','Nợ quá 24 tín chỉ')]:
             if reasons[k] is True:
-                add("danger", title, "Đủ tiêu chí cảnh báo theo Điều 18.1 tại snapshot.")
+                add("danger", title, "Đủ tiêu chí cảnh báo theo Điều 18.1 tại học kỳ đã ghi nhận.")
         if any(v is None for v in reasons.values()):
             add("info", "Thiếu dữ liệu cảnh báo", "Chưa thể kết luận đầy đủ theo Điều 18.1.")
         exit_reasons = withdrawal_reasons(row.get('warning_streak'), row.get('warnings_total_to_date'),
@@ -242,7 +248,10 @@ class CMCChatbotEngine:
         reg = number(row.get('credits_registered_term'))
         lo, hi = number(row.get('registration_min_credits')), number(row.get('registration_max_credits'))
         if None not in (reg, lo, hi) and not lo <= reg <= hi:
-            add("warning", "Ngoài giới hạn đăng ký mặc định", f"Điều 12.2e: {lo:.0f}–{hi:.0f} TC; đăng ký {reg:.0f} TC. Cần xác minh ngoại lệ.")
+            if row.get('registration_assessment') == 'FINAL_REMAINDER_SIMULATION_EXCEPTION':
+                add("info", "Khối lượng cuối chương trình", "Ngoại lệ giả định của dữ liệu mô phỏng; không kết luận vi phạm hoặc đã được trường phê duyệt.")
+            else:
+                add("warning", "Ngoài giới hạn đăng ký mặc định", f"Điều 12.2e: {lo:.0f}–{hi:.0f} TC; đăng ký {reg:.0f} TC. Thiếu căn cứ xác nhận ngoại lệ.")
         att = number(row.get('attendance_rate_term'),0,100)
         if att is not None and att < 85:
             add("warning", "Chuyên cần thấp", "Chỉ xét cấm thi từ số giờ vắng của từng học phần (Điều 25.1a).")
@@ -251,14 +260,14 @@ class CMCChatbotEngine:
             add("info", f"Công nợ học phí: {debt:,.0f}đ", "Kiểm tra nghĩa vụ tài chính (Điều 20).")
         risk = number(row.get('risk_probability'),0,1)
         if row.get('prediction_status') == 'STALE':
-            add("info", "Dự báo ML đã hết horizon", "Chỉ tham khảo kết quả lịch sử; không dùng để can thiệp hiện tại.")
-        elif risk is not None and risk >= self.meta['threshold']:
+            add("info", "Dự báo ML đã hết hạn", "Chỉ tham khảo kết quả lịch sử; không dùng để can thiệp hiện tại.")
+        elif row.get('prediction_status') == 'VALID' and risk is not None and risk >= self.meta['threshold']:
             add("warning", f"Nguy cơ thôi học dự báo: {risk*100:.1f}%", "Không phải cảnh báo theo quy chế.")
-        return alerts or [{"level":"safe","title":"Không phát hiện vi phạm tại snapshot","detail":"Không phải xác nhận đủ điều kiện tốt nghiệp."}]
+        return alerts or [{"level":"safe","title":"Không phát hiện vi phạm tại học kỳ đã ghi nhận","detail":"Không phải xác nhận đủ điều kiện tốt nghiệp."}]
 
     def predict_what_if(self, custom_input: dict) -> dict:
         if self.pipeline is None:
-            raise RuntimeError("Dropout model is unavailable")
+            raise RuntimeError("Mô hình dự báo thôi học không khả dụng")
 
         base_row = {}
 
@@ -283,7 +292,7 @@ class CMCChatbotEngine:
         prob = float(self.pipeline.predict_proba(X_df)[:, 1][0])
 
         if not math.isfinite(prob) or not 0 <= prob <= 1:
-            raise ValueError("Model returned an invalid probability")
+            raise ValueError("Mô hình trả xác suất không hợp lệ")
 
         lvl = (
             "Rất cao" if prob >= 0.45
@@ -304,7 +313,7 @@ class CMCChatbotEngine:
         if re.fullmatch(r'(hello|hi|alo|chao|chao ban|xin chao|hey|good morning|chao ad|bot oi)\W*', q_ascii):
             return """<div class="bg-[#131314] border border-[#333537] rounded-2xl p-4 text-xs space-y-2">
               <div class="text-sm font-bold text-blue-300">👋 Xin chào! Tôi là Trợ lý AI Học vụ Trường Đại học CMC.</div>
-              <div class="text-[#c4c7c5]">Tôi có thể hỗ trợ bạn tra cứu <b>Quy chế đào tạo (QĐ 22/2023)</b>, <b>Bảng điểm & Dự đoán Điểm kỳ sau</b>, và <b>Thống kê theo Khoa/Lớp</b>.</div></div>"""
+              <div class="text-[#c4c7c5]">Tôi có thể hỗ trợ bạn tra cứu <b>Quy chế đào tạo (QĐ 22/2023)</b>, <b>Bảng điểm & Kịch bản GPA kỳ sau</b>, và <b>Thống kê theo Khoa/Lớp</b>.</div></div>"""
         emotion_kw = ["buon qua", "ap luc", "chan hoc", "met moi", "stress", "so bi duoi", "khung hoang", "bo cuoc", "bat luc"]
         if any(k in q_ascii for k in emotion_kw) and not any(k in q_ascii for k in ["dieu", "quy che", "thong ke"]):
             return """<div class="bg-[#131314] border border-emerald-500/40 rounded-2xl p-4 text-xs space-y-2">
@@ -341,7 +350,9 @@ class CMCChatbotEngine:
                     term = 1
                 elif term:
                     term = int(term.group(1))
-                if term:
+                if isinstance(term,int) and term < 1:
+                    notes.append("Học kỳ phải từ 1 trở lên.")
+                elif term:
                     bad = warning_reasons(term,g,None,None,None)['gpa']
                     notes.append(f"Điều 18.1a: {'Bị' if bad else 'Không bị'} cảnh báo vì GPA; còn tiêu chí tín chỉ.")
                 else:
@@ -373,7 +384,7 @@ class CMCChatbotEngine:
                 notes.append("Điều 25.1a: " + ("Cấm thi và phải học lại." if barred else "Không vượt ngưỡng vắng đã nêu; cần kiểm tra tổng số giờ và lý do khác."))
             except ValueError:
                 notes.append("Tỷ lệ vắng không hợp lệ.")
-        m = re.search(r'(?:thi cuoi ky|diem thi|thi lai)\s*(?:la|duoc|=)?\s*(\d+(?:\.\d+)?)',q)
+        m = re.search(r'(?:thi cuoi ky|diem thi|thi lai)\s*(?:la|duoc|=)?\s*(-?\d+(?:\.\d+)?)',q)
         if m:
             v = number(m.group(1),0,10)
             if v is None:
@@ -396,12 +407,12 @@ class CMCChatbotEngine:
         if any(k in q_ascii for k in privacy_kw):
             return """<div class="bg-[#131314] border border-emerald-500/40 rounded-2xl p-4 text-xs space-y-2 leading-relaxed">
               <div class="text-sm font-bold text-emerald-300">🔐 Chính sách Quyền riêng tư & Bảo vệ Dữ liệu Cá nhân</div>
-              <div class="text-[#d1d5db]">Hệ thống RBAC 3 cấp tuân thủ Nghị định 13/2023/NĐ-CP: chỉ chính sinh viên, Cố vấn và Quản trị được xem điểm/mức dự báo theo thẩm quyền. Nhà trường chỉ thông báo về gia đình khi có <b>Quyết định buộc thôi học chính thức (Điều 18.3)</b>; Chatbot không tự gửi cảnh báo sớm cho phụ huynh.</div></div>"""
+              <div class="text-[#d1d5db]">Ứng dụng đang dùng dữ liệu mô phỏng và tài khoản demo. Xác thực, phân quyền phía máy chủ chưa hoàn thiện; không đưa hồ sơ thật lên hệ thống. Nhà trường chỉ thông báo về gia đình khi có <b>Quyết định buộc thôi học chính thức (Điều 18.3)</b>; Chatbot không tự gửi cảnh báo sớm cho phụ huynh.</div></div>"""
         model_kw = ["pr-auc", "roc-auc", "brier", "recall", "precision", "1/3 ca thoi hoc", "30% ca thoi hoc", "goi nham", "cong bang giua nam va nu", "du lieu mo phong"]
         if any(k in q_ascii for k in model_kw):
             return f"""<div class="bg-[#131314] border border-amber-500/40 rounded-2xl p-4 text-xs space-y-2 leading-relaxed">
               <div class="text-sm font-bold text-amber-300">🤖 Thông số Mô hình Dự báo Học máy & Giới hạn Sử dụng</div>
-              <div class="text-[#d1d5db]">Mô hình Ensemble đạt <b>ROC-AUC = {self.meta.get('test_roc_auc', 0.8312)}</b>, <b>PR-AUC = {self.meta.get('test_pr_auc', 0.5460)}</b> và <b>Brier Score = {self.meta.get('test_brier', 0.0518)}</b>. Ngưỡng cảnh báo <b>0.21</b> ưu tiên Recall để hỗ trợ sớm. Mọi dự báo chỉ dùng để tham khảo tư vấn học tập.</div></div>"""
+              <div class="text-[#d1d5db]">Mô hình Ensemble đạt <b>ROC-AUC = {self.meta.get('test_roc_auc', 0.8312)}</b>, <b>PR-AUC = {self.meta.get('test_pr_auc', 0.5460)}</b> và <b>Brier Score = {self.meta.get('test_brier', 0.0518)}</b>. Ngưỡng model hiện tại <b>{self.meta['threshold']:.2f}</b>; chưa tối ưu độc lập cho mọi nhóm. Mọi dự báo chỉ dùng để tham khảo tư vấn học tập.</div></div>"""
         return ""
 
     def answer_personal_metric_query(self, query: str, records: pd.DataFrame) -> str:
@@ -445,9 +456,21 @@ class CMCChatbotEngine:
                 else:
                     matched_lines.append(f"• <b>{label} (HK{int(latest['snapshot_term_index'])}):</b> <b>{cur_str}</b>")
 
+        if any(k in q_ascii for k in ['kich ban hoc lai','kich ban cai thien','gpa hoc lai']):
+            # Cú pháp xác định môn học và điểm chữ, không tự giả định lựa chọn của sinh viên.
+            match = re.search(r'(?:hoc lai|cai thien)\s+(\S+)\s+(?:dat|len)\s+(A\+|A|B\+|B|C\+|C|D\+|D|F)(?:\s|$)', q_ascii, flags=re.IGNORECASE)
+            if match:
+                try:
+                    result = self.calculate_retake(latest['record_uid'], {match.group(1):match.group(2).upper()})
+                    matched_lines.append(f"Kịch bản học lại: GPA {result['gpa_before']:.2f} → {result['gpa_after']:.2f}; tín chỉ tính GPA {result['gpa_credits']:.0f} (không cộng trùng).")
+                except ValueError as exc:
+                    matched_lines.append(str(exc))
+            else:
+                matched_lines.append('Nhập: Kịch bản học lại MÃ_HỌC_PHẦN đạt B. Dùng mã đầy đủ trong bảng điểm.')
         if any(k in q_ascii for k in ["dieu kien tot nghiep", "dieu kien nao de xet tot nghiep", "chung chi the chat", "chuan tieng anh dau ra chua", "du dieu kien tot nghiep"]):
             conditions = graduation_conditions(latest)
             labels = dict(credits='Tín chỉ',mandatory_courses='Học phần bắt buộc',gpa='GPA',english='Ngoại ngữ (SM B1 / GM B2)',physical_education='GDTC',national_defense='GDQP-AN',financial='Tài chính',program_outcomes='Chuẩn đầu ra/nội dung bắt buộc',discipline_and_criminal_clearance='Kỷ luật/TNHS')
+            labels['academic_debt'] = 'Nợ học phần'
             status = lambda v: 'Đạt theo hồ sơ mô phỏng' if v is True else 'Chưa đạt' if v is False else 'Chưa đủ bằng chứng xác nhận'
             matched_lines.append("Điều 19–20 (không phải quyết định tốt nghiệp): " + "; ".join(f"{labels[k]}: {status(v)}" for k,v in conditions.items()))
 
@@ -457,11 +480,23 @@ class CMCChatbotEngine:
           <div class="text-sm font-bold text-blue-300">👤 Tra cứu Chỉ số Hồ sơ Cá nhân: {latest['student_id']} (Lớp {latest.get('class_code','')})</div>
           <div class="text-[#e3e3e3]">{"<br>".join(matched_lines)}</div></div>"""
 
+    def calculate_retake(self, record_uid, changes, new_gpa=0, new_credits=0):
+        records = self.get_student_records(record_uid)
+        if records.empty or records.iloc[-1]['state_as_of'] != 'ENROLLED':
+            raise ValueError('Không có hồ sơ đang học phù hợp')
+        attempts = self.df_attempts.loc[self.df_attempts.record_uid.eq(record_uid)].merge(
+            self.course_catalog[['is_gpa_eligible','is_certificate_course']],left_on='course_id',right_index=True,validate='many_to_one')
+        ids = {str(c).lower():c for c in attempts.course_id}
+        changes = {ids.get(k.lower(),k):v for k,v in changes.items()}
+        return retake_projection(attempts.to_dict('records'),changes,new_gpa,new_credits)
+
     def calc_next_term_gpa_projection(self, row: dict):
-        return projection(row)
+        return projection(row) if row.get('state_as_of') in (None,'ENROLLED') else None
 
     def answer_risk_and_whatif_query(self, query: str, records: pd.DataFrame) -> str:
         q = strip_accents(query)
+        if any(k in q for k in ["kich ban hoc lai","kich ban cai thien","gpa hoc lai"]):
+            return ""
         if not any(k in q for k in ["du doan","du bao","ky sau","ki sau","ky toi","tuong lai","nguy co","xac suat","what-if","what if","gia lap","kich ban","cong thuc","muc tieu gpa","can dat bao nhieu","cai thien"]):
             return ""
         latest = row_to_clean_dict(records.iloc[-1])
@@ -471,7 +506,7 @@ class CMCChatbotEngine:
         if p is None:
             return "<div>Không đủ dữ liệu GPA hoặc không còn tín chỉ mới để lập kịch bản.</div>"
         risk = number(latest.get("risk_probability"),0,1)
-        risk_text = "Chưa có dự báo" if risk is None else f"{risk*100:.2f}% tại snapshot {latest.get('snapshot_cutoff','')} ({latest.get('prediction_status','UNKNOWN')})"
+        risk_text = "Chưa có dự báo" if risk is None else risk_display(latest, self.meta['threshold'])
         required = f"{p['req_gpa_next']:.2f}" if p['req_gpa_next'] <= 4 else "Không thể đạt chỉ bằng số tín chỉ mới giả định"
         return f"""<div class="bg-[#131314] rounded-xl p-4 text-xs space-y-2">
           <b>Kịch bản GPA sau HK{latest['snapshot_term_index']} (Điều 15, 17)</b>
@@ -564,7 +599,7 @@ class CMCChatbotEngine:
         ])
 
         blocks.append(f"""<div class="bg-[#131314] border border-[#333537] rounded-2xl p-4 text-xs space-y-3 leading-relaxed">
-          <div class="text-sm font-bold text-emerald-300">📊 Báo cáo Tổng hợp từ snapshot đã công bố (V3.2.1; {getattr(self, "data_as_of", "")})</div>
+          <div class="text-sm font-bold text-emerald-300">📊 Báo cáo tổng hợp hồ sơ học vụ (V3.2.1; {getattr(self, "data_as_of", "")})</div>
           <div class="overflow-x-auto"><table class="w-full text-left text-xs">
             <thead><tr class="border-b border-[#333537] text-[#9aa0a6]"><th class="py-1.5 px-2">Khóa</th><th class="py-1.5 px-2">Quy mô</th><th class="py-1.5 px-2">GPA TB</th><th class="py-1.5 px-2">Cảnh báo</th><th class="py-1.5 px-2">Cần hỗ trợ sớm</th><th class="py-1.5 px-2">Tỷ lệ đã thôi học tại mốc dữ liệu</th></tr></thead>
             <tbody>{cohort_rows}</tbody></table></div>
@@ -609,7 +644,7 @@ class CMCChatbotEngine:
           <div class="flex flex-wrap justify-between items-center border-b border-[#333537] pb-2">
             <div><div class="text-sm font-bold text-white">🎓 Sinh viên: <span class="text-blue-300">{latest.get('student_id','')}</span> • Lớp: <span class="text-emerald-300">{latest.get('class_code','')}</span></div>
             <div class="text-[11px] text-[#9aa0a6]">Ngành: {latest.get('major_name','')} ({latest.get('degree_type','')} - Hệ {latest.get('education_mode','')})</div></div>
-            <span class="text-[11px] px-2.5 py-0.5 rounded-full bg-blue-950 text-blue-300 font-semibold">{latest.get('risk_level','')} · {latest.get('prediction_status','UNKNOWN')}</span>
+            <span class="text-[11px] px-2.5 py-0.5 rounded-full bg-blue-950 text-blue-300 font-semibold">{risk_display(latest, self.meta['threshold'])}</span>
           </div>
           <div class="overflow-x-auto bg-[#131314] border border-[#333537] rounded-2xl p-3">
             <div class="text-xs font-semibold text-blue-300 mb-2">1. Bảng tổng hợp kết quả học tập qua các kỳ</div>
@@ -621,7 +656,7 @@ class CMCChatbotEngine:
               <div class="font-semibold text-amber-300">Tỷ lệ học tập trọng tâm (Kỳ hiện tại)</div>
               <div><div class="flex justify-between text-[11px] mb-1"><span>Tiến độ tín chỉ tích lũy</span><b>{earn_latest}/{req_latest} TC (${prog_pct}%)</b></div><div class="w-full bg-[#282a2c] h-2 rounded-full overflow-hidden"><div class="bg-blue-500 h-full" style="width:${prog_pct}%"></div></div></div>
               <div><div class="flex justify-between text-[11px] mb-1"><span>Tỷ lệ qua môn trong kỳ</span><b>{pass_pct:.0f}%</b></div><div class="w-full bg-[#282a2c] h-2 rounded-full overflow-hidden"><div class="bg-emerald-500 h-full" style="width:${pass_pct}%"></div></div></div>
-              <div><div class="flex justify-between text-[11px] mb-1"><span>Tỷ lệ chuyên cần (Chuẩn dự thi >= 80%)</span><b>{att_latest}%</b></div><div class="w-full bg-[#282a2c] h-2 rounded-full overflow-hidden"><div class="bg-indigo-400 h-full" style="width:${min(100, att_latest)}%"></div></div></div>
+              <div><div class="flex justify-between text-[11px] mb-1"><span>Chuyên cần học kỳ (không phải điều kiện thi từng môn)</span><b>{att_latest}%</b></div><div class="w-full bg-[#282a2c] h-2 rounded-full overflow-hidden"><div class="bg-indigo-400 h-full" style="width:${min(100, att_latest)}%"></div></div></div>
             </div>
           </div>
           <div class="space-y-1.5"><div class="text-xs font-semibold text-rose-300">3. Cảnh báo & Lời khuyên ngắn gọn</div><div class="grid grid-cols-1 gap-1.5">{warn_html}</div></div>
@@ -635,7 +670,9 @@ class CMCChatbotEngine:
         title = f"Bảng điểm chi tiết học phần {'bị trượt (F)' if only_failed else ''} của {student_id}" + (f" (Học kỳ {term_filter})" if term_filter else " (Tất cả học kỳ)")
         rows = ""
         for c in courses:
-            if c["exam_eligible"] is False:
+            if c.get("eligibility_review"):
+                status_badge = "Cần đối chiếu điều kiện thi"
+            elif c["exam_eligible"] is False:
                 status_badge = "Cấm thi"
             elif c["is_passed"] is None:
                 status_badge = "Chưa có kết quả"
@@ -710,7 +747,7 @@ class CMCChatbotEngine:
 
     def get_class_detail(self, class_code: str) -> dict:
         c_code = class_code.strip().upper()
-        sub = self.active_latest_df[self.active_latest_df['class_code'].astype(str).str.upper() == c_code].sort_values('risk_probability', ascending=False)
+        sub = self.active_latest_df[self.active_latest_df['class_code'].astype(str).str.upper() == c_code].sort_values('intervention_risk', ascending=False, na_position='last')
         if sub.empty:
             return {}
         n_stu = int(len(sub))
@@ -726,7 +763,7 @@ class CMCChatbotEngine:
             "credits_earned_cumulative": int(s.get('credits_earned_cumulative') or 0), "credits_owed_cumulative": int(s.get('credits_owed_cumulative') or 0),
             "failed_credit_ratio": round(float(s.get('failed_credit_ratio') or 0), 3), "warning_streak": int(s.get('warning_streak') or 0),
             "attendance_rate_term": round(float(s.get('attendance_rate_term') or 0), 1), "tuition_debt_end_vnd": float(s.get('tuition_debt_end_vnd') or 0),
-            "risk_probability": round(float(s.get('risk_probability') or 0), 4), "risk_level": str(s.get('risk_level') or 'Thấp'), "prediction_status": s.get("prediction_status"),
+            "risk_probability": number(s.get('risk_probability'),0,1), "risk_level": risk_display(row_to_clean_dict(s), self.meta["threshold"]), "prediction_status": s.get("prediction_status"), "risk_display": risk_display(row_to_clean_dict(s), self.meta["threshold"]),
             "gpa_projection": self.calc_next_term_gpa_projection(row_to_clean_dict(s))
         } for _, s in sub.iterrows()]
         return {
@@ -830,7 +867,7 @@ class CMCChatbotEngine:
                     break
         term_match = re.search(r'\b(?:hoc\s*ky|ky|hk)\s*(\d{1,2})\b', q_ascii)
         term_num = int(term_match.group(1)) if term_match else None
-        art_matches = re.findall(r'\b(?:dieu|quy\s*che|quy\s*dinh|muc|khoan)\s*(?:so\s*)?(\d{1,2})\b', q_ascii)
+        art_matches = re.findall(r'\b(?:dieu|quy\s*che|quy\s*dinh|muc)\s*(?:so\s*)?(\d{1,2})\b', q_ascii)
         art_matches = [a for a in art_matches if 1 <= int(a) <= 27]
 
         course_ascii_kw = ["hoc phan", "mon hoc", "diem mon", "tung mon", "cac mon", "mon truot", "mon rot", "mon no", "chi tiet mon", "diem f", "hoc lai mon", "c00"]
@@ -918,7 +955,7 @@ class CMCChatbotEngine:
                 if c_detail:
                     rows = ""
                     for idx, s in enumerate(c_detail['students']):
-                        proj_gpa = f"{s['gpa_projection']['pred_gpa_cur']:.2f}" if s["gpa_projection"] else "N/A"
+                        proj_gpa = f"{s['gpa_projection']['pred_gpa_cur']:.2f}" if s["gpa_projection"] else "Chưa có"
                         rows += f"""<tr class='border-b border-[#2c2e30] hover:bg-[#282a2c]/50'>
                           <td class='py-1.5 px-2 font-bold text-blue-300'>{idx+1}</td>
                           <td class='py-1.5 px-2 font-bold text-white'>{s['student_id']}</td>
@@ -927,9 +964,9 @@ class CMCChatbotEngine:
                           <td class='py-1.5 px-2 text-emerald-300 font-bold'>{proj_gpa} / 4.00</td>
                           <td class='py-1.5 px-2 text-amber-300 font-semibold'>{s['credits_owed_cumulative']} TC</td>
                           <td class='py-1.5 px-2'>{s['attendance_rate_term']:.0f}%</td>
-                          <td class='py-1.5 px-2 text-rose-400 font-bold'>{s['risk_probability']*100:.1f}% ({s['prediction_status']})</td>
+                          <td class='py-1.5 px-2 text-rose-400 font-bold'>{s['risk_display']}</td>
                           <td class='py-1.5 px-2 text-right whitespace-nowrap'>
-                            <button type='button' onclick="askFromData('Dự đoán điểm kỳ sau của sinh viên {s['student_id']}')" class='px-2 py-0.5 rounded bg-emerald-950 hover:bg-emerald-800 text-emerald-300 text-[11px] font-semibold'>Dự đoán</button>
+                            <button type='button' onclick="askFromData('Dự đoán điểm kỳ sau của sinh viên {s['student_id']}')" class='px-2 py-0.5 rounded bg-emerald-950 hover:bg-emerald-800 text-emerald-300 text-[11px] font-semibold'>Kịch bản</button>
                             <button type='button' onclick="askFromData('Xem hồ sơ sinh viên {s['student_id']}')" class='px-2 py-0.5 rounded bg-blue-950 hover:bg-blue-800 text-blue-300 text-[11px] font-semibold'>Hồ sơ</button>
                           </td>
                         </tr>"""
@@ -937,7 +974,7 @@ class CMCChatbotEngine:
                       <div class="font-bold text-emerald-300 text-sm">🏫 Danh sách toàn bộ {c_detail['n_students']} Sinh viên Lớp {c_detail['class_code']} – {c_detail['major_name']}</div>
                       <div class="text-[#c4c7c5]">{c_detail['summary_text']}</div>
                       <div class="overflow-x-auto max-h-80"><table class="w-full text-left">
-                        <thead><tr class="border-b border-[#333537] text-[#9aa0a6]"><th class="py-1 px-2">#</th><th class="py-1 px-2">Mã SV</th><th class="py-1 px-2">Kỳ</th><th class="py-1 px-2">GPA Kỳ/TL</th><th class="py-1 px-2">Dự đoán GPA Kỳ sau</th><th class="py-1 px-2">TC Nợ</th><th class="py-1 px-2">Chuyên cần</th><th class="py-1 px-2">Cảnh báo sớm</th><th class="py-1 px-2 text-right">Thao tác</th></tr></thead>
+                        <thead><tr class="border-b border-[#333537] text-[#9aa0a6]"><th class="py-1 px-2">#</th><th class="py-1 px-2">Mã SV</th><th class="py-1 px-2">Kỳ</th><th class="py-1 px-2">GPA Kỳ/TL</th><th class="py-1 px-2">Kịch bản GPA kỳ sau</th><th class="py-1 px-2">TC Nợ</th><th class="py-1 px-2">Chuyên cần</th><th class="py-1 px-2">Cảnh báo sớm</th><th class="py-1 px-2 text-right">Thao tác</th></tr></thead>
                         <tbody>{rows}</tbody></table></div></div>""")
 
         target_stu = user_id if role == "student" else mentioned_id
@@ -959,4 +996,6 @@ class CMCChatbotEngine:
                 elif parsed["is_personal"] and not metric_html and not risk_html and not strict_regs and not deep_html and not parsed["is_class_dir"]:
                     html_blocks.append(self.render_student_rich_html(recs, role))
 
+        if not html_blocks:
+            html_blocks.append("<div>Chưa tìm thấy thông tin phù hợp. Bạn có thể hỏi về quy chế, bảng điểm hoặc hồ sơ học vụ.</div>")
         return {"reply": "<div class='space-y-4'>" + "".join(html_blocks) + "</div>", "student": None, "regulations": []}
