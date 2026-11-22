@@ -57,3 +57,4 @@ class DataPipelineTests(unittest.TestCase):
         records=pd.DataFrame({'record_uid':['A'],'available_at':['2026-02-01'],'status':['PENDING'],'clear_finance':[False]})
         result=graduation_asof(frame,records)
         self.assertTrue(pd.isna(result.iloc[0].clear_finance));self.assertFalse(result.iloc[1].clear_finance)
+        self.assertTrue(pd.isna(result.iloc[0].graduation_review_date));self.assertEqual(result.iloc[1].graduation_review_date,"2026-02-01")

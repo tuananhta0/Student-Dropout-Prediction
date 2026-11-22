@@ -422,8 +422,9 @@
 
       document.getElementById('panelStudentData').classList.remove('hidden');
       document.getElementById('stuHeaderInfo').innerText = `🎓 Hồ sơ Sinh viên: ${latest.student_id} • Lớp: ${latest.class_code}`;
-      document.getElementById('stuSubInfo').innerText = `Ngành: ${latest.major_name} (${latest.degree_type} - Hệ ${latest.education_mode})`;
+      document.getElementById('stuSubInfo').innerText = `Ngành: ${latest.major_name} (${latest.degree_type === 'Bachelor' ? 'Cử nhân' : latest.degree_type === 'Engineer' ? 'Kỹ sư' : latest.degree_type} - Hệ ${latest.education_mode})`;
       document.getElementById('stuPredBadge').innerText = `🔮 Kịch bản GPA HK${proj.nextTerm}: ${proj.predCur} ➔ ${proj.predImp}/4.00`;
+      if (latest.graduation_review_date) document.getElementById('stuSubInfo').innerText += ` • Ngày xét tốt nghiệp: ${latest.graduation_review_date}`;
       document.getElementById('stuRiskBadge').innerText = data.risk_display;
       document.getElementById('stuRiskBadge').title = `Mốc hồ sơ: ${latest.snapshot_cutoff}. Mốc dự báo: ${latest.prediction_cutoff || 'Chưa có'}. Dữ liệu mô phỏng đến ${latest.data_as_of}.`;
 
@@ -526,7 +527,7 @@
         : data.courses.map(c => `
         <tr class="hover:bg-[#282a2c]/50">
           <td class="py-2 px-2 font-bold text-blue-300 whitespace-nowrap">HK${c.term}</td>
-          <td class="py-2 px-2 font-mono text-xs text-[#9aa0a6] whitespace-nowrap" title="${c.course_id}">${c.short_code || c.course_id}${active ? `<button type="button" class="block text-blue-300" onclick="askFromData('Kịch bản học lại ${c.course_id} đạt B của sinh viên ${latest.student_id}')">Giả định đạt B</button>` : ''}</td>
+          <td class="py-2 px-2 font-mono text-xs text-[#9aa0a6] whitespace-nowrap" title="${c.course_id}">${c.short_code || c.course_id}${active && ['F','D','D+','C','C+'].includes(c.grade_letter) ? `<button type="button" class="block text-blue-300" onclick="askFromData('Kịch bản học lại ${c.course_id} đạt B của sinh viên ${latest.student_id}')">Giả định đạt B</button>` : ''}</td>
           <td class="py-2 px-2 font-medium text-white">${c.course_name || c.course_id}</td>
           <td class="py-2 px-2 text-center whitespace-nowrap">${c.credits ?? '—'}</td>
           <td class="py-2 px-2 text-center">${c.process_score ?? '—'}</td>
@@ -536,6 +537,65 @@
           <td class="py-2 px-2 text-right whitespace-nowrap">${c.eligibility_review ? 'Cần đối chiếu điều kiện thi' : c.exam_eligible === false ? 'Cấm thi' : c.is_passed == null ? 'Chưa có kết quả' : c.is_passed ? '<span class="px-2 py-0.5 rounded bg-emerald-950 text-emerald-300 font-semibold">Đạt</span>' : '<span class="px-2 py-0.5 rounded bg-rose-950 text-rose-300 font-bold">Học lại (F)</span>'}${c.eligibility_review || c.grade_policy_review ? ' · Cần đối chiếu quy chế' : ''}</td>
         </tr>
       `).join('');
+      showScenarioControls(data, stuId);
+    }
+
+    function showScenarioControls(data, stuId) {
+      const old = document.getElementById('scenarioControls');
+      if (old) old.remove();
+      const latest = data.latest;
+      if (latest.state_as_of !== 'ENROLLED') return;
+      const box = document.createElement('section');
+      box.id = 'scenarioControls';
+      box.className = 'bg-[#1e1f20] border border-[#333537] rounded-3xl p-5 space-y-3 text-xs';
+      const title = document.createElement('h3');
+      title.className = 'font-bold text-blue-300 text-sm'; title.textContent = 'Kịch bản GPA tùy chọn'; box.append(title);
+      const note = document.createElement('p'); note.textContent = 'Chọn các học phần cần cải thiện và số tín chỉ môn mới. Không cộng trùng tín chỉ; đây không phải dự báo điểm.'; box.append(note);
+      const picks = document.createElement('div'); picks.className = 'max-h-48 overflow-y-auto space-y-1'; box.append(picks);
+      const grades = ['F','D','D+','C','C+','B','B+','A','A+'];
+      const best = new Map();
+      for (const c of data.courses || []) {
+        if (!grades.includes(c.grade_letter)) continue;
+        if (!best.has(c.course_id) || grades.indexOf(c.grade_letter) > grades.indexOf(best.get(c.course_id).grade_letter)) best.set(c.course_id,c);
+      }
+      const selects = new Map();
+      for (const c of best.values()) {
+        if (['A','A+'].includes(c.grade_letter)) continue;
+        const label = document.createElement('label'); label.className = 'flex items-center justify-between gap-3';
+        const text = document.createElement('span'); text.textContent = `${c.short_code || c.course_id} (${c.credits} TC, ${c.grade_letter})`;
+        const select = document.createElement('select'); select.className = 'bg-[#131314] border border-[#333537] p-1 rounded';
+        select.append(new Option('Không chọn',''));
+        for (const grade of grades.slice(grades.indexOf(c.grade_letter)+1)) select.append(new Option(grade,grade));
+        label.append(text,select); picks.append(label); selects.set(c.course_id,select);
+      }
+      const controls = document.createElement('div'); controls.className = 'flex flex-wrap gap-3 items-center'; box.append(controls);
+      const inputNumber = (label,min,max,step) => {
+        const l = document.createElement('label'); l.textContent = label+' ';
+        const el = document.createElement('input'); el.type='number'; el.min=min; el.max=max; el.step=step; el.value='0'; el.className='w-20 bg-[#131314] border border-[#333537] rounded p-1'; l.append(el); controls.append(l); return el;
+      };
+      const credits = inputNumber('Tín chỉ môn mới',0,30,1), gpa = inputNumber('GPA môn mới',0,4,.1);
+      const status = document.createElement('p'); status.className='text-emerald-300';
+      const post = async (path,payload,render,out) => {
+        out.textContent='Đang tính…';
+        try {
+          const response=await fetch(path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({user_id:stuId,role:currentUser.role,...payload})});
+          const value=await response.json();
+          if (!response.ok) throw new Error(typeof value.detail==='string'?value.detail:'Thông tin nhập không hợp lệ');
+          out.textContent=render(value);
+        } catch (error) { out.textContent=error.message; }
+      };
+      const btn = document.createElement('button'); btn.type='button';btn.className='bg-blue-600 rounded-lg px-3 py-2 font-bold';btn.textContent='Tính GPA';controls.append(btn);
+      btn.onclick=()=>post('/api/student/gpa-scenario',{changes:Object.fromEntries([...selects].filter(([_,v])=>v.value).map(([k,v])=>[k,v.value])),new_credits:Number(credits.value),new_gpa:Number(gpa.value)},v=>`GPA: ${v.gpa_before.toFixed(2)} → ${v.gpa_after.toFixed(2)}; ${v.gpa_credits} tín chỉ tính GPA`,status);
+      box.append(status);
+      if (data.research_model && latest.prediction_status==='VALID' && latest.tuition_debt_end_vnd>0) {
+        const h = document.createElement('h3');h.className='font-bold text-blue-300';h.textContent='Kịch bản ML: thanh toán học phí';box.append(h);
+        const group=document.createElement('div');group.className='flex gap-2 items-center';
+        const amount=document.createElement('input');amount.type='number';amount.min='1';amount.step='0.01';amount.max=latest.tuition_debt_end_vnd;amount.value=latest.tuition_debt_end_vnd;amount.className='bg-[#131314] border border-[#333537] rounded p-2';amount.setAttribute('aria-label','Số tiền thanh toán giả định (đồng)');
+        const b=document.createElement('button');b.type='button';b.textContent='Thử thanh toán (đồng)';b.className='bg-blue-600 rounded-lg px-3 py-2';const o=document.createElement('p');
+        b.onclick=()=>post('/api/student/payment-scenario',{payment:Number(amount.value)},v=>`${v.before.risk_percent}% → ${v.after.risk_percent}% (${v.difference_pp} điểm phần trăm). ${v.note}`,o);
+        group.append(amount,b);box.append(group,o);
+      }
+      document.getElementById('panelStudentData').append(box);
     }
 
     async function inspectStudentInTab(studentId) {

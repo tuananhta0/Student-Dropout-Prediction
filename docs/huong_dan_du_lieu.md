@@ -28,3 +28,7 @@ Chạy `python -m scripts.audit_dataset` và `python -m scripts.review_policy` �
 | Bản ghi xét tốt nghiệp | 10.959 |
 
 Cohort split không trùng sinh viên nhưng thời gian có thể chồng lấn; cần thực nghiệm rolling-origin. Báo cáo kiểm tra tính nhất quán nguồn không phải bằng chứng tuân thủ tất cả quy chế.
+
+## Bộ nghiên cứu hiệu chỉnh
+
+Xem [hiệu chỉnh và huấn luyện mô hình](huan_luyen_va_thuc_nghiem.md). Các số lượng cố định của V3.2.1 trong tài liệu này là của baseline; lịch sử và nhãn của bản tái sinh có thể khác.

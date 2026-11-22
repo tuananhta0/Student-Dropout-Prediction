@@ -10,7 +10,7 @@ def main():
     data = get_student_me('BIT250093')
     row = data['latest']
     assert all('eligibility_review' in c and 'grade_policy_review' in c for c in data['courses'])
-    if engine.data_mode == 'DEMO':
+    if engine.data_mode == 'DEMO' and not engine.research_revision:
         p = data['gpa_projection']
         assert row['snapshot_term_index']==3 and p['next_term']==4
         assert p['gpa_credit_count']==42 and p['gpa_quality_points']==114
@@ -20,6 +20,15 @@ def main():
         reply=engine.answer_query('Kịch bản học lại '+data['courses'][0]['course_id']+' đạt A',logged_in_user='BIT250093')['reply']
         assert 'không cộng trùng' in reply
         print('BIT250093: HK3 → HK4; GPA tích lũy 2,71; kịch bản học lại:',result)
+    if engine.research_revision and len(active):
+        sample=active.iloc[0]
+        result=engine.calculate_retake(sample.record_uid,{},0,0)
+        assert abs(result['gpa_before']-result['gpa_after'])<1e-9
+        candidates=active[active.prediction_status.eq('VALID') & active.tuition_debt_end_vnd.gt(0)]
+        if not candidates.empty:
+            row=candidates.iloc[0]; outcome=engine.calculate_payment_scenario(row.record_uid,float(row.tuition_debt_end_vnd))
+            assert abs(outcome['before']['risk_percent']-row.risk_probability*100)<.011
+            print('Kịch bản thanh toán:',outcome)
     clearance = engine.latest_df[engine.latest_df.graduation_status.notna()]
     assert len(clearance)>0
     for _, r in clearance.head(10).iterrows():

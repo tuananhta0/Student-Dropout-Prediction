@@ -1,16 +1,31 @@
-import os
-from core.data_pipeline import Dataset, main_run, course_features, enrich, runtime_view, visible_attempts, KEY, ROOT
+"""Thực nghiệm và xuất mô hình nghiên cứu mới vào thư mục riêng, không ghi đè baseline."""
+import argparse
 import json
-import joblib
-import pypdf
-import pandas as pd
+import shutil
+import tempfile
 from pathlib import Path
+
+import joblib
+import numpy as np
+import pandas as pd
+from sklearn import __version__ as sklearn_version
+from sklearn.base import clone
 from sklearn.compose import ColumnTransformer
-from sklearn.pipeline import Pipeline
-from sklearn.impute import SimpleImputer
-from sklearn.preprocessing import StandardScaler, OneHotEncoder
 from sklearn.ensemble import RandomForestClassifier, HistGradientBoostingClassifier, VotingClassifier
-from sklearn.metrics import average_precision_score, roc_auc_score, brier_score_loss, f1_score, precision_score, recall_score
+from sklearn.impute import SimpleImputer
+from sklearn.inspection import permutation_importance
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import (average_precision_score, roc_auc_score, brier_score_loss,
+                             precision_score, recall_score, f1_score, confusion_matrix)
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import OneHotEncoder, StandardScaler
+from sklearn.tree import DecisionTreeClassifier
+from core.data_pipeline import (Dataset, ROOT, KEY, EXTRA_FEATURES, course_features, merge_exact,
+                                runtime_view, academic_view, visible_attempts, digest, TABLES, require)
+from core.prediction import model_inputs, risk_level
+from core.analytics import build_analytics_summary
+from core.data_pipeline import main_run
+from scripts.audit_dataset import audit
 
 MAIN_RUN = main_run()
 DATASET_ROOT = MAIN_RUN.parents[2]
@@ -34,240 +49,225 @@ def find_file(rel_path: str, fallback_name: str = "") -> Path:
     )
 
 
-#tong hop thong ke toan truong va khoa luu vao analytics_summary.json
-def build_analytics_summary(df_all: pd.DataFrame, df_ca: pd.DataFrame = None, threshold=0.21) -> dict:
-    latest = df_all.sort_values('snapshot_term_index').drop_duplicates('record_uid', keep='last').copy()
-    latest['warn_bool'] = latest['warning_current'].astype(str).str.lower() == 'true'
-    latest['high_risk_bool'] = (latest['risk_probability'] >= threshold) & latest['state_as_of'].eq('ENROLLED') & latest['prediction_status'].eq('VALID')
-    latest['dropout_bool'] = latest['state_as_of'].eq('DROPOUT')
 
-    summary = {
-        "total_students": int(len(latest)),
-        "active_students": int(latest['state_as_of'].eq('ENROLLED').sum()),
-        "state_counts": {str(k): int(v) for k, v in latest.state_as_of.value_counts().items()},
-        "data_as_of": str(latest['data_as_of'].iloc[0]),
-        "data_mode": str(latest['data_mode'].iloc[0]),
-        "total_snapshots": int(len(df_all)),
-        "total_classes": int(latest['class_code'].nunique()),
-        "total_majors": int(latest['major_code'].nunique()),
-        "total_tuition_debt_vnd": float(latest['tuition_debt_end_vnd'].sum()),
-        "overdue_30d_students": int((latest.get('tuition_overdue_days_end', pd.Series(0, index=latest.index)).fillna(0) > 30).sum()),
-        "warning_streak_2_students": int((latest['warning_streak'].fillna(0) >= 2).sum()),
-        "owed_near_24_students": int(((latest['credits_owed_cumulative'].fillna(0) >= 20) & (latest['credits_owed_cumulative'].fillna(0) <= 24)).sum()),
-        "owed_over_24_students": int((latest['credits_owed_cumulative'].fillna(0) > 24).sum()),
-        "unexcused_over_20_students": int((latest.get('unexcused_absence_rate_term', pd.Series(0, index=latest.index)).fillna(0) > 20).sum()),
-        "attendance_under_80_students": int((latest['attendance_rate_term'].fillna(100) < 80).sum()),
-        "high_risk_no_advisor": int(((latest['high_risk_bool']) & (latest.get('advisor_contacts_to_date', pd.Series(0, index=latest.index)).fillna(0) == 0)).sum()),
-        "high_risk_no_tutoring": int(((latest['high_risk_bool']) & (latest.get('tutoring_sessions_to_date', pd.Series(0, index=latest.index)).fillna(0) == 0)).sum()),
-        "under_min_credits_students": int((latest['credits_registered_term'] < latest['registration_min_credits']).sum())
-    }
+SEED = 221026
+FREEZE = '2027-02-03'
+TARGET = 'dropout_next_2_terms'
+ADMIN = 'administrative_action_eligible_at_cutoff'
 
-    #thong ke theo khoa / khoi tuyen sinh (2022-2025)
-    cohorts = {}
-    for c_year, grp in latest.groupby('cohort_year'):
-        hk1 = df_all[(df_all['cohort_year'] == c_year) & (df_all['snapshot_term_index'] == 1)]
-        att_u80_hk1 = round(float((hk1['attendance_rate_term'] < 80).mean() * 100), 2) if len(hk1) else 0.0
-        cohorts[str(int(c_year))] = {
-            "n_students": int(len(grp)),
-            "gpa_mean": round(float(grp['gpa4_cumulative'].mean()), 2),
-            "warning_rate_pct": round(float(grp['warn_bool'].mean() * 100), 2),
-            "high_risk_count": int(grp['high_risk_bool'].sum()),
-            "high_risk_pct": round(float(grp['high_risk_bool'].mean() * 100), 2),
-            "dropout_rate_pct": round(float(grp['dropout_bool'].mean() * 100), 2),
-            "hk1_att_under_80_pct": att_u80_hk1,
-            "leave_students": int((grp.get('leave_semesters_to_date', pd.Series(0, index=grp.index)).fillna(0) > 0).sum())
-        }
-    summary["by_cohort"] = cohorts
 
-    #thong ke theo he dao tao GM / SM
-    modes = {}
-    for m_code, grp in latest.groupby('education_mode'):
-        modes[str(m_code)] = {
-            "n_students": int(len(grp)),
-            "gpa_mean": round(float(grp['gpa4_cumulative'].mean()), 2),
-            "warning_rate_pct": round(float(grp['warn_bool'].mean() * 100), 2),
-            "high_risk_pct": round(float(grp['high_risk_bool'].mean() * 100), 2),
-            "dropout_rate_pct": round(float(grp['dropout_bool'].mean() * 100), 2)
-        }
-    summary["by_education_mode"] = modes
+def join_data(source):
+    x = source.table('prediction_snapshots')
+    y = source.table('snapshot_labels_FULL_SIMULATION')
+    require(y.label_observed.eq(y[TARGET].notna()).all(), 'Nhãn thiếu không nhất quán')
+    df = merge_exact(x,y[KEY+[TARGET,'label_observed','label_observation_end','exit_reason_for_evaluation']],KEY,'nhãn')
+    df = merge_exact(df,course_features(x,source.table('course_attempts')),KEY,'đặc trưng học phần')
+    return df
 
-    #thong ke theo bac dao tao Bachelor / Engineer
-    degrees = {}
-    for d_code, grp in latest.groupby('degree_type'):
-        degrees[str(d_code)] = {
-            "n_students": int(len(grp)),
-            "gpa_mean": round(float(grp['gpa4_cumulative'].mean()), 2),
-            "warning_rate_pct": round(float(grp['warn_bool'].mean() * 100), 2),
-            "dropout_rate_pct": round(float(grp['dropout_bool'].mean() * 100), 2)
-        }
-    summary["by_degree_type"] = degrees
 
-    #thong ke theo noi o (living_status)
-    living = {}
-    if 'living_status' in latest.columns:
-        for l_val, grp in latest.groupby('living_status'):
-            living[str(l_val)] = {
-                "n_students": int(len(grp)),
-                "gpa_mean": round(float(grp['gpa4_cumulative'].mean()), 2),
-                "warning_rate_pct": round(float(grp['warn_bool'].mean() * 100), 2),
-                "high_risk_pct": round(float(grp['high_risk_bool'].mean() * 100), 2),
-                "dropout_rate_pct": round(float(grp['dropout_bool'].mean() * 100), 2)
-            }
-    summary["by_living_status"] = living
+def feature_meta(source, df):
+    registry = source.table('feature_registry')
+    cols = registry.loc[registry.role.eq('FEATURE_ALLOWED_ASOF'),'feature_name'].tolist()+EXTRA_FEATURES
+    require(not set(cols) & {'student_id','record_uid','cohort_year',TARGET,'snapshot_cutoff','feature_source_latest_at','label_observed','exit_reason_for_evaluation'}, 'Đặc trưng bị cấm')
+    require(len(set(cols))==len(cols) and set(cols)<=set(df), 'Registry không hợp lệ')
+    cat = [c for c in cols if not pd.api.types.is_numeric_dtype(df[c]) or pd.api.types.is_bool_dtype(df[c])]
+    return {'feature_cols':cols,'cat_cols':cat,'num_cols':[c for c in cols if c not in cat], 'categorical_missing_token':'__MISSING__'}
 
-    #thong ke theo phuong thuc tuyen sinh (admission_method)
-    adm = {}
-    if 'admission_method' in latest.columns:
-        for a_val, grp in latest.groupby('admission_method'):
-            adm[str(a_val)] = {
-                "n_students": int(len(grp)),
-                "gpa_mean": round(float(grp['gpa4_cumulative'].mean()), 2),
-                "warning_rate_pct": round(float(grp['warn_bool'].mean() * 100), 2),
-                "high_risk_pct": round(float(grp['high_risk_bool'].mean() * 100), 2),
-                "dropout_rate_pct": round(float(grp['dropout_bool'].mean() * 100), 2)
-            }
-    summary["by_admission_method"] = adm
 
-    #thong ke nguyen nhan thoi hoc
-    exit_reasons = {}
-    summary["exit_reasons"] = exit_reasons
+def subset_meta(meta, cols):
+    return dict(meta,feature_cols=list(cols),cat_cols=[c for c in meta['cat_cols'] if c in cols],num_cols=[c for c in meta['num_cols'] if c in cols])
 
-    #pho diem toan truong va ty le truot mon tu course_attempts
-    grade_dist = {}
-    top_failed_courses = []
-    ineligible_count = 0
-    dead_point_pct = 0.0
-    if df_ca is not None and not df_ca.empty:
-        total_ca = max(1, len(df_ca))
-        if 'grade_letter' in df_ca.columns:
-            for g_let, cnt in df_ca['grade_letter'].value_counts().items():
-                grade_dist[str(g_let)] = round(float(cnt / total_ca * 100), 2)
-        if 'exam_eligible' in df_ca.columns:
-            ineligible_count = int((~df_ca['exam_eligible'].astype(bool)).sum())
-        if 'exam_final_score10' in df_ca.columns:
-            dead_point_pct = round(float((df_ca['exam_final_score10'].fillna(10) <= 2.0).mean() * 100), 2)
-        if 'is_passed' in df_ca.columns and 'course_id' in df_ca.columns:
-            c_grp = df_ca.groupby('course_id', as_index=False).agg(
-                attempts=('course_id', 'count'),
-                fail_rate=('is_passed', lambda s: float((~s.astype(bool)).mean() * 100)),
-                fail_count=('is_passed', lambda s: int((~s.astype(bool)).sum()))
-            )
-            c_grp = c_grp[c_grp['attempts'] >= 30].sort_values('fail_rate', ascending=False).head(15)
-            for _, cr in c_grp.iterrows():
-                top_failed_courses.append({
-                    "course_id": str(cr['course_id']),
-                    "attempts": int(cr['attempts']),
-                    "fail_count": int(cr['fail_count']),
-                    "fail_rate_pct": round(float(cr['fail_rate']), 1)
-                })
-    summary["grade_distribution_pct"] = grade_dist
-    summary["ineligible_exam_attempts"] = ineligible_count
-    summary["exam_dead_point_pct"] = dead_point_pct
-    summary["top_failed_courses"] = top_failed_courses
-    return summary
+
+def prep(meta):
+    return ColumnTransformer([
+        ('num',Pipeline([('fill',SimpleImputer(strategy='median',keep_empty_features=True)),('scale',StandardScaler())]),meta['num_cols']),
+        ('cat',OneHotEncoder(handle_unknown='ignore',sparse_output=False),meta['cat_cols'])])
+
+
+def pipe(meta, classifier):
+    return Pipeline([('prep',prep(meta)),('clf',classifier)])
+
+
+def candidates():
+    return {
+        'Logistic Regression':[LogisticRegression(C=c,max_iter=1000,random_state=SEED) for c in (.1,1.)],
+        'Decision Tree':[DecisionTreeClassifier(max_depth=d,min_samples_leaf=30,random_state=SEED) for d in (5,9)],
+        'Random Forest':[RandomForestClassifier(n_estimators=120,max_depth=d,min_samples_leaf=10,n_jobs=2,random_state=SEED) for d in (8,14)],
+        'HistGradientBoosting':[HistGradientBoostingClassifier(max_iter=120,learning_rate=.06,max_leaf_nodes=l,random_state=SEED) for l in (15,31)]}
+
+
+def split_at_freeze(df, freeze=FREEZE):
+    # Chỉ dùng nhãn có đủ cửa sổ theo dõi trước/chính tại ngày đóng băng.
+    observed = df.label_observed & df[TARGET].notna()
+    mature = observed & df.label_observation_end.le(freeze) & df.snapshot_cutoff.lt(freeze)
+    train = df[mature & df.cohort_year.le(2023)]
+    val = df[mature & df.cohort_year.eq(2024)]
+    test = df[observed & df.cohort_year.eq(2025) & df.snapshot_cutoff.ge(freeze)]
+    for name, part in [('train',train),('validation',val),('test',test)]:
+        require(part[TARGET].nunique()==2, f'Tập {name} thiếu một lớp nhãn')
+    require(not set(train.record_uid)&set(val.record_uid) and not set(train.record_uid)&set(test.record_uid) and not set(val.record_uid)&set(test.record_uid),'Trùng sinh viên giữa tập')
+    return train,val,test
+
+
+def evaluate(y,p,threshold):
+    y=np.asarray(y,dtype=int); p=np.asarray(p,dtype=float)
+    if len(y)==0:
+        return {'n':0}
+    pred=p>=threshold
+    k=max(1,int(np.ceil(.1*len(y))))
+    # Ổn định khi xác suất bằng nhau; thứ tự đầu vào đã được cố định bằng khóa.
+    top=np.argsort(-p,kind='stable')[:k]
+    total=int(y.sum()); tn,fp,fn,tp=confusion_matrix(y,pred,labels=[0,1]).ravel().tolist()
+    return {'n':len(y),'positive':total,'baseline':float(y.mean()),
+            'average_precision':float(average_precision_score(y,p)) if total else None,
+            'roc_auc':float(roc_auc_score(y,p)) if len(set(y))==2 else None,
+            'brier':float(brier_score_loss(y,p)),'precision':float(precision_score(y,pred,zero_division=0)),
+            'recall':float(recall_score(y,pred,zero_division=0)), 'f1':float(f1_score(y,pred,zero_division=0)),
+            'recall_top10':float(y[top].sum()/total) if total else None,
+            'alert_rate':float(pred.mean()),'confusion_matrix':[[tn,fp],[fn,tp]]}
+
+
+def choose_threshold(y,p):
+    # Mục tiêu F2 ưu tiên recall, giới hạn danh sách can thiệp <= 30% validation.
+    options=[]
+    for t in np.arange(.02,.951,.01):
+        pred=p>=t
+        if pred.mean()>.30 or not pred.any():
+            continue
+        pr=precision_score(y,pred,zero_division=0); re=recall_score(y,pred,zero_division=0)
+        score=5*pr*re/(4*pr+re) if pr+re else 0.
+        options.append((score,re,float(t)))
+    require(bool(options),'Không tìm được ngưỡng hợp lệ trong ngân sách cảnh báo')
+    return round(max(options)[2],4)
+
+
+def calibration(y,p):
+    table=pd.DataFrame({'y':np.asarray(y,dtype=int),'p':p}); table['bin']=pd.cut(table.p,np.linspace(0,1,11),include_lowest=True)
+    return [{'bin':str(k),'n':int(len(g)),'xac_suat_trung_binh':float(g.p.mean()),'ty_le_thuc_te':float(g.y.mean())} for k,g in table.groupby('bin',observed=True)]
+
+
+def fairness(frame,p,threshold,students):
+    f=frame[KEY+[TARGET,'cohort_year','major_code','degree_type']].copy();f['p']=p
+    f=f.merge(students[['record_uid','gender']],on='record_uid',validate='many_to_one')
+    return {c:{str(k):evaluate(g[TARGET],g.p,threshold) if len(g)>=30 and g[TARGET].nunique()==2 else {'n':len(g),'note':'Mẫu/nhãn quá ít'} for k,g in f.groupby(c,dropna=False)} for c in ['gender','cohort_year','major_code','degree_type']}
+
+
+def rolling_origin(df,meta):
+    results=[]
+    for origin, cohort, end in [('2025-02-03',2024,'2025-07-15'),('2026-02-03',2025,'2026-07-15'),('2027-02-03',2025,'2027-07-15')]:
+        known=df.label_observed & df[TARGET].notna()
+        train=df[known & df.cohort_year.lt(cohort) & df.label_observation_end.lt(origin) & df.snapshot_cutoff.lt(origin)]
+        evaluation=df[known & df.cohort_year.eq(cohort) & df.snapshot_cutoff.between(origin,end)]
+        if train[TARGET].nunique()!=2 or evaluation[TARGET].nunique()!=2:
+            results.append({'origin':origin,'note':'Không đủ hai lớp nhãn'});continue
+        models={'Logistic Regression':LogisticRegression(C=1,max_iter=1000,random_state=SEED),
+                'Ensemble cố định':VotingClassifier(estimators=[('rf',RandomForestClassifier(n_estimators=80,max_depth=8,min_samples_leaf=10,random_state=SEED,n_jobs=2)),('hgb',HistGradientBoostingClassifier(max_iter=100,max_leaf_nodes=15,random_state=SEED))],voting='soft',weights=[.5,.5])}
+        metrics={}
+        for name, clf in models.items():
+            m=pipe(meta,clf).fit(model_inputs(train,meta),train[TARGET].astype(int))
+            p=m.predict_proba(model_inputs(evaluation,meta))[:,1]
+            metrics[name]=evaluate(evaluation[TARGET],p,.21)
+        results.append({'origin':origin,'train_n':len(train),'train_horizon_max':train.label_observation_end.max(),'test_cutoff_min':evaluation.snapshot_cutoff.min(),'nguong_co_dinh':.21,'metrics':metrics})
+    return results
+
+
+def train_models(df,meta,freeze=FREEZE):
+    train,val,test=split_at_freeze(df,freeze)
+    # Chỉ công bố dự báo trong các kỳ có đủ hai lớp và >= 100 snapshot huấn luyện.
+    counts=train.groupby('snapshot_term_index')[TARGET].agg(['size','sum'])
+    supported=counts.index[(counts['size']>=100)&(counts['sum']>=5)&(counts['size']-counts['sum']>=5)].astype(int).tolist()
+    require(bool(supported),'Không có học kỳ đủ dữ liệu huấn luyện')
+    train=train[train.snapshot_term_index.isin(supported)];val=val[val.snapshot_term_index.isin(supported)];test=test[test.snapshot_term_index.isin(supported)]
+    for part in (train,val,test):require(part[TARGET].nunique()==2,'Thiếu lớp nhãn trong phạm vi model')
+    report={'pham_vi_hoc_ky':supported,'moc_dong_bang':freeze,'so_luong_tap':{'train':len(train),'validation':len(val),'test':len(test)},'train_horizon_max':train.label_observation_end.max(),'validation_horizon_max':val.label_observation_end.max(),'test_cutoff_min':test.snapshot_cutoff.min()}
+    # Chọn mô hình không dùng tín hiệu hành chính để đánh giá cảnh báo sớm; so sánh ablation cùng thuật toán.
+    reduced=subset_meta(meta,[c for c in meta['feature_cols'] if c!=ADMIN])
+    Xtr=model_inputs(train,reduced);Xv=model_inputs(val,reduced);Xt=model_inputs(test,reduced)
+    yt=train[TARGET].astype(int);yv=val[TARGET].astype(int);ytest=test[TARGET].astype(int)
+    selected={}; params={};vp={}
+    for name,options in candidates().items():
+        print(f"Huấn luyện và chọn tham số: {name}",flush=True)
+        scored=[]
+        for clf in options:
+            m=pipe(reduced,clf).fit(Xtr,yt);p=m.predict_proba(Xv)[:,1]
+            scored.append((average_precision_score(yv,p),m,clf,p))
+        _,m,clf,p=max(scored,key=lambda z:z[0]);selected[name]=m;params[name]=clf.get_params();vp[name]=p
+    print("Tối ưu trọng số tổ hợp trên tập validation",flush=True)
+    weights=max(np.arange(0,1.01,.1),key=lambda w:average_precision_score(yv,w*vp['Random Forest']+(1-w)*vp['HistGradientBoosting']))
+    m=pipe(reduced,VotingClassifier(estimators=[('rf',clone(selected['Random Forest'].named_steps['clf'])),('hgb',clone(selected['HistGradientBoosting'].named_steps['clf']))],voting='soft',weights=[float(weights),float(1-weights)])).fit(Xtr,yt)
+    selected['Ensemble']=m;vp['Ensemble']=m.predict_proba(Xv)[:,1]
+    # Cố định lựa chọn trước khi dùng test. Chọn theo AP validation, không bắt buộc tổ hợp phải thắng.
+    winner=max(selected,key=lambda name:average_precision_score(yv,vp[name]));model=selected[winner]
+    threshold=choose_threshold(yv,vp[winner]);prob=model.predict_proba(Xt)[:,1]
+    report.update({'model_chon':winner,'trong_so_rf':float(weights),'tham_so':params,'nguong':threshold,
+                   'benchmark':{name:{'validation':evaluate(yv,vp[name],threshold),'test':evaluate(ytest,m.predict_proba(Xt)[:,1],threshold)} for name,m in selected.items()}})
+    early=~test[ADMIN].astype(bool);report['test_early']=evaluate(ytest[early],prob[early],threshold)
+    report['test_by_term']={str(int(term)):evaluate(ytest[mask],prob[mask],threshold) for term in sorted(test.snapshot_term_index.unique()) for mask in [test.snapshot_term_index.eq(term)]}
+    full=pipe(meta,clone(model.named_steps['clf'])).fit(model_inputs(train,meta),yt)
+    pfull=full.predict_proba(model_inputs(test,meta))[:,1];report['ablation']={'co_hanh_chinh':evaluate(ytest,pfull,threshold),'khong_hanh_chinh':evaluate(ytest,prob,threshold),'co_hanh_chinh_early':evaluate(ytest[early],pfull[early],threshold)}
+    report['calibration']=calibration(ytest,prob)
+    # Giải thích toàn cục trên validation, không diễn giải trọng số là nguyên nhân.
+    sample=val.sample(min(1500,len(val)),random_state=SEED)
+    pi=permutation_importance(model,model_inputs(sample,reduced),sample[TARGET].astype(int),scoring='average_precision',n_repeats=2,random_state=SEED,n_jobs=1)
+    report['feature_importance']=[{'feature':c,'ap_decrease':float(v),'std':float(sd)} for c,v,sd in sorted(zip(reduced['feature_cols'],pi.importances_mean,pi.importances_std),key=lambda x:-x[1])]
+    print("Đánh giá theo thời gian và giải thích đặc trưng",flush=True)
+    report['rolling_origin']=rolling_origin(df,reduced)
+    best=report['benchmark'][winner]; tm=best['test']
+    reduced.update(model_available_as_of=freeze,supported_terms=supported,threshold=threshold,model_name=winner,
+                   val_pr_auc=best['validation']['average_precision'],test_pr_auc=tm['average_precision'],test_roc_auc=tm['roc_auc'],test_brier=tm['brier'],
+                   test_precision=tm['precision'],test_recall=tm['recall'],test_f1=tm['f1'],test_baseline=tm['baseline'],test_recall_top10=tm['recall_top10'],global_feature_importance=report['feature_importance'][:10])
+    return model,reduced,report,test,prob
+
+
+class StressDataset(Dataset):
+    def __init__(self,run):
+        self.run=Path(run); self.manifest=json.loads((self.run/'manifests/generation_manifest.json').read_text(encoding='utf-8'));self.cache={}
+        require(self.manifest.get('scenario_id')=='V3_2_STRESS' and self.manifest.get('research_revision')=='cmc-policy-2026-01' and self.manifest.get('n_students')==5000,'Tập STRESS không hợp lệ')
+
 
 def main():
-    # Chỉ huấn luyện nghiên cứu với FULL_SIMULATION, độc lập chế độ giao diện.
-    source = Dataset(main_run())
-    df_X = source.table('prediction_snapshots')
-    df_y = source.table('snapshot_labels_FULL_SIMULATION')
-    df_fr = source.table('feature_registry')
-    df_stu = source.table('students')
-    df_ca = source.table('course_attempts')
-    if not df_y.label_observed.all() or df_y.dropout_next_2_terms.isna().any():
-        raise ValueError('FULL_SIMULATION chứa nhãn chưa quan sát')
-    ca_agg = course_features(df_X, df_ca)
-    from core.data_pipeline import merge_exact
-    df = merge_exact(df_X, df_y[KEY + ['dropout_next_2_terms', 'exit_reason_for_evaluation']], KEY, 'full labels')
-    df = merge_exact(df, ca_agg, KEY, 'course aggregates')
+    p=argparse.ArgumentParser(description=__doc__)
+    p.add_argument('--output',type=Path,required=True,help='Thư mục phiên bản mới bên trong data, chưa tồn tại')
+    args=p.parse_args(); output=args.output.resolve()
+    require(output.is_relative_to((ROOT/'data').resolve()) and not output.exists(),'Chỉ ghi vào thư mục mới bên trong data/')
+    source=Dataset();require(source.manifest.get('research_revision')=='cmc-policy-2026-01','Phải sinh dữ liệu hiệu chỉnh trước khi train')
+    require(audit(source,None,ROOT/'data/kiem_tra_truoc_huan_luyen'),'Dữ liệu hiệu chỉnh chưa đạt, dừng huấn luyện')
+    df=join_data(source);meta=feature_meta(source,df)
+    model,meta,report,test,prob=train_models(df,meta)
+    report['fairness']=fairness(test,prob,meta['threshold'],source.table('students'))
+    stress=StressDataset(source.run.with_name('V3_2_STRESS'));st=join_data(stress)
+    require(not set(source.table('students').student_id)&set(stress.table('students').student_id),'Trùng mã sinh viên MAIN/STRESS')
+    st=st[st.label_observed & st.snapshot_cutoff.ge(FREEZE) & st.snapshot_term_index.isin(meta['supported_terms'])]
+    require(st[TARGET].nunique()==2,'STRESS thiếu hai lớp nhãn')
+    sp=model.predict_proba(model_inputs(st,meta))[:,1];report['stress']=evaluate(st[TARGET],sp,meta['threshold']);report['stress_fairness']=fairness(st,sp,meta['threshold'],stress.table('students'))
+    scored=df.copy();scored['risk_probability']=model.predict_proba(model_inputs(scored,meta))[:,1];scored['risk_level']=[risk_level(v,meta['threshold']) for v in scored.risk_probability]
+    students=source.table('students');static=['record_uid','class_code','major_name']
+    scored=scored.merge(students[static],on='record_uid',validate='many_to_one')
+    meta.update(dataset_manifest_sha256=digest(source.run/'manifests/generation_manifest.json'),version=output.name,sklearn_version=sklearn_version)
+    output.parent.mkdir(parents=True,exist_ok=True)
+    with tempfile.TemporaryDirectory(dir=output.parent,prefix='kiemit_') as tmp:
+        stage=Path(tmp)/'model';stage.mkdir()
+        joblib.dump(model,stage/'dropout_pipeline.joblib')
+        scored.to_csv(stage/'student_snapshots_scored.csv.gz',index=False,compression='gzip')
+        (stage/'model_metadata.json').write_text(json.dumps(meta,ensure_ascii=False,indent=2,allow_nan=False),encoding='utf-8')
+        # Kiểm tra sau khi nạp lại, trước khi đổi tên thư mục kết quả.
+        restored=joblib.load(stage/'dropout_pipeline.joblib')
+        persisted=pd.read_csv(stage/'student_snapshots_scored.csv.gz',low_memory=False,float_precision='round_trip')
+        sample=persisted.sample(min(512,len(persisted)),random_state=SEED)
+        require(np.allclose(restored.predict_proba(model_inputs(sample,meta))[:,1],sample.risk_probability,atol=1e-10,rtol=0),'Sai xác suất khi đọc lại model')
+        rt,_=runtime_view(persisted,source,'DEMO');ac,latest=academic_view(rt,source,'DEMO')
+        from core.prediction import apply_prediction_scope
+        ac=apply_prediction_scope(ac,meta);latest=apply_prediction_scope(latest,meta)
+        summary=build_analytics_summary(ac,visible_attempts(source.table('course_attempts'),latest),meta['threshold'],len(rt))
+        (stage/'analytics_summary.json').write_text(json.dumps(summary,ensure_ascii=False,indent=2,allow_nan=False),encoding='utf-8')
+        (stage/'bao_cao_thuc_nghiem.json').write_text(json.dumps(report,ensure_ascii=False,indent=2,allow_nan=False),encoding='utf-8')
+        del persisted,rt,ac,latest
+        require(audit(source,stage/'student_snapshots_scored.csv.gz',stage/'kiem_tra_du_lieu'),'Không đạt kiểm tra dữ liệu; không công bố model')
+        # Dấu kiểm tra toàn vẹn chỉ tạo sau kiểm tra thành công.
+        files=['dropout_pipeline.joblib','student_snapshots_scored.csv.gz','model_metadata.json','analytics_summary.json','bao_cao_thuc_nghiem.json']
+        (stage/'manifest.json').write_text(json.dumps({'files':{f:digest(stage/f) for f in files},'dataset_manifest_sha256':meta['dataset_manifest_sha256']},indent=2),encoding='utf-8')
+        stage.rename(output)
+    print(f'Đã kiểm tra và xuất phiên bản {output}. Chưa thay thế mô hình cũ.')
+    print(json.dumps(report['benchmark'][meta['model_name']]['test'],ensure_ascii=False,indent=2))
 
-    allowed = df_fr[df_fr['role'] == 'FEATURE_ALLOWED_ASOF']['feature_name'].tolist()
-    extra_master_cols = ['ca_score10_min', 'ca_exam10_min', 'ca_ineligible_exams', 'ca_unexcused_hours_sum']
-    exclude = ['record_uid', 'student_id', 'cohort_year', 'snapshot_cutoff', 'feature_source_latest_at']
-    feature_cols = [c for c in (allowed + extra_master_cols) if c in df.columns and c not in exclude]
-
-    train_df = df[df['cohort_year'].isin([2022, 2023])].copy()
-    val_df = df[df['cohort_year'] == 2024].copy()
-    test_df = df[df['cohort_year'] == 2025].copy()
-
-    X_train, y_train = train_df[feature_cols].copy(), train_df['dropout_next_2_terms'].astype(int)
-    X_val, y_val = val_df[feature_cols].copy(), val_df['dropout_next_2_terms'].astype(int)
-    X_test, y_test = test_df[feature_cols].copy(), test_df['dropout_next_2_terms'].astype(int)
-
-    cat_cols = X_train.select_dtypes(include=['object', 'str', 'bool']).columns.tolist()
-    num_cols = [c for c in feature_cols if c not in cat_cols]
-
-    for c in cat_cols:
-        X_train[c] = X_train[c].astype(str)
-        X_val[c] = X_val[c].astype(str)
-        X_test[c] = X_test[c].astype(str)
-
-    preprocessor = ColumnTransformer(
-        transformers=[
-            ('num', Pipeline([('imputer', SimpleImputer(strategy='median')), ('scaler', StandardScaler())]), num_cols),
-            ('cat', Pipeline([('imputer', SimpleImputer(strategy='most_frequent')), ('ohe', OneHotEncoder(handle_unknown='ignore', sparse_output=False))]), cat_cols)
-        ]
-    )
-
-    rf_clf = RandomForestClassifier(n_estimators=200, max_depth=10, random_state=221026, n_jobs=-1)
-    gb_clf = HistGradientBoostingClassifier(max_iter=150, learning_rate=0.05, max_depth=5, random_state=221026)
-
-    ensemble_pipeline = Pipeline([
-        ('prep', preprocessor),
-        ('clf', VotingClassifier(estimators=[('rf', rf_clf), ('gb', gb_clf)], voting='soft', weights=[0.55, 0.45]))
-    ])
-    ensemble_pipeline.fit(X_train, y_train)
-
-    val_probs = ensemble_pipeline.predict_proba(X_val)[:, 1]
-    test_probs = ensemble_pipeline.predict_proba(X_test)[:, 1]
-    threshold = 0.21
-    test_preds = (test_probs >= threshold).astype(int)
-
-    metrics = {
-        "val_pr_auc": round(float(average_precision_score(y_val, val_probs)), 4),
-        "test_pr_auc": round(float(average_precision_score(y_test, test_probs)), 4),
-        "test_roc_auc": round(float(roc_auc_score(y_test, test_probs)), 4),
-        "test_brier": round(float(brier_score_loss(y_test, test_probs)), 4),
-        "test_precision_at_021": round(float(precision_score(y_test, test_preds)), 4),
-        "test_recall_at_021": round(float(recall_score(y_test, test_preds)), 4),
-        "test_f1_at_021": round(float(f1_score(y_test, test_preds)), 4),
-        "threshold": threshold,
-        "feature_cols": feature_cols,
-        "cat_cols": cat_cols,
-        "num_cols": num_cols,
-        "num_medians": {c: float(train_df[c].median()) for c in num_cols}
-    }
-
-    X_all = df[feature_cols].copy()
-    for c in cat_cols:
-        X_all[c] = X_all[c].astype(str)
-    df['risk_probability'] = ensemble_pipeline.predict_proba(X_all)[:, 1]
-    df['risk_level'] = pd.cut(
-        df['risk_probability'],
-        bins=[-0.01, 0.12, 0.21, 0.45, 1.01],
-        right=False,
-        labels=['Thấp', 'Trung bình (Theo dõi)', 'Cao (Cảnh báo)', 'Rất cao (Can thiệp khẩn)']
-    ).astype(str)
-
-    stu_extra_cols = [c for c in ['record_uid', 'major_name', 'gender', 'home_province', 'enrollment_date', 'class_code', 'living_status', 'admission_method', 'admission_score_ratio', 'current_state'] if c in df_stu.columns]
-    df_stu_sub = df_stu[stu_extra_cols]
-    drop_existing = [c for c in stu_extra_cols if c != 'record_uid' and c in df.columns]
-    df_full_index = pd.merge(df.drop(columns=drop_existing, errors='ignore'), df_stu_sub, on='record_uid', how='left', validate='many_to_one')
-    df_full_index = enrich(df_full_index, source)
-
-    runtime, latest = runtime_view(df_full_index, source, "FULL_SIMULATION")
-    summary = build_analytics_summary(runtime, visible_attempts(df_ca, latest))
-    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-    joblib.dump(ensemble_pipeline, OUTPUT_DIR / "dropout_pipeline.joblib")
-    with open(OUTPUT_DIR / "model_metadata.json", "w", encoding="utf-8") as f:
-        json.dump(metrics, f, ensure_ascii=False, indent=2)
-
-    df_full_index.to_csv(OUTPUT_DIR / "student_snapshots_scored.csv.gz", index=False, compression="gzip")
-
-    with open(OUTPUT_DIR / "analytics_summary.json", "w", encoding="utf-8") as f:
-        json.dump(summary, f, ensure_ascii=False, indent=2)
-
-    print(f"Hoàn tất! PR-AUC={metrics['test_pr_auc']} | ROC-AUC={metrics['test_roc_auc']}")
-
-if __name__ == "__main__":
-    main()
+if __name__=='__main__':main()

@@ -1,7 +1,8 @@
 import re
 from core.academic_rules import number, rounded, registration_bounds, warning_reasons, withdrawal_reasons, exam_barred, course_grade, projection, graduation_conditions, retake_projection, strict_bool
 import os
-from core.data_pipeline import Dataset, runtime_view, visible_attempts, academic_view
+from core.data_pipeline import Dataset, runtime_view, visible_attempts, academic_view, digest
+from core.prediction import model_inputs, risk_level, apply_prediction_scope, payment_scenario
 import json
 import math
 import unicodedata
@@ -21,8 +22,8 @@ def risk_display(row, threshold):
     if risk is None:
         return 'Chưa có dự báo'
     if row.get('prediction_status') != 'VALID':
-        return 'Dự báo đã hết hạn'
-    level = 'Rất cao' if risk >= .45 else 'Cao' if risk >= threshold else 'Trung bình' if risk >= .12 else 'Thấp'
+        return {'OUT_OF_SCOPE':'Ngoài phạm vi mô hình','RETROSPECTIVE':'Dự báo hồi cứu'}.get(row.get('prediction_status'),'Dự báo đã hết hạn')
+    level = risk_level(risk, threshold)
     return f'Nguy cơ thôi học: {risk*100:.1f}% ({level})'
 
 
@@ -81,6 +82,12 @@ class CMCChatbotEngine:
                     f"Thiếu artifact hoặc file rỗng: {path}"
                 )
 
+        manifest_file = self.artifact_dir / "manifest.json"
+        if manifest_file.is_file():
+            manifest = json.loads(manifest_file.read_text(encoding="utf-8"))
+            for name in ("dropout_pipeline.joblib", "model_metadata.json", "student_snapshots_scored.csv.gz", "analytics_summary.json", "bao_cao_thuc_nghiem.json"):
+                if digest(self.artifact_dir / name) != manifest["files"].get(name):
+                    raise ValueError(f"Phiên bản model không khớp mã kiểm tra: {name}")
         try:
             with warnings.catch_warnings():
                 warnings.simplefilter("error", InconsistentVersionWarning)
@@ -104,7 +111,7 @@ class CMCChatbotEngine:
             if key not in self.meta:
                 raise ValueError(f"Thiếu trường metadata mô hình: {key}")
 
-        self.df = pd.read_csv(scored_path, low_memory=False)
+        self.df = pd.read_csv(scored_path, low_memory=False,float_precision="round_trip")
 
         required = {
             "record_uid", "student_id", "snapshot_term_index",
@@ -124,8 +131,13 @@ class CMCChatbotEngine:
 
         self.data_mode = os.environ.get("CMC_DATA_MODE", "DEMO")
         source = Dataset()
+        if self.meta.get("dataset_manifest_sha256") and (not manifest_file.is_file() or self.meta["dataset_manifest_sha256"] != digest(source.run / "manifests/generation_manifest.json")):
+            raise ValueError("Model và dữ liệu không cùng phiên bản")
         self.ml_df, _ = runtime_view(self.df, source, self.data_mode)
         self.df, self.latest_df = academic_view(self.ml_df, source, self.data_mode)
+        self.df = apply_prediction_scope(self.df, self.meta)
+        self.latest_df = apply_prediction_scope(self.latest_df, self.meta)
+        self.research_revision = source.manifest.get("research_revision")
         self.data_as_of = source.cutoff(self.data_mode).date().isoformat()
         self.df["warning_bool"] = self.df["warning_current"].astype(str).str.lower().eq("true")
         self.latest_df["warning_bool"] = self.latest_df["warning_current"].astype(str).str.lower().eq("true")
@@ -136,8 +148,8 @@ class CMCChatbotEngine:
         self.course_names = dict(zip(catalog.course_id, catalog.course_name))
         self.course_catalog = catalog.set_index("course_id")
         # Tính lại thống kê theo mốc dữ liệu, không dùng thống kê cũ.
-        from scripts.train_model import build_analytics_summary
-        self.analytics = build_analytics_summary(self.df, self.df_attempts, self.meta["threshold"])
+        from core.analytics import build_analytics_summary
+        self.analytics = build_analytics_summary(self.df, self.df_attempts, self.meta["threshold"], len(self.ml_df))
 
     def resolve_course_info(self, course_id: str) -> tuple:
         cid = str(course_id).strip()
@@ -269,43 +281,37 @@ class CMCChatbotEngine:
         if self.pipeline is None:
             raise RuntimeError("Mô hình dự báo thôi học không khả dụng")
 
-        base_row = {}
-
-        for col in self.meta["feature_cols"]:
-            if col in custom_input and custom_input[col] not in (None, ""):
-                base_row[col] = custom_input[col]
-            elif col in self.meta.get("num_medians", {}):
-                base_row[col] = self.meta["num_medians"][col]
-            else:
-                base_row[col] = (
-                    "IT" if col == "major_code"
-                    else "Bachelor" if col == "degree_type"
-                    else "GM"
-                )
-
-        X_df = pd.DataFrame([base_row])
-
-        for col in self.meta.get("cat_cols", []):
-            if col in X_df.columns:
-                X_df[col] = X_df[col].astype(str)
+        X_df = model_inputs(pd.DataFrame([custom_input]), self.meta)
 
         prob = float(self.pipeline.predict_proba(X_df)[:, 1][0])
 
         if not math.isfinite(prob) or not 0 <= prob <= 1:
             raise ValueError("Mô hình trả xác suất không hợp lệ")
 
-        lvl = (
-            "Rất cao" if prob >= 0.45
-            else "Cao" if prob >= self.meta["threshold"]
-            else "Trung bình" if prob >= 0.12
-            else "Thấp"
-        )
+        lvl = risk_level(prob, self.meta['threshold'])
 
         return {
             "risk_probability": round(prob, 4),
             "risk_percent": round(prob * 100, 2),
             "risk_level": lvl
         }
+
+    def calculate_payment_scenario(self, record_uid, payment):
+        if not self.meta.get('model_available_as_of'):
+            raise ValueError('Cần mô hình nghiên cứu mới đã kiểm định')
+        records = self.get_student_records(record_uid)
+        if records.empty:
+            raise ValueError('Không tìm thấy hồ sơ')
+        row = records.iloc[-1]
+        if row['state_as_of'] != 'ENROLLED' or row['prediction_status'] != 'VALID':
+            raise ValueError('Chỉ mô phỏng khi sinh viên đang học và dự báo còn hiệu lực')
+        matches = self.ml_df.loc[self.ml_df.record_uid.eq(record_uid) & self.ml_df.snapshot_term_index.eq(row['prediction_term']) & self.ml_df.snapshot_cutoff.eq(row['prediction_cutoff'])]
+        if len(matches) != 1:
+            raise ValueError('Không tìm thấy bộ đặc trưng gốc duy nhất')
+        snapshot = matches.iloc[0].to_dict()
+        base = self.predict_what_if(snapshot)
+        changed = self.predict_what_if(payment_scenario(snapshot, payment))
+        return {'before':base,'after':changed,'difference_pp':round(changed['risk_percent']-base['risk_percent'],2), 'note':'Giả định thanh toán trước khi chốt kỳ; kết quả không chứng minh tác động nhân quả.'}
 
     def check_out_of_scope_or_emotion(self, query: str) -> str:
         q_norm = normalize_vn(query)
@@ -410,9 +416,11 @@ class CMCChatbotEngine:
               <div class="text-[#d1d5db]">Ứng dụng đang dùng dữ liệu mô phỏng và tài khoản demo. Xác thực, phân quyền phía máy chủ chưa hoàn thiện; không đưa hồ sơ thật lên hệ thống. Nhà trường chỉ thông báo về gia đình khi có <b>Quyết định buộc thôi học chính thức (Điều 18.3)</b>; Chatbot không tự gửi cảnh báo sớm cho phụ huynh.</div></div>"""
         model_kw = ["pr-auc", "roc-auc", "brier", "recall", "precision", "1/3 ca thoi hoc", "30% ca thoi hoc", "goi nham", "cong bang giua nam va nu", "du lieu mo phong"]
         if any(k in q_ascii for k in model_kw):
+            importance = self.meta.get('global_feature_importance', [])[:5]
+            explanation = 'Đặc trưng có ảnh hưởng toàn cục (mức giảm Average Precision khi hoán vị trên validation): ' + ', '.join(f"{f['feature']}: {f['ap_decrease']:.4f}" for f in importance) + '. Không phải nguyên nhân hay giải thích cá nhân.' if importance else 'Chưa có phân tích độ quan trọng của đặc trưng.'
             return f"""<div class="bg-[#131314] border border-amber-500/40 rounded-2xl p-4 text-xs space-y-2 leading-relaxed">
               <div class="text-sm font-bold text-amber-300">🤖 Thông số Mô hình Dự báo Học máy & Giới hạn Sử dụng</div>
-              <div class="text-[#d1d5db]">Mô hình Ensemble đạt <b>ROC-AUC = {self.meta.get('test_roc_auc', 0.8312)}</b>, <b>PR-AUC = {self.meta.get('test_pr_auc', 0.5460)}</b> và <b>Brier Score = {self.meta.get('test_brier', 0.0518)}</b>. Ngưỡng model hiện tại <b>{self.meta['threshold']:.2f}</b>; chưa tối ưu độc lập cho mọi nhóm. Mọi dự báo chỉ dùng để tham khảo tư vấn học tập.</div></div>"""
+              <div class="text-[#d1d5db]">Mô hình đang dùng ({self.meta.get('model_name', 'Ensemble')}) đạt <b>ROC-AUC = {self.meta['test_roc_auc']}</b>, <b>PR-AUC = {self.meta['test_pr_auc']}</b> và <b>Brier Score = {self.meta['test_brier']}</b>. Ngưỡng model hiện tại <b>{self.meta['threshold']:.2f}</b>; chưa tối ưu độc lập cho mọi nhóm. Mọi dự báo chỉ dùng để tham khảo tư vấn học tập. {explanation}</div></div>"""
         return ""
 
     def answer_personal_metric_query(self, query: str, records: pd.DataFrame) -> str:
@@ -472,6 +480,8 @@ class CMCChatbotEngine:
             labels = dict(credits='Tín chỉ',mandatory_courses='Học phần bắt buộc',gpa='GPA',english='Ngoại ngữ (SM B1 / GM B2)',physical_education='GDTC',national_defense='GDQP-AN',financial='Tài chính',program_outcomes='Chuẩn đầu ra/nội dung bắt buộc',discipline_and_criminal_clearance='Kỷ luật/TNHS')
             labels['academic_debt'] = 'Nợ học phần'
             status = lambda v: 'Đạt theo hồ sơ mô phỏng' if v is True else 'Chưa đạt' if v is False else 'Chưa đủ bằng chứng xác nhận'
+            if latest.get('graduation_review_date'):
+                matched_lines.append(f"Ngày xét tốt nghiệp theo hồ sơ mô phỏng: {latest['graduation_review_date']}")
             matched_lines.append("Điều 19–20 (không phải quyết định tốt nghiệp): " + "; ".join(f"{labels[k]}: {status(v)}" for k,v in conditions.items()))
 
         if not matched_lines:
@@ -487,7 +497,16 @@ class CMCChatbotEngine:
         attempts = self.df_attempts.loc[self.df_attempts.record_uid.eq(record_uid)].merge(
             self.course_catalog[['is_gpa_eligible','is_certificate_course']],left_on='course_id',right_index=True,validate='many_to_one')
         ids = {str(c).lower():c for c in attempts.course_id}
+        if not isinstance(changes,dict) or len(changes)>30:
+            raise ValueError('Danh sách học lại không hợp lệ')
         changes = {ids.get(k.lower(),k):v for k,v in changes.items()}
+        last = records.iloc[-1]
+        remaining = max(0, float(last['credits_required'])-float(last['gpa_credit_count']))
+        if number(new_credits,0,remaining) is None:
+            raise ValueError('Tín chỉ môn mới vượt số tín chỉ chưa tính GPA hoặc không hợp lệ')
+        selected = attempts.loc[attempts.course_id.isin(changes)].drop_duplicates('course_id')
+        if float(new_credits) + selected.registered_credits.sum() > float(last['registration_max_credits']):
+            raise ValueError('Tổng tín chỉ giả định vượt giới hạn đăng ký học kỳ')
         return retake_projection(attempts.to_dict('records'),changes,new_gpa,new_credits)
 
     def calc_next_term_gpa_projection(self, row: dict):
@@ -511,11 +530,11 @@ class CMCChatbotEngine:
         return f"""<div class="bg-[#131314] rounded-xl p-4 text-xs space-y-2">
           <b>Kịch bản GPA sau HK{latest['snapshot_term_index']} (Điều 15, 17)</b>
           <div>Mốc học vụ {latest.get('snapshot_cutoff','')}. Giả định học {p['next_tc']:.0f} tín chỉ mới tính GPA, không học lại/cải thiện. Đây là phép tính, không phải dự báo đã kiểm định.</div>
-          <div>Theo điểm chữ đã lưu trong dataset mô phỏng, chưa hiệu chỉnh sai khác làm tròn. Điểm trọng số hiện tại: {p['gpa_quality_points']:.2f}; tín chỉ tính GPA: {p['gpa_credit_count']:.0f}.</div>
+          <div>Theo điểm chữ đã lưu trong bộ dữ liệu đang sử dụng. Điểm trọng số hiện tại: {p['gpa_quality_points']:.2f}; tín chỉ tính GPA: {p['gpa_credit_count']:.0f}.</div>
           <div>Kịch bản A: GPA kỳ tới {p['pred_gpa_cur']:.2f} → GPA tích lũy {p['pred_cum_cur']:.2f}.</div>
           <div>Kịch bản B: GPA kỳ tới {p['pred_gpa_imp']:.2f} → GPA tích lũy {p['pred_cum_imp']:.2f}.</div>
           <div>GPA kỳ mới tối thiểu cho mục tiêu {p['target_cum']:.2f}: {required}.</div>
-          <div>Nguy cơ thôi học ML: {risk_text}. Không phải cảnh báo học tập theo Điều 18. Kịch bản ML What-If chưa được kiểm định, tạm không dùng để khẳng định tác động.</div>
+          <div>Nguy cơ thôi học ML: {risk_text}. Không phải cảnh báo học tập theo Điều 18. Kịch bản thanh toán (nếu khả dụng) chỉ là phép thử độ nhạy, không khẳng định tác động.</div>
         </div>"""
 
     def answer_deep_benchmark_questions(self, query: str, role: str, mentioned_major: str) -> str:
@@ -567,7 +586,7 @@ class CMCChatbotEngine:
             overdue_cnt = s.get("overdue_30d_students", 0)
             cards.append(f"""<div class="bg-[#131314] border border-amber-500/40 rounded-2xl p-4 text-xs space-y-2 leading-relaxed">
               <div class="text-sm font-bold text-amber-300">🏛️ Phân tích Chính sách Đào tạo, Tài chính & Vận hành Hệ thống Cảnh báo Sớm</div>
-              <div class="text-[#d1d5db]">• <b>Tài chính & Học bổng:</b> Tổng nợ học phí toàn trường hiện tại là <b>{total_debt_b:.2f} tỷ VNĐ</b> ({overdue_cnt:,} SV quá hạn &gt;30 ngày). Không suy ra tác động nhân quả từ thống kê mô phỏng.<br>• <b>Vận hành Mô hình ML:</b> PR-AUC đạt <b>{self.meta.get('test_pr_auc', 0.5460)}</b>, Chỉ số Recall@Top10% cần được tính từ tập đánh giá; chưa có lịch tái huấn luyện được xác nhận.</div></div>""")
+              <div class="text-[#d1d5db]">• <b>Tài chính & Học bổng:</b> Tổng nợ học phí toàn trường hiện tại là <b>{total_debt_b:.2f} tỷ VNĐ</b> ({overdue_cnt:,} SV quá hạn &gt;30 ngày). Không suy ra tác động nhân quả từ thống kê mô phỏng.<br>• <b>Vận hành Mô hình ML:</b> PR-AUC đạt <b>{self.meta['test_pr_auc']}</b>, Chỉ số Recall@Top10% cần được tính từ tập đánh giá; chưa có lịch tái huấn luyện được xác nhận.</div></div>""")
 
         return "".join(cards)
 
@@ -607,7 +626,7 @@ class CMCChatbotEngine:
             <li><b>Cảnh báo sớm:</b> Có <b>{s.get('warning_streak_2_students',0):,} SV</b> cảnh báo 2 kỳ liên tiếp; <b>{s.get('owed_near_24_students',0):,} SV</b> nợ 20–24 TC; <b>{s.get('unexcused_over_20_students',0):,} SV</b> vắng không phép &gt;20%.</li>
             <li><b>Phổ điểm & Điểm liệt:</b> {grade_str} • Tỷ lệ điểm liệt (&le; 2.0): <b>{s.get('exam_dead_point_pct',0)}%</b>.</li>
             <li><b>Học phần có tỷ lệ trượt cao nhất:</b> {top_courses_str}</li>
-            <li><b>Tổng công nợ học phí toàn trường:</b> <b>{s.get('total_tuition_debt_vnd',0)/1e9:.2f} tỷ VNĐ</b> ({s.get('overdue_30d_students',0):,} SV quá hạn &gt;30 ngày).</li>
+            <li><b>Tổng công nợ ghi trên toàn bộ hồ sơ (kể cả lịch sử):</b> <b>{s.get('total_tuition_debt_vnd',0)/1e9:.2f} tỷ VNĐ</b> ({s.get('overdue_30d_students',0):,} SV quá hạn &gt;30 ngày).</li>
           </ul></div>""")
         return "".join(blocks)
 
@@ -736,7 +755,7 @@ class CMCChatbotEngine:
             n_students=('record_uid', 'count'), gpa_mean=('gpa4_cumulative', 'mean'),
             owed_mean=('credits_owed_cumulative', 'mean'), failed_ratio_mean=('failed_credit_ratio', 'mean'),
             warning_count=('warning_bool', 'sum'),
-            high_risk_count=('intervention_risk', lambda s: int((s >= self.meta.get('threshold', 0.21)).sum()))
+            high_risk_count=('intervention_risk', lambda s: int((s >= self.meta['threshold']).sum()))
         ).sort_values(['high_risk_count', 'warning_count'], ascending=False)
         return [{
             "class_code": str(r['class_code']), "major_code": str(r['major_code']), "major_name": str(r['major_name']),
@@ -752,11 +771,12 @@ class CMCChatbotEngine:
             return {}
         n_stu = int(len(sub))
         warn_cnt = int(sub['warning_bool'].sum())
-        high_risk_cnt = int((sub['intervention_risk'] >= self.meta.get('threshold', 0.21)).sum())
+        high_risk_cnt = int((sub['intervention_risk'] >= self.meta['threshold']).sum())
         gpa_avg = round(float(sub['gpa4_cumulative'].mean() or 0), 2)
         owed_avg = round(float(sub['credits_owed_cumulative'].mean() or 0), 1)
         fail_avg = round(float(sub['failed_credit_ratio'].mean() * 100 or 0), 1)
-        summary_text = f"Lớp {c_code} ({sub.iloc[0]['major_name']}) có {n_stu} SV • GPA TB: {gpa_avg}/4.00 • Nợ TB: {owed_avg} TC • Cảnh báo học vụ: {warn_cnt} SV • Cần hỗ trợ sớm: {high_risk_cnt} SV."
+        valid_count = int(sub.intervention_risk.notna().sum())
+        summary_text = f"Lớp {c_code} ({sub.iloc[0]['major_name']}) có {n_stu} SV • GPA TB: {gpa_avg}/4.00 • Nợ TB: {owed_avg} TC • Cảnh báo học vụ: {warn_cnt} SV • Cần hỗ trợ sớm: {high_risk_cnt} SV (có dự báo hợp lệ: {valid_count}/{n_stu})."
         students_list = [{
             "student_id": str(s['student_id']), "snapshot_term_index": int(s.get('snapshot_term_index') or 1),
             "gpa4_term": round(float(s.get('gpa4_term') or 0), 2), "gpa4_cumulative": round(float(s.get('gpa4_cumulative') or 0), 2),
@@ -769,7 +789,7 @@ class CMCChatbotEngine:
         return {
             "class_code": c_code, "major_code": str(sub.iloc[0]['major_code']), "major_name": str(sub.iloc[0]['major_name']),
             "n_students": n_stu, "gpa_mean": gpa_avg, "owed_mean": owed_avg, "fail_pct_mean": fail_avg,
-            "warning_count": warn_cnt, "high_risk_count": high_risk_cnt, "summary_text": summary_text, "students": students_list
+            "warning_count": warn_cnt, "valid_predictions": valid_count, "high_risk_count": high_risk_cnt, "summary_text": summary_text, "students": students_list
         }
 
     def get_faculties_overview(self) -> list:
@@ -778,7 +798,7 @@ class CMCChatbotEngine:
             n_students=('record_uid', 'count'), n_classes=('class_code', 'nunique'),
             gpa_mean=('gpa4_cumulative', 'mean'), owed_mean=('credits_owed_cumulative', 'mean'),
             warning_count=('warning_bool', 'sum'),
-            high_risk_count=('intervention_risk', lambda s: int((s >= self.meta.get('threshold', 0.21)).sum())),
+            high_risk_count=('intervention_risk', lambda s: int((s >= self.meta['threshold']).sum())),
             total_debt_vnd=('tuition_debt_end_vnd', 'sum')
         ).sort_values('n_students', ascending=False)
         return [{
@@ -798,7 +818,7 @@ class CMCChatbotEngine:
         classes = self.get_all_classes_summary(m_code)
         n_stu = int(len(sub))
         warn_cnt = int(sub['warning_bool'].sum())
-        hr_cnt = int((sub['intervention_risk'] >= self.meta.get('threshold', 0.21)).sum())
+        hr_cnt = int((sub['intervention_risk'] >= self.meta['threshold']).sum())
         gpa_avg = round(float(sub['gpa4_cumulative'].mean() or 0), 2)
         owed_avg = round(float(sub['credits_owed_cumulative'].mean() or 0), 2)
         return {

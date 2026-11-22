@@ -103,8 +103,22 @@ def audit(source, scored_path, output):
     check('art18_warning', warning.ne(t.warning_current))
     check('registration_flags', ((t.credits_registered_term<t.registration_min_credits)|(t.credits_registered_term>t.registration_max_credits)).ne(t.registration_rule_status.ne('WITHIN_ART12_DEFAULT_RANGE')))
     review('registration_exceptions',t.loc[t.registration_rule_status.ne('WITHIN_ART12_DEFAULT_RANGE'),termkey+['registration_rule_status','registration_exception_reason','credits_registered_term','registration_min_credits','registration_max_credits']])
-    absent = (a.unexcused_absent_hours > .2*a.scheduled_hours) | ((a.unexcused_absent_hours+a.excused_absent_hours) > .3*a.scheduled_hours)
+    u = np.rint(a.unexcused_absent_hours*10000).astype('int64'); ex = np.rint(a.excused_absent_hours*10000).astype('int64'); h = np.rint(a.scheduled_hours*10000).astype('int64')
+    absent = (5*u > h) | (10*(u+ex) > 3*h)
     review('exam_eligibility_discrepancies',a.loc[absent.eq(a.exam_eligible), ['attempt_id',*termkey,'scheduled_hours','unexcused_absent_hours','excused_absent_hours','exam_eligible']])
+    if source.manifest.get('research_revision'):
+        from core.data_pipeline import admission_evidence
+        hundredths = np.rint(a.course_final_score10*100).astype(int)
+        rounded = ((hundredths+5)//10)/10
+        expected_grade = np.select([absent|a.exam_final_score10.le(2),rounded>=9,rounded>=8.5,rounded>=8,rounded>=7,rounded>=6.5,rounded>=5.5,rounded>=5,rounded>=4],['F','A+','A','B+','B','C+','C','D+','D'],default='F')
+        check('diem_chu_sau_lam_tron',a.grade_letter.ne(expected_grade))
+        check('dat_truot_sau_lam_tron',a.is_passed.ne(expected_grade!='F'))
+        check('du_dieu_kien_thi',absent.eq(a.exam_eligible))
+        remaining=t.sort_values(['record_uid','term_index']).copy()
+        prior=remaining.groupby('record_uid').credits_earned_cumulative.shift().fillna(0)
+        final=remaining.credits_required-prior
+        check('dang_ky_ngoai_gioi_han',remaining.credits_registered_term.gt(remaining.registration_max_credits) | (remaining.credits_registered_term.lt(remaining.registration_min_credits)&(final.ge(remaining.registration_min_credits)|remaining.credits_registered_term.gt(final))))
+        check('tuyen_sinh_duoi_nguong',admission_evidence(s).admission_evidence_status.eq('BELOW_REVIEWED_FLOOR'))
     # Thang điểm tuyển sinh của dữ liệu mô phỏng không thay thế quy định chính thức.
     scale = s.admission_method.str.extract(r'_(30|40|80|150|1200)$')[0].astype(float)
     direct = s.admission_method.eq('CMC303_TuyenThang')
@@ -116,16 +130,27 @@ def audit(source, scored_path, output):
     bachelor = curr.degree_type.eq('Bachelor'); engineer = curr.degree_type.eq('Engineer')
     check('curriculum_credit_duration', ~(bachelor & curr.credits_required.between(120,135) & curr.designed_semesters.eq(9) & curr.max_semesters.eq(18) | engineer & curr.credits_required.between(150,164) & curr.designed_semesters.eq(11) & curr.max_semesters.eq(22)))
 
-    scored = pd.read_csv(scored_path,low_memory=False)
-    meta = json.loads(scored_path.with_name('model_metadata.json').read_text(encoding='utf-8'))
-    allowed = set(registry.loc[registry.role.eq('FEATURE_ALLOWED_ASOF'),'feature_name']) | set(EXTRA_FEATURES)
-    check('model_disallowed_features',len(set(meta['feature_cols'])-allowed))
-    ca = course_features(x,a).merge(scored[KEY+EXTRA_FEATURES],on=KEY,validate='one_to_one',suffixes=('_src','_scored'))
+    scored = None
+    ca = course_features(x,a)
     check('course_feature_missing',len(x)-len(ca))
-    for col in EXTRA_FEATURES:
-        check('asof_'+col,~np.isclose(ca[col+'_src'],ca[col+'_scored'],equal_nan=True))
+    if scored_path is not None:
+        scored = pd.read_csv(scored_path,low_memory=False,float_precision='round_trip')
+        meta = json.loads(scored_path.with_name('model_metadata.json').read_text(encoding='utf-8'))
+        allowed = set(registry.loc[registry.role.eq('FEATURE_ALLOWED_ASOF'),'feature_name']) | set(EXTRA_FEATURES)
+        check('model_disallowed_features',len(set(meta['feature_cols'])-allowed))
+        compare = ca.merge(scored[KEY+EXTRA_FEATURES],on=KEY,validate='one_to_one',suffixes=('_src','_scored'))
+        check('scored_course_feature_missing',len(x)-len(compare))
+        for col in EXTRA_FEATURES:
+            check('asof_'+col,~np.isclose(compare[col+'_src'],compare[col+'_scored'],equal_nan=True))
     for mode in MODES:
-        frame, latest = runtime_view(scored, source, mode)
+        if scored is not None:
+            frame, latest = runtime_view(scored, source, mode)
+        else:
+            from core.data_pipeline import asof_state
+            frame=x.loc[dates(x.snapshot_cutoff)<=source.cutoff(mode)].copy()
+            latest=frame.sort_values('snapshot_term_index').drop_duplicates('record_uid',keep='last').copy()
+            latest['data_as_of']=source.cutoff(mode).date().isoformat()
+            latest['state_as_of']=asof_state(latest,states,'data_as_of')
         vis = visible_attempts(a,latest)
         labels = source.table('snapshot_labels_'+mode)
         unique(labels,KEY,mode)
@@ -151,11 +176,11 @@ def audit(source, scored_path, output):
         check(mode+'_split', lk.split.ne(expected_split))
         check(mode+'_student_split_overlap',lk.groupby('record_uid').split.nunique().gt(1))
         stats[mode] = {'snapshots':len(frame),'students':len(latest),'visible_attempts':len(vis), 'observed':int(observed.sum()),'censored':int((~observed).sum()),'positive':int(positive.sum()),'states':{k:int(v) for k,v in latest.state_as_of.value_counts().items()}, 'cutoff_ranges_by_split':lk.groupby('split').snapshot_cutoff.agg(['min','max']).to_dict('index')}
-        if mode == 'FULL_SIMULATION':
+        if mode == 'FULL_SIMULATION' and scored is not None:
             joined=labels.merge(scored[KEY+['dropout_next_2_terms']],on=KEY,validate='one_to_one',suffixes=('_src','_scored'))
-            check('full_scored_label_match',joined.dropout_next_2_terms_src.ne(joined.dropout_next_2_terms_scored))
+            check('full_scored_label_match',~np.isclose(joined.dropout_next_2_terms_src,joined.dropout_next_2_terms_scored,equal_nan=True))
     stats['source_missing_counts']={name:{k:int(v) for k,v in df.isna().sum().items() if v} for name,df in source.cache.items()}
-    report={'dataset_version':'3.2.1','scenario':'V3_2_MAIN','blocking_errors':checks,'review_required':reviews,'views':stats,'limitations':source.manifest['known_limitations'], 'temporal_split_note':'Các tập không trùng sinh viên nhưng khoảng thời gian có thể chồng lấn; cần thực nghiệm rolling-origin.', 'policy_note':'Không suy ra quyết định học vụ hoặc trúng tuyển chính thức từ dữ liệu mô phỏng.'}
+    report={'dataset_version':source.manifest.get('research_revision','3.2.1'),'scenario':'V3_2_MAIN','blocking_errors':checks,'review_required':reviews,'views':stats,'limitations':source.manifest['known_limitations'], 'temporal_split_note':'Các tập không trùng sinh viên nhưng khoảng thời gian có thể chồng lấn; cần thực nghiệm rolling-origin.', 'policy_note':'Không suy ra quyết định học vụ hoặc trúng tuyển chính thức từ dữ liệu mô phỏng.'}
     (output/'kiem_tra_du_lieu.json').write_text(json.dumps(report,ensure_ascii=False,indent=2),encoding='utf-8')
     print('Báo cáo kiểm tra dữ liệu:',output/'kiem_tra_du_lieu.json')
     return not any(checks.values())
@@ -165,5 +190,6 @@ if __name__=='__main__':
     p=argparse.ArgumentParser(description=__doc__)
     p.add_argument('--output',type=Path,default=ROOT/'data/kiem_tra_du_lieu')
     p.add_argument('--scored',type=Path,default=ROOT/'artifacts_model/student_snapshots_scored.csv.gz')
+    p.add_argument('--source-only',action='store_true',help='Kiểm tra dữ liệu nguồn trước huấn luyện, không cần artifact đã chấm điểm')
     args=p.parse_args()
-    raise SystemExit(0 if audit(Dataset(),args.scored,args.output) else 1)
+    raise SystemExit(0 if audit(Dataset(),None if args.source_only else args.scored,args.output) else 1)

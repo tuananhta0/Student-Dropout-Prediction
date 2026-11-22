@@ -4,9 +4,12 @@ from pydantic import BaseModel
 from core.chatbot_engine import CMCChatbotEngine, row_to_clean_dict, df_to_clean_records, risk_display
 from pathlib import Path
 import traceback
+import os
+from typing import Literal
+from pydantic import Field
 
 app = FastAPI(title="CMC Academic AI Portal V3.2.1")
-engine = CMCChatbotEngine(artifact_dir="artifacts_model")
+engine = CMCChatbotEngine(artifact_dir=os.environ.get("CMC_MODEL_DIR", "artifacts_model"))
 
 class LoginRequest(BaseModel):
     username: str
@@ -31,7 +34,9 @@ def data_view():
     return {"mode": engine.data_mode, "as_of": engine.data_as_of,
             "synthetic": True, "snapshots": len(engine.ml_df), "academic_terms": len(engine.df),
             "active_students": len(engine.active_latest_df),
-            "students_with_snapshots": len(engine.latest_df)}
+            "students_with_snapshots": len(engine.latest_df),
+            "valid_predictions": int(engine.active_latest_df.prediction_status.eq("VALID").sum()),
+            "model_version": engine.meta.get("version", "baseline")}
 
 @app.post("/api/login")
 def login(req: LoginRequest):
@@ -87,6 +92,7 @@ def get_student_me(user_id: str, role: str = "student"):
         "history": history,
         "warnings": warnings,
         "gpa_projection": engine.calc_next_term_gpa_projection(latest),
+        "research_model": bool(engine.meta.get("model_available_as_of")),
         "courses": courses,
         "courses_status": (
             "unavailable" if engine.df_attempts is None
@@ -94,6 +100,44 @@ def get_student_me(user_id: str, role: str = "student"):
             else "no_records"
         )
     }
+
+class GpaScenarioRequest(BaseModel):
+    user_id: str
+    role: Literal['student','advisor','admin'] = 'student'
+    changes: dict[str, Literal['F','D','D+','C','C+','B','B+','A','A+']] = Field(default_factory=dict, max_length=30)
+    new_gpa: float = Field(default=0, ge=0, le=4, allow_inf_nan=False, strict=True)
+    new_credits: int = Field(default=0, ge=0, le=30, strict=True)
+
+
+class PaymentScenarioRequest(BaseModel):
+    user_id: str
+    role: Literal['student','advisor','admin'] = 'student'
+    payment: float = Field(gt=0, allow_inf_nan=False, strict=True)
+
+
+def scenario_uid(user_id):
+    records = engine.get_student_records(user_id.strip().upper())
+    if records.empty:
+        raise HTTPException(404, 'Không tìm thấy hồ sơ sinh viên')
+    return str(records.iloc[-1]['record_uid'])
+
+
+# Tài khoản mô phỏng; chưa cung cấp xác thực phía máy chủ. Chỉ chạy localhost.
+@app.post('/api/student/gpa-scenario')
+def gpa_scenario(req: GpaScenarioRequest):
+    try:
+        return engine.calculate_retake(scenario_uid(req.user_id), req.changes, req.new_gpa, req.new_credits)
+    except (ValueError, TypeError) as exc:
+        raise HTTPException(422, str(exc)) from exc
+
+
+@app.post('/api/student/payment-scenario')
+def payment_scenario_endpoint(req: PaymentScenarioRequest):
+    try:
+        return engine.calculate_payment_scenario(scenario_uid(req.user_id),req.payment)
+    except (ValueError, TypeError) as exc:
+        raise HTTPException(422, str(exc)) from exc
+
 
 @app.get("/api/advisor/classes")
 def get_advisor_classes(role: str = "advisor", major_code: str = ""):

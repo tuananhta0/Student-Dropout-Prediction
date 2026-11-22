@@ -30,3 +30,7 @@ Biểu đồ lấy kỳ học đã công bố mới nhất và lập kịch bả
 - 2025: https://cmcu.edu.vn/truong-dai-hoc-cmc-cong-bo-4-phuong-thuc-xet-tuyen-nam-2025/ và https://cmcu.edu.vn/thong-bao-quy-doi-diem-tuong-duong-giua-cac-phuong-thuc-xet-tuyen-truong-dai-hoc-cmc-nam-2025/
 
 Chỉ dùng các ngưỡng đã công bố có thể so sánh. Thiếu tổ hợp, ưu tiên hoặc hồ sơ đặc biệt nên không kết luận trúng tuyển cá nhân. Toàn bộ báo cáo sinh ra nằm ngoài Git.
+
+## Kịch bản bổ sung
+
+Giao diện cho phép chọn nhiều học phần đã có điểm để học lại hoặc cải thiện, nhập số tín chỉ môn mới và GPA giả định. Backend kiểm tra tổng tín chỉ kỳ mới và không cộng trùng tín chỉ đã tính. Kết quả xét tốt nghiệp kèm ngày bản ghi xét. Với model nghiên cứu mới, kịch bản thanh toán lấy đầu vào từ snapshot ML hợp lệ, không phải hồ sơ học vụ thiếu feature. Đây là phép thử độ nhạy chứ không phải bằng chứng nhân quả. Xem [hướng dẫn thực nghiệm](huan_luyen_va_thuc_nghiem.md).

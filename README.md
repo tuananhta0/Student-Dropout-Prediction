@@ -8,7 +8,7 @@ Hệ thống **Trợ lý học vụ, tra cứu quy chế đào tạo và cảnh 
 - **Cố vấn học tập:** thống kê lớp, hồ sơ sinh viên và danh sách nguy cơ còn hiệu lực.
 - **Quản trị:** thống kê theo khoa, khóa, hệ đào tạo và tình trạng học tập.
 
-Chatbot hiện dùng quy tắc và từ khóa; chưa phải RAG hoàn chỉnh. Xác thực phân quyền phía máy chủ chưa hoàn thiện: chỉ chạy localhost với dữ liệu mô phỏng. Xác suất không phải quyết định buộc thôi học hoặc bảo đảm kết quả tương lai. Model hiện có ROC-AUC 0,8309; Average Precision 0,5455 trên tập kiểm thử mô phỏng, chưa kiểm chứng với dữ liệu thực.
+Chatbot hiện dùng quy tắc và từ khóa; chưa phải RAG hoàn chỉnh. Xác thực phân quyền phía máy chủ chưa hoàn thiện: chỉ chạy localhost với dữ liệu mô phỏng. Xác suất không phải quyết định buộc thôi học hoặc bảo đảm kết quả tương lai. Model baseline hiện có ROC-AUC 0,8309; Average Precision 0,5455 trên tập kiểm thử mô phỏng, chưa kiểm chứng với dữ liệu thực.
 
 ## 🚀 Cài đặt và chạy (PowerShell, Python 3.11)
 
@@ -32,7 +32,7 @@ $env:CMC_DATA_MODE = 'DEMO'
 python -m uvicorn app:app --host 127.0.0.1 --port 8000
 ```
 
-Mở http://127.0.0.1:8000. Mặc định trình diễn tại mốc mô phỏng 03/02/2027 để có kết quả HK3 của khóa 2025. Ngày này không phải ngày hiện tại ngoài đời. Hai chế độ nghiên cứu cũ vẫn dùng được. Không cần huấn luyện lại để chạy demo.
+Mở http://127.0.0.1:8000. Mặc định trình diễn tại mốc mô phỏng 03/02/2027 để có kết quả HK3 của khóa 2025. Ngày này không phải ngày hiện tại ngoài đời. Hai chế độ nghiên cứu cũ vẫn dùng được. Không cần huấn luyện lại để chạy demo baseline. Khi đã sinh dữ liệu hiệu chỉnh, có thể chạy model mới bằng cặp biến `CMC_DATASET_ROOT` và `CMC_MODEL_DIR` theo hướng dẫn thực nghiệm.
 
 ## 🔑 Tài khoản demo
 
@@ -51,7 +51,9 @@ Student-Dropout-Prediction/
 ├── core/                 # Quy tắc, chatbot, dữ liệu
 │   ├── academic_rules.py
 │   ├── chatbot_engine.py
-│   └── data_pipeline.py
+│   ├── data_pipeline.py
+│   ├── prediction.py
+│   └── analytics.py
 ├── scripts/              # Cài dữ liệu, kiểm tra, huấn luyện, quét PDF
 ├── tests/                # Kiểm thử đơn vị và tích hợp
 ├── docs/                 # Tài liệu hướng dẫn tiếng Việt
@@ -75,4 +77,7 @@ python -B -X utf8 -m tests.smoke_runtime
 python -B -X utf8 -m tests.smoke_academic_rules
 ```
 
-Xem [hướng dẫn dữ liệu](docs/huong_dan_du_lieu.md) và [quy chế, công thức tính toán](docs/quy_che_va_tinh_toan.md). Không chạy huấn luyện khi chưa giải quyết sai lệch làm tròn điểm và các dữ liệu phụ thuộc.
+Xem [hướng dẫn dữ liệu](docs/huong_dan_du_lieu.md) và [quy chế, công thức tính toán](docs/quy_che_va_tinh_toan.md).
+## 🔬 Hiệu chỉnh và huấn luyện mô hình mới
+
+Xem [hướng dẫn hiệu chỉnh, thực nghiệm và chọn phiên bản mô hình](docs/huan_luyen_va_thuc_nghiem.md). Quy trình mới tái sinh lịch sử học vụ đồng bộ, mở rộng snapshot qua các học kỳ và tách STRESS. Kết quả huấn luyện mới nằm trong `data/models/`, không ghi đè baseline. Các metric baseline phía trên không phải kết quả model mới.

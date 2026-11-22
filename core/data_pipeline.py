@@ -71,7 +71,8 @@ class Dataset:
             raise FileNotFoundError(f'Thiếu dữ liệu MAIN: {manifest}; chạy python -m scripts.install_dataset <archive>')
         self.manifest = json.loads(manifest.read_text(encoding='utf-8'))
         require(self.manifest.get('scenario_id') == 'V3_2_MAIN' and
-                self.manifest.get('identity_migration_version') == '3.2.1' and
+                (self.manifest.get('identity_migration_version') == '3.2.1' or
+                 self.manifest.get('research_revision') == 'cmc-policy-2026-01') and
                 self.manifest.get('n_students') == 20000 and self.manifest.get('is_synthetic') is True,
                 'Yêu cầu dữ liệu mô phỏng V3.2.1 MAIN, không dùng BASE/STRESS')
         self.cache = {}
@@ -255,6 +256,7 @@ def graduation_asof(frame, clearance, when='snapshot_cutoff'):
     result = frame.copy()
     for c in ['graduation_status',*fields]:
         result[c] = joined[c].to_numpy()
+    result['graduation_review_date'] = joined['_date_clear'].dt.strftime('%Y-%m-%d').to_numpy()
     return result
 
 
@@ -297,7 +299,7 @@ def academic_view(ml, source, mode):
     latest = graduation_asof(latest, source.table('graduation_clearance'), 'data_as_of')
     latest['verified_certificates'] = certificates(latest.assign(snapshot_cutoff=latest.data_as_of),source.table('academic_requirement_events'))
     # Cập nhật đúng dòng cuối của lịch sử để API hồ sơ và thống kê nhất quán.
-    fields = ['verified_certificates','graduation_status',*[c for c in latest if c.startswith('clear_')]]
+    fields = ['verified_certificates','graduation_status','graduation_review_date',*[c for c in latest if c.startswith('clear_')]]
     frame = frame.set_index(KEY); update = latest.set_index(KEY)
     frame.loc[update.index,fields] = update[fields]
     return frame.reset_index(),latest
