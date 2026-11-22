@@ -85,6 +85,7 @@ def get_student_me(user_id: str, role: str = "student"):
         "latest": latest,
         "history": history,
         "warnings": warnings,
+        "gpa_projection": engine.calc_next_term_gpa_projection(latest),
         "courses": courses,
         "courses_status": (
             "unavailable" if engine.df_attempts is None

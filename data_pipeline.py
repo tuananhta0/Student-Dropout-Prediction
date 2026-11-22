@@ -155,6 +155,45 @@ def enrich(frame, source):
     return frame
 
 
+def gpa_ledger(source):
+    """Exact cumulative best-grade quality points from published course attempts."""
+    from academic_rules import GRADE_POINTS
+    a = source.table('course_attempts').merge(
+        source.table('courses')[['course_id','is_gpa_eligible','is_certificate_course']],
+        on='course_id', validate='many_to_one')
+    terms = source.table('term_academics')[['record_uid','term_index','available_at']]
+    a = a.merge(terms.rename(columns={'available_at':'term_available'}), on=['record_uid','term_index'], validate='many_to_one')
+    require((dates(a.available_at) <= dates(a.term_available)).all() and
+            (dates(a.score_published_at) <= dates(a.term_available)).all(), 'Unpublished grade in GPA ledger')
+    a = a.loc[a.is_gpa_eligible & ~a.is_certificate_course & a.grade_letter.isin(GRADE_POINTS)].copy()
+    a = a.sort_values(['record_uid','course_id','term_index','attempt_no'])
+    groups = ['record_uid','course_id']
+    require(a.groupby(groups).registered_credits.nunique().le(1).all(), 'Changed course credits')
+    a['points'] = a.grade_letter.map(GRADE_POINTS) * a.registered_credits
+    a['best'] = a.groupby(groups).points.cummax()
+    a['delta'] = a['best'] - a.groupby(groups)['best'].shift().fillna(0)
+    a['credits'] = a.registered_credits.where(~a.duplicated(groups), 0)
+    net = a.groupby(['record_uid','term_index'])[['delta','credits']].sum()
+    ledger = terms.set_index(['record_uid','term_index']).sort_index().join(net).fillna({'delta':0,'credits':0})
+    ledger[['gpa_quality_points','gpa_credit_count']] = ledger.groupby(level=0)[['delta','credits']].cumsum()
+    return ledger.reset_index().rename(columns={'term_index':'snapshot_term_index'})[[*KEY,'gpa_quality_points','gpa_credit_count']]
+
+
+def mandatory_course_ledger(source):
+    students = source.table('students')[['record_uid','curriculum_id']]
+    required = source.table('curriculum_courses').query("required_or_elective == 'REQUIRED'")[['curriculum_id','course_id']]
+    counts = required.groupby('curriculum_id').size()
+    attempts = source.table('course_attempts')
+    a = attempts.loc[attempts.is_passed, ['record_uid','term_index','course_id']].merge(students,on='record_uid',validate='many_to_one')
+    a = a.merge(required,on=['curriculum_id','course_id'],validate='many_to_one')
+    first = a.sort_values('term_index').drop_duplicates(['record_uid','course_id'])
+    increments = first.groupby(['record_uid','term_index']).size().rename('passed')
+    terms = source.table('term_academics')[['record_uid','term_index']].merge(students,on='record_uid',validate='many_to_one')
+    terms = terms.set_index(['record_uid','term_index']).sort_index().join(increments)
+    terms['mandatory_courses_remaining'] = terms.curriculum_id.map(counts).fillna(0) - terms.passed.fillna(0).groupby(level=0).cumsum()
+    return terms.reset_index().rename(columns={'term_index':'snapshot_term_index'})[[*KEY,'mandatory_courses_remaining']]
+
+
 def runtime_view(scored, source, mode='ASOF_2026_DEMO'):
     """Keep scores/ML features immutable; replace unsafe display fields only."""
     snapshots = source.table('prediction_snapshots')
@@ -175,6 +214,11 @@ def runtime_view(scored, source, mode='ASOF_2026_DEMO'):
     frame = frame.drop(columns=['dropout_next_2_terms', 'exit_reason_for_evaluation', 'label_observed', 'first_dropout_event_id'], errors='ignore')
     # Runtime never includes labels, even when choosing FULL_SIMULATION.
     frame = enrich(frame, source)
+    frame = merge_exact(frame, gpa_ledger(source), KEY, 'GPA ledger')
+    frame = merge_exact(frame, mandatory_course_ledger(source), KEY, 'mandatory courses')
+    horizon = source.table('snapshot_labels_FULL_SIMULATION')[[*KEY,'label_observation_end']].rename(columns={'label_observation_end':'prediction_valid_until'})
+    frame = merge_exact(frame, horizon, KEY, 'prediction horizon')
+    frame['prediction_status'] = np.where(dates(frame.prediction_valid_until) <= cutoff, 'STALE', 'VALID')
     frame['data_mode'] = mode
     frame['data_as_of'] = cutoff.date().isoformat()
     latest = frame.sort_values('snapshot_term_index').drop_duplicates('record_uid', keep='last').copy()

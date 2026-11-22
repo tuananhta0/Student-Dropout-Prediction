@@ -402,32 +402,11 @@
       }
     }
 
-    function calcClientNextTermGpa(row) {
-      const gpaT = Number(row.gpa4_term || 0);
-      const gpaC = Number(row.gpa4_cumulative || 0);
-      const earnTc = Number(row.credits_earned_cumulative || 15);
-      const att = Number(row.attendance_rate_term || 85);
-      const lmsDays = Number(row.lms_active_days_4weeks || 12);
-      const workH = Number(row.part_time_work_hours_week || 0);
-      const nextTc = 15;
-
-      const baseGpa = 0.55 * gpaT + 0.45 * gpaC;
-      const attAdj = (att - 80.0) * 0.015;
-      const lmsAdj = (lmsDays - 12.0) * 0.012;
-      const workPen = Math.max(0.0, (workH - 12.0) * 0.02);
-
-      const predCur = Math.max(0.50, Math.min(4.00, baseGpa + attAdj + lmsAdj - workPen));
-      const predCumCur = Math.max(0.50, Math.min(4.00, (gpaC * earnTc + predCur * nextTc) / Math.max(1, earnTc + nextTc)));
-      const predImp = Math.max(2.15, Math.min(4.00, baseGpa + 0.65 + (gpaT < 2.0 ? 0.25 : 0.15)));
-      const predCumImp = Math.max(0.50, Math.min(4.00, (gpaC * earnTc + predImp * nextTc) / Math.max(1, earnTc + nextTc)));
-
-      return {
-        nextTerm: Number(row.snapshot_term_index || 1) + 1,
-        predCur: predCur.toFixed(2),
-        predCumCur: predCumCur.toFixed(2),
-        predImp: predImp.toFixed(2),
-        predCumImp: predCumImp.toFixed(2)
-      };
+    function calcClientNextTermGpa(p) {
+      return p ? {nextTerm: p.next_term, nextTc: p.next_tc,
+        predCur: p.pred_gpa_cur.toFixed(2), predCumCur: p.pred_cum_cur.toFixed(2),
+        predImp: p.pred_gpa_imp.toFixed(2), predCumImp: p.pred_cum_imp.toFixed(2)}
+        : {nextTerm: "—", nextTc: "—", predCur: "N/A", predCumCur: "N/A", predImp: "N/A", predCumImp: "N/A"};
     }
 
     async function loadStudentSelfData(targetStudentId) {
@@ -436,20 +415,20 @@
       if (!res.ok) return;
       const data = await res.json();
       const latest = data.latest;
-      const proj = calcClientNextTermGpa(latest);
-      const active = latest.state_as_of === 'ENROLLED';
+      const proj = calcClientNextTermGpa(data.gpa_projection);
+      const active = latest.state_as_of === 'ENROLLED' && !!data.gpa_projection;
       document.getElementById('stuNextTermBanner').classList.toggle('hidden', !active);
       document.getElementById('stuPredBadge').classList.toggle('hidden', !active);
 
       document.getElementById('panelStudentData').classList.remove('hidden');
       document.getElementById('stuHeaderInfo').innerText = `🎓 Hồ sơ Sinh viên: ${latest.student_id} • Lớp: ${latest.class_code}`;
       document.getElementById('stuSubInfo').innerText = `Ngành: ${latest.major_name} (${latest.degree_type} - Hệ ${latest.education_mode})`;
-      document.getElementById('stuPredBadge').innerText = `🔮 Dự đoán GPA HK${proj.nextTerm}: ${proj.predCur} ➔ ${proj.predImp}/4.00`;
-      document.getElementById('stuRiskBadge').innerText = `Snapshot ${latest.snapshot_cutoff}: ${(latest.risk_probability * 100).toFixed(1)}% (${latest.risk_level}) | ${latest.state_as_of}`;
+      document.getElementById('stuPredBadge').innerText = `🔮 Kịch bản GPA HK${proj.nextTerm}: ${proj.predCur} ➔ ${proj.predImp}/4.00`;
+      document.getElementById('stuRiskBadge').innerText = `Snapshot ${latest.snapshot_cutoff}: ${(latest.risk_probability * 100).toFixed(1)}% (${latest.risk_level}) | ${latest.state_as_of} | ${latest.prediction_status}`;
 
       document.getElementById('stuNextTermBanner').innerHTML = `
         <div class="flex flex-wrap items-center justify-between gap-2">
-          <div class="font-bold text-blue-300 text-sm">🔮 Dự đoán Kết quả Học kỳ tiếp theo (HK${proj.nextTerm} - Dự kiến 15 tín chỉ)</div>
+          <div class="font-bold text-blue-300 text-sm">🔮 Kịch bản GPA (HK${proj.nextTerm} - ${proj.nextTc} tín chỉ mới, không học lại)</div>
           <button type="button" onclick="askFromData('Dự đoán điểm kỳ sau của sinh viên ${latest.student_id}')"
             class="px-3 py-1 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs transition">
             Xem chi tiết Công thức & Kịch bản trên Chat ➔
@@ -457,11 +436,11 @@
         </div>
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
           <div class="bg-[#131314] border border-[#333537] rounded-xl p-3">
-            <div class="text-[#9aa0a6] text-[11px]">Kịch bản 1: Giữ nguyên thói quen học tập hiện tại</div>
+            <div class="text-[#9aa0a6] text-[11px]">Kịch bản A: GPA kỳ mới bằng GPA tích lũy</div>
             <div class="text-sm font-bold text-amber-300 mt-0.5">GPA HK${proj.nextTerm} dự kiến: ${proj.predCur}/4.00 • GPA Tích lũy: ${proj.predCumCur}/4.00</div>
           </div>
           <div class="bg-[#131314] border border-emerald-500/30 rounded-xl p-3">
-            <div class="text-[#9aa0a6] text-[11px]">Kịch bản 2: Cải thiện (Chuyên cần &ge; 92%, LMS tích cực, Làm thêm &le; 8h/tuần)</div>
+            <div class="text-[#9aa0a6] text-[11px]">Kịch bản B: GPA kỳ mới cao hơn 0,50 (tối đa 4)</div>
             <div class="text-sm font-bold text-emerald-300 mt-0.5">GPA HK${proj.nextTerm} dự kiến: ${proj.predImp}/4.00 • GPA Tích lũy: ${proj.predCumImp}/4.00</div>
           </div>
         </div>
@@ -502,7 +481,7 @@
           <div class="w-10 bg-[#131314] h-24 rounded-xl flex items-end p-1 border border-dashed border-blue-400">
             <div class="bg-blue-500/80 w-full rounded-lg" style="height:${predH}%"></div>
           </div>
-          <span class="text-[11px] text-blue-300 font-semibold mt-1">HK${proj.nextTerm} (Dự báo)</span>
+          <span class="text-[11px] text-blue-300 font-semibold mt-1">HK${proj.nextTerm} (Giả định)</span>
         </div>
       `;
       document.getElementById('stuGpaBars').innerHTML = historyBars + (active ? predBar : '');
@@ -524,7 +503,7 @@
           <div class="w-full bg-[#131314] h-2.5 rounded-full overflow-hidden"><div class="bg-emerald-500 h-full" style="width:${passPct}%"></div></div>
         </div>
         <div>
-          <div class="flex justify-between text-[11px] mb-1"><span>Tỷ lệ chuyên cần (Chuẩn dự thi >= 80%)</span><b>${attPct}%</b></div>
+          <div class="flex justify-between text-[11px] mb-1"><span>Tỷ lệ chuyên cần học kỳ (không phải điều kiện thi từng môn)</span><b>${attPct}%</b></div>
           <div class="w-full bg-[#131314] h-2.5 rounded-full overflow-hidden"><div class="bg-indigo-400 h-full" style="width:${attPct}%"></div></div>
         </div>
       `;
@@ -553,7 +532,7 @@
           <td class="py-2 px-2 text-center">${c.exam_score ?? '—'}</td>
           <td class="py-2 px-2 text-center font-bold">${c.final_score ?? '—'}</td>
           <td class="py-2 px-2 text-center font-bold ${c.grade_letter === 'F' ? 'text-rose-400' : 'text-emerald-300'}">${c.grade_letter ?? '—'}</td>
-          <td class="py-2 px-2 text-right whitespace-nowrap">${c.exam_eligible === false ? 'Cấm thi' : c.is_passed == null ? 'Chưa có kết quả' : c.is_passed ? '<span class="px-2 py-0.5 rounded bg-emerald-950 text-emerald-300 font-semibold">Đạt</span>' : '<span class="px-2 py-0.5 rounded bg-rose-950 text-rose-300 font-bold">Học lại (F)</span>'}</td>
+          <td class="py-2 px-2 text-right whitespace-nowrap">${c.exam_eligible === false ? 'Cấm thi' : c.is_passed == null ? 'Chưa có kết quả' : c.is_passed ? '<span class="px-2 py-0.5 rounded bg-emerald-950 text-emerald-300 font-semibold">Đạt</span>' : '<span class="px-2 py-0.5 rounded bg-rose-950 text-rose-300 font-bold">Học lại (F)</span>'}${c.eligibility_review || c.grade_policy_review ? ' · Cần đối chiếu quy chế' : ''}</td>
         </tr>
       `).join('');
     }
@@ -609,7 +588,7 @@
       const d = await res.json();
       document.getElementById('advClassSummaryText').innerText = d.summary_text || '';
       document.getElementById('advStudentsTable').innerHTML = (d.students || []).map(s => {
-        const predGpa = Math.max(0.5, Math.min(4.0, 0.55 * s.gpa4_term + 0.45 * s.gpa4_cumulative + (s.attendance_rate_term - 80) * 0.015)).toFixed(2);
+        const predGpa = s.gpa_projection ? s.gpa_projection.pred_gpa_cur.toFixed(2) : "N/A";
         return `
         <tr class="hover:bg-[#282a2c]/50">
           <td class="py-2 px-2.5 font-bold text-blue-300">${s.student_id}</td>
@@ -619,7 +598,7 @@
           <td class="py-2 px-2.5">${s.credits_earned_cumulative} TC</td>
           <td class="py-2 px-2.5 ${s.credits_owed_cumulative > 0 ? 'text-amber-300 font-bold' : 'text-slate-400'}">${s.credits_owed_cumulative} TC</td>
           <td class="py-2 px-2.5">${s.attendance_rate_term}%</td>
-          <td class="py-2 px-2.5 font-bold ${s.risk_probability >= 0.21 ? 'text-rose-400' : 'text-emerald-300'}">${(s.risk_probability * 100).toFixed(1)}% (${s.risk_level})</td>
+          <td class="py-2 px-2.5 font-bold ${s.prediction_status === 'STALE' ? 'text-slate-400' : s.risk_probability >= 0.21 ? 'text-rose-400' : 'text-emerald-300'}">${(s.risk_probability * 100).toFixed(1)}% (${s.risk_level}) · ${s.prediction_status}</td>
           <td class="py-2 px-2.5 text-right space-x-1 whitespace-nowrap">
             <button type="button" onclick="inspectStudentInTab('${s.student_id}')"
               class="px-2.5 py-1 rounded-lg bg-emerald-950 hover:bg-emerald-900 text-emerald-300 font-semibold">📊 Bảng điểm</button>

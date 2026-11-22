@@ -25,7 +25,7 @@ Kho lưu trữ đã đóng gói sẵn mô hình (`dropout_pipeline.joblib`) và 
 
 ### 1. Tải dự án về máy (Clone Repository)
 ```bash
-git clone [https://github.com/tuananhta0/Student-Dropout-Prediction.git](https://github.com/tuananhta0/Student-Dropout-Prediction.git)
+git clone https://github.com/tuananhta0/Student-Dropout-Prediction.git
 cd Student-Dropout-Prediction
 ```
 
@@ -86,3 +86,7 @@ Student-Dropout-Prediction/
 ### Phase 2: Dataset integration
 
 The runtime now requires the verified V3.2.1 MAIN data. See [PHASE2_DATA.md](PHASE2_DATA.md) for installation, data modes, audit and smoke tests. The default is the synthetic `ASOF_2026_DEMO` view (2026-10-01); the model itself is unchanged.
+
+### Phase 3: Academic rules
+
+See [PHASE3_RULES.md](PHASE3_RULES.md) for the policy checks, exact GPA ledger, scenario calculator, source-review reports and prediction horizon limitations.

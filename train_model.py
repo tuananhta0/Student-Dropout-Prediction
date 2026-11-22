@@ -38,7 +38,7 @@ def find_file(rel_path: str, fallback_name: str = "") -> Path:
 def build_analytics_summary(df_all: pd.DataFrame, df_ca: pd.DataFrame = None) -> dict:
     latest = df_all.sort_values('snapshot_term_index').drop_duplicates('record_uid', keep='last').copy()
     latest['warn_bool'] = latest['warning_current'].astype(str).str.lower() == 'true'
-    latest['high_risk_bool'] = (latest['risk_probability'] >= 0.21) & latest['state_as_of'].eq('ENROLLED')
+    latest['high_risk_bool'] = (latest['risk_probability'] >= 0.21) & latest['state_as_of'].eq('ENROLLED') & latest['prediction_status'].eq('VALID')
     latest['dropout_bool'] = latest['state_as_of'].eq('DROPOUT')
 
     summary = {

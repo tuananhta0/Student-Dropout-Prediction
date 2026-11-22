@@ -1,4 +1,5 @@
 import re
+from academic_rules import number, rounded, registration_bounds, warning_reasons, withdrawal_reasons, exam_barred, course_grade, projection, graduation_conditions
 import os
 from data_pipeline import Dataset, runtime_view, visible_attempts
 import json
@@ -22,7 +23,7 @@ def strip_accents(text: str) -> str:
 def row_to_clean_dict(row) -> dict:
     raw = json.loads(row.to_json())
     str_cols = {"student_id", "record_uid", "class_code", "major_code", "major_name", "degree_type", "education_mode", "risk_level", "verified_certificates", "exit_reason_for_evaluation"}
-    return {k: ("" if k in str_cols else 0) if (v is None or (isinstance(v, float) and (math.isnan(v) or math.isinf(v)))) else v for k, v in raw.items()}
+    return {k: ("" if k in str_cols else None) if (v is None or (isinstance(v, float) and (math.isnan(v) or math.isinf(v)))) else v for k, v in raw.items()}
 
 def df_to_clean_records(df: pd.DataFrame) -> list:
     return [row_to_clean_dict(r) for _, r in df.iterrows()]
@@ -42,13 +43,13 @@ MAJOR_ALIASES = {
 STRUCTURED_REGULATIONS = [
     {"rule_id": "DIEU_1_2_27", "article_num": ["1", "2", "27"], "topic": "Phạm vi & Hiệu lực", "title": "Điều 1, 2 & 27: Phạm vi áp dụng và Hiệu lực Quy chế (QĐ 22/2023)", "source": "QĐ 22/2023/QĐ-ĐHCMC-HĐT, Điều 1, 2, 27", "keywords": ["điều 1", "điều 2", "điều 27", "phạm vi", "năm học nào", "2023-2024", "khóa 2022", "bản tóm tắt", "bản gốc"], "summary_rows": [["Đối tượng (Điều 1)", "Áp dụng cho SV đại học hệ chính quy tại ĐH CMC"], ["Hiệu lực (Điều 27.1)", "Áp dụng từ năm học 2023–2024; ưu tiên đối chiếu văn bản gốc QĐ 22/2023"]], "takeaway": "Quy chế QĐ 22/2023 có hiệu lực từ năm học 2023–2024; văn bản gốc QĐ 22/2023 có giá trị pháp lý cao nhất."},
     {"rule_id": "DIEU_3_5", "article_num": ["3", "5"], "topic": "Tín chỉ & Thời gian tối đa", "title": "Điều 3 & Điều 5: Tín chỉ, Học phần tiên quyết và Thời gian học tối đa", "source": "QĐ 22/2023/QĐ-ĐHCMC-HĐT, Điều 3 & Điều 5", "keywords": ["điều 3", "điều 5", "tín chỉ", "thời gian đào tạo", "thời gian tối đa", "cử nhân", "kỹ sư", "18 học kỳ", "22 học kỳ", "tiên quyết", "học trước", "tương đương", "thể chất", "quốc phòng", "50 phút", "giờ tín chỉ"], "summary_rows": [["Quy đổi 1 tín chỉ (Điều 3.1)", "1 TC = 15 giờ tín chỉ (1 tiết lý thuyết 50 phút + 2 tiết tự học; hoặc 2–3 tiết thực hành)"], ["Môn tiên quyết vs Học trước (Điều 3.2)", "Môn tiên quyết (3.2b): Phải học và THI ĐẠT mới được học môn sau. Môn học trước (3.2c): Đã học xong (dù chưa đạt) vẫn được đăng ký môn sau"], ["Môn điều kiện (Điều 3.2f)", "GD Thể chất, GD Quốc phòng, Tiếng Anh điều kiện: Không tính vào GPA nhưng bắt buộc đạt để xét tốt nghiệp"], ["Thời gian tối đa (Điều 3.5)", "Cử nhân (120–135 TC): Chuẩn 9 kỳ, tối đa 18 học kỳ • Kỹ sư (150–164 TC): Chuẩn 11 kỳ, tối đa 22 học kỳ"]], "takeaway": "Cử nhân học tối đa 18 học kỳ, Kỹ sư tối đa 22 học kỳ. Trượt môn tiên quyết không được đăng ký môn kế tiếp."},
-    {"rule_id": "DIEU_6_7_12", "article_num": ["6", "7", "12"], "topic": "Đăng ký tín chỉ, Rút môn & Khóa luận", "title": "Điều 6, 7 & 12: Cố vấn học tập, Đăng ký tín chỉ, Rút học phần và Khóa luận", "source": "QĐ 22/2023/QĐ-ĐHCMC-HĐT, Điều 6, 7, 12", "keywords": ["điều 6", "điều 7", "điều 12", "đăng ký tín chỉ", "tối thiểu", "tối đa", "rút học phần", "rút môn", "tự ý bỏ học", "khóa luận", "đồ án", "cố vấn học tập", "bảo mật tài khoản"], "summary_rows": [["Khối lượng đăng ký mỗi kỳ (Điều 12.2e)", "Tối thiểu >= 2/3 chuẩn (9 TC với chuẩn 15 TC; 12 TC với chuẩn 18 TC) • Tối đa <= 3/2 chuẩn (20 TC với chuẩn 15 TC; 27 TC với chuẩn 18 TC)"], ["Rút học phần (Điều 12.4)", "Chỉ được rút môn trong 01 tuần đầu học kỳ. Sau 1 tuần tự ý bỏ học nhận điểm F và đóng 100% học phí"], ["Khóa luận tốt nghiệp (Điều 12.3)", "Điều kiện: GPA tích lũy >= 2.50 (Khá trở lên). Thời gian làm 3–4 tháng (gia hạn tối đa 1 lần <= 2 tháng)"]], "takeaway": "Đăng ký mỗi kỳ từ 2/3 đến 3/2 chuẩn. Làm khóa luận cần GPA >= 2.50. Rút môn trong tuần đầu tiên."},
+    {"rule_id": "DIEU_6_7_12", "article_num": ["6", "7", "12"], "topic": "Đăng ký tín chỉ, Rút môn & Khóa luận", "title": "Điều 6, 7 & 12: Cố vấn học tập, Đăng ký tín chỉ, Rút học phần và Khóa luận", "source": "QĐ 22/2023/QĐ-ĐHCMC-HĐT, Điều 6, 7, 12", "keywords": ["điều 6", "điều 7", "điều 12", "đăng ký tín chỉ", "tối thiểu", "tối đa", "rút học phần", "rút môn", "tự ý bỏ học", "khóa luận", "đồ án", "cố vấn học tập", "bảo mật tài khoản"], "summary_rows": [["Khối lượng đăng ký mỗi kỳ (Điều 12.2e)", "Tối thiểu >= 2/3 chuẩn (10 TC với chuẩn 15 TC; 12 TC với chuẩn 18 TC) • Tối đa <= 3/2 chuẩn (22 TC với chuẩn 15 TC; 27 TC với chuẩn 18 TC)"], ["Rút học phần (Điều 12.4)", "Chỉ được rút môn trong 01 tuần đầu học kỳ. Sau 1 tuần tự ý bỏ học nhận điểm F và đóng 100% học phí"], ["Khóa luận tốt nghiệp (Điều 12.3)", "Điều kiện: GPA tích lũy >= 2.50 (Khá trở lên). Thời gian làm 3–4 tháng (gia hạn một lần có lý do chính đáng, bảo vệ đợt kế tiếp)"]], "takeaway": "Đăng ký mỗi kỳ từ 2/3 đến 3/2 chuẩn. Làm khóa luận cần GPA >= 2.50. Rút môn trong tuần đầu tiên."},
     {"rule_id": "DIEU_13_14_15_16", "article_num": ["13", "14", "15", "16"], "topic": "Điểm liệt, Học lại & Phúc khảo", "title": "Điều 13, 14, 15, 16: Đánh giá học phần, Điểm liệt, Thi bù, Học lại và Phúc khảo", "source": "QĐ 22/2023/QĐ-ĐHCMC-HĐT, Điều 13–16", "keywords": ["điều 13", "điều 14", "điều 15", "điều 16", "điểm liệt", "thi cuối kỳ", "trọng số", "thi lại", "học lại", "cải thiện điểm", "phúc khảo", "phúc tra", "hoãn thi", "thi bù"], "summary_rows": [["Điểm liệt thi cuối kỳ (Điều 13.1)", "Thi cuối kỳ chiếm 50%–70% trọng số. Điểm thi cuối kỳ <= 2.0/10 là ĐIỂM LIỆT ➔ Xếp loại F (dù điểm quá trình cao)"], ["Làm tròn & Thang điểm (Điều 13.3)", "Làm tròn 1 chữ số thập phân. Đạt từ 4.0 (điểm D) trở lên; dưới 4.0 là điểm F (học lại)"], ["Hoãn thi & Thi lại (Điều 14)", "Ốm đau có giấy viện được hoãn thi (điểm I) để thi bù. Nếu thi lại, điểm tối đa bị giới hạn ở mức C"], ["Học lại & Cải thiện (Điều 15)", "Học cải thiện được lấy ĐIỂM CAO NHẤT trong các lần học. Phúc khảo nộp tại Phòng ĐBCL, có kết quả sau 1 tuần (Điều 16)"]], "takeaway": "Thi cuối kỳ <= 2.0 là điểm liệt (F). Tổng kết >= 4.0 là qua môn (D). Học cải thiện lấy điểm cao nhất."},
     {"rule_id": "DIEU_17", "article_num": ["17"], "topic": "Thang điểm 4 & Xếp loại học lực", "title": "Điều 17: Bảng quy đổi thang điểm 4, Xếp loại học lực và Trình độ năm học", "source": "QĐ 22/2023/QĐ-ĐHCMC-HĐT, Điều 17", "keywords": ["điều 17", "quy chế 17", "thang điểm 4", "thang 4", "quy đổi điểm", "xếp loại học lực", "xuất sắc", "trình độ năm", "diện sắp tốt nghiệp", "b+", "c+", "d+"], "summary_rows": [["Quy đổi Thang 4 (Điều 17.1)", "A+, A = 4.0 • B+ = 3.5 • B = 3.0 • C+ = 2.5 • C = 2.0 • D+ = 1.5 • D = 1.0 • F = 0.0"], ["Xếp loại học lực (Điều 17.3)", "Xuất sắc: 3.60–4.00 • Giỏi: 3.20–<3.60 • Khá: 2.50–<3.20 • Trung bình: 2.00–<2.50 • Yếu: 1.00–<2.00 • Kém: < 1.00"], ["Xếp năm đào tạo (Điều 17.4)", "Năm 1: < 40 TC • Năm 2: 40–<80 TC • Năm 3: 80–<120 TC • Diện sắp tốt nghiệp: >= 120 TC"]], "takeaway": "B+ = 3.5; C+ = 2.5; D+ = 1.5. Tích lũy từ 120 tín chỉ trở lên thuộc diện sắp tốt nghiệp."},
-    {"rule_id": "DIEU_18", "article_num": ["18"], "topic": "Cảnh báo học tập & Buộc thôi học", "title": "Điều 18: Điều kiện Cảnh báo kết quả học tập, Buộc thôi học và Thông báo gia đình", "source": "QĐ 22/2023/QĐ-ĐHCMC-HĐT, Điều 18", "keywords": ["điều 18", "quy chế 18", "cảnh báo", "cảnh cáo", "cảnh báo học tập", "cảnh báo học vụ", "buộc thôi học", "thôi học", "đuổi học", "24 tín chỉ", "liên tiếp", "cách quãng", "thông báo gia đình"], "summary_rows": [["Cảnh báo do GPA (Điều 18.1a)", "GPA học kỳ < 0.80 ở học kỳ đầu tiên (HK1), HOẶC < 1.00 ở các học kỳ tiếp theo"], ["Cảnh báo do Tín chỉ trượt/nợ (Điều 18.1b)", "Tín chỉ trượt trong kỳ VƯỢT QUÁ 50% (> 50%) số TC đăng ký kỳ đó, HOẶC tổng tín chỉ nợ đọng từ đầu khóa VƯỢT QUÁ 24 TC (> 24 TC, không tính môn chứng chỉ)"], ["Buộc thôi học (Điều 18.2)", "Số lần cảnh báo VƯỢT QUÁ 2 lần liên tiếp (tức bị lần 3 liên tiếp) HOẶC VƯỢT QUÁ 3 lần không liên tiếp (tức bị lần 4 cách quãng), hoặc vượt thời gian tối đa (18 kỳ Cử nhân / 22 kỳ Kỹ sư)"], ["Thông báo gia đình (Điều 18.3)", "Chậm nhất 01 tháng sau khi có quyết định buộc thôi học, thông báo qua điện thoại hoặc thư về địa chỉ gia đình"]], "takeaway": "Cảnh báo 2 lần liên tiếp hoặc 3 lần cách quãng CHƯA bị buộc thôi học (lần 3 liên tiếp hoặc lần 4 cách quãng mới bị buộc thôi học)."},
-    {"rule_id": "DIEU_19_20", "article_num": ["19", "20"], "topic": "Chuẩn Tiếng Anh & Xét tốt nghiệp", "title": "Điều 19 & Điều 20: Công nhận tín chỉ, Chuẩn Ngoại ngữ, Tốt nghiệp và Hạ mức bằng", "source": "QĐ 22/2023/QĐ-ĐHCMC-HĐT, Điều 19 & 20", "keywords": ["điều 19", "điều 20", "chuyển đổi tín chỉ", "công nhận tín chỉ", "tiếng anh", "ngoại ngữ", "b1", "b2", "tốt nghiệp", "ra trường", "hạ bằng", "giảm hạng"], "summary_rows": [["Chuẩn Tiếng Anh đầu ra (Điều 19.6)", "Hệ Chuẩn (SM): Bậc 3/6 (B1 CEFR) • Hệ Song ngữ (GM): Bậc 4/6 (B2 CEFR). Công nhận chuyển đổi tối đa <= 50% CTĐT"], ["Điều kiện Tốt nghiệp (Điều 20.1)", "Đủ tín chỉ, GPA toàn khóa >= 2.00, đạt chuẩn Ngoại ngữ (B1/B2), chứng chỉ GDTC & GDQP, đóng đủ 100% học phí"], ["Hạ 01 mức bằng (Điều 20.4)", "Loại Xuất sắc/Giỏi bị hạ 1 mức nếu số tín chỉ học lại > 5% tổng TC toàn khóa HOẶC bị kỷ luật từ Cảnh cáo trở lên"], ["Gia hạn nộp chứng chỉ (Điều 20.5)", "Hết thời gian học tối đa mà chỉ còn thiếu chứng chỉ Ngoại ngữ/GDTC/GDQP thì được gia hạn 03 năm để hoàn thiện"]], "takeaway": "Học lại > 5% tổng tín chỉ hoặc bị Cảnh cáo trở lên sẽ bị hạ 1 mức bằng tốt nghiệp. Được gia hạn 3 năm để nộp bổ sung chứng chỉ."},
+    {"rule_id": "DIEU_18", "article_num": ["18"], "topic": "Cảnh báo học tập & Buộc thôi học", "title": "Điều 18: Điều kiện Cảnh báo kết quả học tập, Buộc thôi học và Thông báo gia đình", "source": "QĐ 22/2023/QĐ-ĐHCMC-HĐT, Điều 18", "keywords": ["điều 18", "quy chế 18", "cảnh báo", "cảnh cáo", "cảnh báo học tập", "cảnh báo học vụ", "buộc thôi học", "thôi học", "đuổi học", "24 tín chỉ", "liên tiếp", "cách quãng", "thông báo gia đình"], "summary_rows": [["Cảnh báo do GPA (Điều 18.1a)", "GPA học kỳ < 0.80 ở học kỳ đầu tiên (HK1), HOẶC < 1.00 ở các học kỳ tiếp theo"], ["Cảnh báo do Tín chỉ trượt/nợ (Điều 18.1b)", "Tín chỉ trượt trong kỳ VƯỢT QUÁ 50% (> 50%) số TC đăng ký kỳ đó, HOẶC tổng tín chỉ nợ đọng từ đầu khóa VƯỢT QUÁ 24 TC (> 24 TC, không tính môn chứng chỉ)"], ["Buộc thôi học (Điều 18.2)", "Số lần cảnh báo VƯỢT QUÁ 2 lần liên tiếp (tức bị lần 3 liên tiếp) HOẶC VƯỢT QUÁ 3 lần không liên tiếp (tức bị lần 4 cách quãng), hoặc vượt thời gian tối đa (18 kỳ Cử nhân / 22 kỳ Kỹ sư)"], ["Thông báo gia đình (Điều 18.3)", "Phòng CTSV thông báo quyết định qua điện thoại hoặc thư về địa chỉ gia đình"]], "takeaway": "Cảnh báo 2 lần liên tiếp hoặc 3 lần cách quãng CHƯA bị buộc thôi học (lần 3 liên tiếp hoặc lần 4 cách quãng mới bị buộc thôi học)."},
+    {"rule_id": "DIEU_19_20", "article_num": ["19", "20"], "topic": "Chuẩn Tiếng Anh & Xét tốt nghiệp", "title": "Điều 19 & Điều 20: Công nhận tín chỉ, Chuẩn Ngoại ngữ, Tốt nghiệp và Hạ mức bằng", "source": "QĐ 22/2023/QĐ-ĐHCMC-HĐT, Điều 19 & 20", "keywords": ["điều 19", "điều 20", "chuyển đổi tín chỉ", "công nhận tín chỉ", "tiếng anh", "ngoại ngữ", "b1", "b2", "tốt nghiệp", "ra trường", "hạ bằng", "giảm hạng"], "summary_rows": [["Chuẩn Tiếng Anh đầu ra (Điều 19.6)", "Hệ Chuẩn (SM): Bậc 3/6 (B1 CEFR) • Hệ Song ngữ (GM): Bậc 4/6 (B2 CEFR). Công nhận chuyển đổi tối đa <= 50% CTĐT"], ["Điều kiện Tốt nghiệp (Điều 20.1)", "Đủ tín chỉ, GPA toàn khóa >= 2.00, đạt chuẩn Ngoại ngữ (B1/B2), chứng chỉ GDTC & GDQP, hoàn thành nghĩa vụ tài chính; không bị truy cứu TNHS hoặc đang đình chỉ học tập"], ["Hạ 01 mức bằng (Điều 20.4)", "Loại Xuất sắc/Giỏi bị hạ 1 mức nếu số tín chỉ học lại > 5% tổng TC toàn khóa HOẶC bị kỷ luật từ Cảnh cáo trở lên"], ["Gia hạn nộp chứng chỉ (Điều 20.5)", "Hết thời gian học tối đa mà chỉ còn thiếu chứng chỉ Ngoại ngữ/GDTC/GDQP thì được gia hạn 03 năm để hoàn thiện"]], "takeaway": "Học lại > 5% tổng tín chỉ hoặc bị Cảnh cáo trở lên sẽ bị hạ 1 mức bằng tốt nghiệp. Được gia hạn 3 năm để nộp bổ sung chứng chỉ."},
     {"rule_id": "DIEU_21_22_23_24", "article_num": ["21", "22", "23", "24"], "topic": "Bảo lưu, Chuyển ngành & Song bằng", "title": "Điều 21–24: Nghỉ học tạm thời (Bảo lưu), Chuyển ngành, Học 2 chương trình và Trao đổi", "source": "QĐ 22/2023/QĐ-ĐHCMC-HĐT, Điều 21–24", "keywords": ["điều 21", "điều 22", "điều 23", "điều 24", "bảo lưu", "nghỉ học tạm thời", "xin thôi học", "ốm đau", "chuyển ngành", "song bằng", "hai chương trình", "trao đổi sinh viên"], "summary_rows": [["Bảo lưu / Nghỉ tạm thời (Điều 21)", "Ốm đau có giấy viện nghỉ <= 6 kỳ không tính chậm tiến độ. Lý do cá nhân: đã học >= 1 kỳ, nghỉ tối đa 3 kỳ (1 năm) và tính vào thời gian tối đa. Giữ nguyên điểm các môn đã đạt"], ["Chuyển ngành (Điều 22)", "Không ở năm nhất hoặc năm cuối, đạt chuẩn trúng tuyển ngành mới, chỉ chuyển 01 lần duy nhất"], ["Học Song bằng (Điều 23)", "Tích lũy >= 40 TC ngành 1; GPA >= 2.50 (Khá) HOẶC GPA >= 2.00 kèm đáp ứng điều kiện trúng tuyển ngành 2"], ["Trao đổi SV (Điều 24.4)", "GPA >= 2.00; học tại trường đối tác <= 18 TC/kỳ và tổng chuyển đổi <= 25% chương trình"]], "takeaway": "Nghỉ học tạm thời (Bảo lưu) được bảo lưu toàn bộ điểm đã đạt; nộp đơn quay lại trước ít nhất 2 tuần."},
-    {"rule_id": "DIEU_25_26", "article_num": ["25", "26"], "topic": "Cấm thi, Kỷ luật & Lưu trữ hồ sơ", "title": "Điều 25 & Điều 26: Chuyên cần, Cấm thi, Kỷ luật phòng thi và Lưu trữ hồ sơ", "source": "QĐ 22/2023/QĐ-ĐHCMC-HĐT, Điều 25 & 26", "keywords": ["điều 25", "điều 26", "kỷ luật", "cấm thi", "vắng học", "nghỉ học", "20%", "30%", "đến muộn", "15 phút", "nhìn bài", "tài liệu", "điện thoại", "thi hộ", "học hộ", "lưu trữ hồ sơ", "vĩnh viễn"], "summary_rows": [["Cấm thi do Vắng học (Điều 25.1a)", "Nghỉ không phép > 20% số giờ học phần HOẶC tổng nghỉ (có phép + không phép) > 30% ➔ Cấm thi và phải học lại"], ["Đến muộn & Kỷ luật thi (Điều 25)", "Đến muộn quá 15 phút sau khi bóc đề nhận điểm 0. Nhìn bài: Lần 1 trừ 25%, Lần 2 trừ 50%, Lần 3 điểm 0. Điện thoại không tắt nguồn / Tài liệu: Lần 1 hủy môn, Lần 2 hủy cả kỳ, Lần 3 Buộc thôi học. Thi hộ: Lần 1 đình chỉ 1 năm, Lần 2 Buộc thôi học"], ["Lưu trữ hồ sơ (Điều 26.2)", "Lưu VĨNH VIỄN: Bảng điểm gốc toàn khóa, quyết định tốt nghiệp. Lưu 20 năm: Khóa luận đạt. Lưu 5 năm: Bài thi cuối kỳ"]], "takeaway": "Vắng không phép > 20% hoặc tổng vắng > 30% bị cấm thi. Bảng điểm gốc được lưu trữ vĩnh viễn."},
+    {"rule_id": "DIEU_25_26", "article_num": ["25", "26"], "topic": "Cấm thi, Kỷ luật & Lưu trữ hồ sơ", "title": "Điều 25 & Điều 26: Chuyên cần, Cấm thi, Kỷ luật phòng thi và Lưu trữ hồ sơ", "source": "QĐ 22/2023/QĐ-ĐHCMC-HĐT, Điều 25 & 26", "keywords": ["điều 25", "điều 26", "kỷ luật", "cấm thi", "vắng học", "nghỉ học", "20%", "30%", "đến muộn", "15 phút", "nhìn bài", "tài liệu", "điện thoại", "thi hộ", "học hộ", "lưu trữ hồ sơ", "vĩnh viễn"], "summary_rows": [["Cấm thi do Vắng học (Điều 25.1a)", "Nghỉ không phép > 20% số giờ học phần HOẶC tổng nghỉ (có phép + không phép) > 30% ➔ Cấm thi và phải học lại"], ["Đến muộn & Kỷ luật thi (Điều 25)", "Đến muộn quá 15 phút sau khi bóc đề nhận điểm 0. Nhìn bài: Lần 1 trừ 25%, Lần 2 trừ 50%, Lần 3 điểm 0. Sử dụng tài liệu: lần 1 hủy học phần, lần 2 hủy kết quả kỳ, lần 3 buộc thôi học. Thiết bị truyền tin: xử lý tùy mức độ; lần 2 hủy kết quả kỳ và đình chỉ kỳ kế tiếp. Thi hộ: Lần 1 đình chỉ 1 năm, Lần 2 Buộc thôi học"], ["Lưu trữ hồ sơ (Điều 26.2)", "Lưu VĨNH VIỄN: Bảng điểm gốc toàn khóa, quyết định tốt nghiệp. Lưu 20 năm: Khóa luận đạt. Lưu 5 năm: Bài thi cuối kỳ"]], "takeaway": "Vắng không phép > 20% hoặc tổng vắng > 30% bị cấm thi. Bảng điểm gốc được lưu trữ vĩnh viễn."},
     {"rule_id": "NOI_QUY_CSVC_PCCC", "article_num": [], "topic": "Nội quy CSVC, Thẻ SV & PCCC", "title": "Nội quy Cơ sở vật chất, Thẻ sinh viên và Phòng cháy chữa cháy (Ngoài QĐ 22)", "source": "Nội quy Học đường & Quản lý CSVC Trường ĐH CMC", "keywords": ["cơ sở vật chất", "làm hỏng", "thiết bị", "máy tính", "bồi thường", "mất thẻ sinh viên", "làm lại thẻ", "báo cháy", "chuông báo cháy", "hút thuốc", "phòng cháy", "pccc"], "summary_rows": [["Hỏng thiết bị / Mất thẻ SV", "Làm hỏng máy tính/thiết bị phòng học phải báo cán bộ quản lý lập biên bản và bồi thường theo hư hại thực tế. Mất thẻ SV liên hệ Phòng CTSV để cấp lại"], ["Nội quy PCCC & Hút thuốc", "Nghiêm cấm hút thuốc trong khuôn viên kín và tự ý bấm chuông báo cháy giả; vi phạm bị xử lý kỷ luật và bồi thường"]], "takeaway": "Quy định đền bù CSVC, thẻ SV và PCCC thuộc Nội quy Học đường riêng của Trường."}
 ]
 
@@ -115,6 +116,7 @@ class CMCChatbotEngine:
         self.df["warning_bool"] = self.df["warning_current"].astype(str).str.lower().eq("true")
         self.latest_df["warning_bool"] = self.latest_df["warning_current"].astype(str).str.lower().eq("true")
         self.active_latest_df = self.latest_df[self.latest_df.state_as_of.eq("ENROLLED")].copy()
+        self.active_latest_df['intervention_risk'] = self.active_latest_df.risk_probability.where(self.active_latest_df.prediction_status.eq('VALID'))
         self.df_attempts = visible_attempts(source.table("course_attempts"), self.latest_df)
         catalog = source.table("courses")
         self.course_names = dict(zip(catalog.course_id, catalog.course_name))
@@ -179,7 +181,7 @@ class CMCChatbotEngine:
         def optional_number(value, integer=False):
             if pd.isna(value):
                 return None
-            return int(value) if integer else round(float(value), 1)
+            return int(value) if integer else round(float(value), 2)
 
         rows = []
 
@@ -187,7 +189,14 @@ class CMCChatbotEngine:
             cid = str(r["course_id"])
             short_code, course_name = self.resolve_course_info(cid)
 
+            barred = exam_barred(r.get('scheduled_hours'), r.get('unexcused_absent_hours'), r.get('excused_absent_hours'))
+            eligible = self._optional_bool(r["exam_eligible"])
+            expected = course_grade(r.get('course_final_score10'), r.get('exam_final_score10'),
+                                    barred=None if eligible is None else not eligible)
             rows.append({
+                "attendance_barred": barred,
+                "eligibility_review": barred is not None and eligible is not None and barred == eligible,
+                "grade_policy_review": expected is not None and expected != r.get('grade_letter'),
                 "term": int(r["term_index"]),
                 "course_id": cid,
                 "short_code": short_code,
@@ -208,21 +217,44 @@ class CMCChatbotEngine:
 
     def evaluate_student_warnings(self, row: dict) -> list:
         if row.get('state_as_of') not in (None, 'ENROLLED'):
-            return [{"level": "info", "title": "Không còn ở trạng thái đang học", "detail": "Điểm và nguy cơ trên hồ sơ là dữ liệu lịch sử tại snapshot, không phải khuyến nghị can thiệp hiện tại."}]
-        alerts, term = [], int(row.get('snapshot_term_index') or 1)
-        gpa_t, gpa_c = float(row.get('gpa4_term') or 0), float(row.get('gpa4_cumulative') or 0)
-        f_ratio, f_tc = float(row.get('failed_credit_ratio') or 0), int(row.get('credits_failed_term') or 0)
-        owed, w_streak = int(row.get('credits_owed_cumulative') or 0), int(row.get('warning_streak') or 0)
-        att, debt, risk = float(row.get('attendance_rate_term') or 100), float(row.get('tuition_debt_end_vnd') or 0), float(row.get('risk_probability') or 0)
-        if w_streak >= 1: alerts.append({"level": "danger" if w_streak >= 2 else "warning", "title": f"Cảnh báo học vụ {w_streak} kỳ liên tiếp", "detail": "Quá 2 lần liên tiếp sẽ bị buộc thôi học (Điều 18.2a)."})
-        if (term == 1 and gpa_t < 0.8) or (term > 1 and gpa_t < 1.0): alerts.append({"level": "danger", "title": f"GPA HK{term} dưới ngưỡng ({gpa_t:.2f}/4.0)", "detail": "Vi phạm ngưỡng cảnh báo Điều 18.1a."})
-        elif gpa_c < 2.0: alerts.append({"level": "warning", "title": f"GPA tích lũy dưới chuẩn ({gpa_c:.2f} < 2.00)", "detail": "Cần nâng GPA >= 2.00 để xét tốt nghiệp (Điều 20)."})
-        if f_tc > 0: alerts.append({"level": "danger" if f_ratio > 0.5 else "warning", "title": f"Trượt {f_tc} tín chỉ kỳ này ({f_ratio*100:.0f}%)", "detail": "Trượt > 50% TC đăng ký kỳ sẽ bị cảnh báo (Điều 18.1b)."})
-        if owed > 0: alerts.append({"level": "danger" if owed > 24 else "warning", "title": f"Đang nợ đọng {owed}/24 tín chỉ", "detail": "Vượt quá 24 TC nợ đọng sẽ bị cảnh báo (Điều 18.1b)."})
-        if att < 85.0: alerts.append({"level": "warning", "title": f"Chuyên cần thấp ({att:.1f}%)", "detail": "Vắng không phép > 20% hoặc tổng nghỉ > 30% bị cấm thi (Điều 25.1a)."})
-        if debt > 0: alerts.append({"level": "info", "title": f"Công nợ học phí: {debt:,.0f}đ", "detail": "Hoàn thành học phí để đủ điều kiện xét tốt nghiệp (Điều 20)."})
-        if risk >= self.meta.get('threshold', 0.21): alerts.append({"level": "danger" if risk >= 0.45 else "warning", "title": f"Dự báo rủi ro học vụ: {risk*100:.1f}% (Tham khảo)", "detail": "Khuyến nghị gặp Cố vấn học tập và đăng ký Phụ đạo."})
-        return alerts or [{"level": "safe", "title": "Học tập An toàn & Đúng tiến độ", "detail": "Tiếp tục duy trì GPA >= 2.50 và hoàn thành chuẩn Tiếng Anh."}]
+            return [{"level": "info", "title": "Hồ sơ lịch sử", "detail": "Sinh viên không đang học tại mốc dữ liệu."}]
+        alerts = []
+        def add(level, title, detail):
+            alerts.append(dict(level=level, title=title, detail=detail))
+        reasons = warning_reasons(row.get('snapshot_term_index'), row.get('gpa4_term'),
+                                  row.get('credits_registered_term'), row.get('credits_failed_term'),
+                                  row.get('credits_owed_cumulative'))
+        for k, title in [('gpa','GPA học kỳ dưới ngưỡng'),('failed','Trượt quá 50% tín chỉ'),('owed','Nợ quá 24 tín chỉ')]:
+            if reasons[k] is True:
+                add("danger", title, "Đủ tiêu chí cảnh báo theo Điều 18.1 tại snapshot.")
+        if any(v is None for v in reasons.values()):
+            add("info", "Thiếu dữ liệu cảnh báo", "Chưa thể kết luận đầy đủ theo Điều 18.1.")
+        exit_reasons = withdrawal_reasons(row.get('warning_streak'), row.get('warnings_total_to_date'),
+                                          row.get('counted_duration_semesters'), row.get('degree_type'))
+        if any(v is True for v in exit_reasons.values()):
+            add("danger", "Đủ tiêu chí xem xét buộc thôi học", "Điều 18.2: quá 2 kỳ liên tiếp, quá 3 lần cảnh báo hoặc quá thời gian tối đa; cần quyết định chính thức.")
+        elif any(v is None for v in exit_reasons.values()):
+            add("info", "Thiếu dữ liệu xét thôi học", "Cần kiểm tra số lần cảnh báo và thời gian được tính.")
+        if number(row.get('warning_streak')) == 2:
+            add("warning", "Hai lần cảnh báo liên tiếp", "Chưa vượt ngưỡng liên tiếp; kiểm tra các tiêu chí khác.")
+        if number(row.get('gpa4_cumulative'), 0, 4) is not None and rounded(row['gpa4_cumulative']) < 2:
+            add("warning", "GPA tích lũy dưới 2.0", "Chưa đủ tiêu chí GPA tốt nghiệp (Điều 20).")
+        reg = number(row.get('credits_registered_term'))
+        lo, hi = number(row.get('registration_min_credits')), number(row.get('registration_max_credits'))
+        if None not in (reg, lo, hi) and not lo <= reg <= hi:
+            add("warning", "Ngoài giới hạn đăng ký mặc định", f"Điều 12.2e: {lo:.0f}–{hi:.0f} TC; đăng ký {reg:.0f} TC. Cần xác minh ngoại lệ.")
+        att = number(row.get('attendance_rate_term'),0,100)
+        if att is not None and att < 85:
+            add("warning", "Chuyên cần thấp", "Chỉ xét cấm thi từ số giờ vắng của từng học phần (Điều 25.1a).")
+        debt = number(row.get('tuition_debt_end_vnd'))
+        if debt is not None and debt > 0:
+            add("info", f"Công nợ học phí: {debt:,.0f}đ", "Kiểm tra nghĩa vụ tài chính (Điều 20).")
+        risk = number(row.get('risk_probability'),0,1)
+        if row.get('prediction_status') == 'STALE':
+            add("info", "Dự báo ML đã hết horizon", "Chỉ tham khảo kết quả lịch sử; không dùng để can thiệp hiện tại.")
+        elif risk is not None and risk >= self.meta['threshold']:
+            add("warning", f"Nguy cơ thôi học dự báo: {risk*100:.1f}%", "Không phải cảnh báo theo quy chế.")
+        return alerts or [{"level":"safe","title":"Không phát hiện vi phạm tại snapshot","detail":"Không phải xác nhận đủ điều kiện tốt nghiệp."}]
 
     def predict_what_if(self, custom_input: dict) -> dict:
         if self.pipeline is None:
@@ -294,68 +326,65 @@ class CMCChatbotEngine:
         return ""
 
     def evaluate_regulation_trap(self, query: str) -> str:
-        q_norm = normalize_vn(query).replace(",", ".")
-        q_ascii = strip_accents(q_norm)
+        q = strip_accents(query).replace(",", ".")
         notes = []
-        gpa_m = re.search(r'gpa[^0-9]{0,20}(0\.\d+|1\.\d+|2\.\d+|3\.\d+)', q_ascii)
-        if gpa_m and any(k in q_ascii for k in ["canh bao", "duoi", "khoa luan", "loai gi", "xep loai", "song bang"]):
-            g_val = float(gpa_m.group(1))
-            if "khoa luan" in q_ascii or "do an" in q_ascii:
-                verdict = "ĐỦ điều kiện về GPA (>= 2.50)" if g_val >= 2.5 else f"CHƯA ĐỦ điều kiện làm khóa luận (GPA {g_val:.2f} < 2.50)"
-                notes.append(f"• <b>Xét điều kiện Khóa luận (Điều 12 Khoản 3a):</b> Với GPA tích lũy <b>{g_val:.2f}</b>, bạn <b>{verdict}</b>.")
-            elif "loai gi" in q_ascii or "xep loai" in q_ascii or "trung binh ha" in q_ascii or "kem ha" in q_ascii:
-                rank = "Xuất sắc" if g_val >= 3.6 else ("Giỏi" if g_val >= 3.2 else ("Khá" if g_val >= 2.5 else ("Trung bình" if g_val >= 2.0 else ("Yếu" if g_val >= 1.0 else "Kém"))))
-                notes.append(f"• <b>Xếp loại học lực (Điều 17 Khoản 3):</b> Mức GPA <b>{g_val:.2f}</b> được xếp loại <b>{rank}</b>.")
-            elif any(k in q_ascii for k in ["ky dau", "ky 1", "hk1", "hoc ky 1", "hoc ky dau"]):
-                verdict = "<b>BỊ CẢNH BÁO HỌC TẬP</b> (do < 0.80)" if g_val < 0.8 else "<b>KHÔNG bị cảnh báo vì lý do GPA</b> (dưới 0.80 mới bị cảnh báo)"
-                notes.append(f"• <b>Xét GPA Học kỳ 1 (Điều 18 Khoản 1a):</b> Với GPA HK1 = <b>{g_val:.2f}</b>, sinh viên {verdict}.")
+        m = re.search(r'\bgpa\s*(?:=|la|dat)?\s*(-?\d+(?:\.\d+)?)', q)
+        if m:
+            g = number(m.group(1),0,4)
+            if g is None:
+                notes.append("GPA phải nằm trong [0,4].")
+            elif "khoa luan" in q or "do an" in q:
+                notes.append(f"Điều 12.3a: GPA {g:.2f} {'đạt' if g >= 2.5 else 'chưa đạt'} ngưỡng 2.50; còn điều kiện riêng của chương trình.")
+            elif "canh bao" in q:
+                term = re.search(r'(?:hoc\s*ky|ky|hk)\s*(\d+)', q)
+                if 'ky dau' in q:
+                    term = 1
+                elif term:
+                    term = int(term.group(1))
+                if term:
+                    bad = warning_reasons(term,g,None,None,None)['gpa']
+                    notes.append(f"Điều 18.1a: {'Bị' if bad else 'Không bị'} cảnh báo vì GPA; còn tiêu chí tín chỉ.")
+                else:
+                    notes.append("Điều 18.1a: cần biết học kỳ đầu hay kỳ tiếp theo để xét GPA.")
+            elif "xep loai" in q or "loai gi" in q:
+                rank = next(label for n,label in [(3.6,'Xuất sắc'),(3.2,'Giỏi'),(2.5,'Khá'),(2,'Trung bình'),(1,'Yếu'),(0,'Kém')] if g >= n)
+                notes.append(f"Điều 17.3: {g:.2f} xếp loại {rank}.")
+        m = re.search(r'(?:dang ky|chuan)\s*(\d+)\s*(?:tin chi|tc)',q)
+        if m and any(k in q for k in ['toi thieu','toi da','chuan']):
+            lo, hi = registration_bounds(int(m.group(1))) if int(m.group(1)) else (None,None)
+            notes.append(f"Điều 12.2e: giới hạn {lo}–{hi} TC." if lo is not None else "Khối lượng chuẩn phải lớn hơn 0.")
+        m = re.search(r'truot\s*(\d+)\s*(?:/|tren)\s*(\d+)',q)
+        if m:
+            failed, reg = map(int,m.groups())
+            if failed > reg or reg == 0:
+                notes.append("Số tín chỉ đăng ký/trượt không hợp lệ.")
             else:
-                verdict = "<b>BỊ CẢNH BÁO HỌC TẬP</b> (do < 1.00)" if g_val < 1.0 else "<b>KHÔNG bị cảnh báo vì lý do GPA</b> (dưới 1.00 mới bị cảnh báo)"
-                notes.append(f"• <b>Xét GPA từ Học kỳ 2 trở đi (Điều 18 Khoản 1a):</b> Với GPA = <b>{g_val:.2f}</b>, sinh viên {verdict}.")
-
-        tc_pair = re.search(r'dang ky\s*(\d+)\s*tin[^0-9]+truot\s*(\d+)|truot\s*(\d+)\s*(?:/|tren)\s*(\d+)\s*tin', q_ascii)
-        if tc_pair:
-            reg_tc, fail_tc = (int(tc_pair.group(1)), int(tc_pair.group(2))) if tc_pair.group(1) else (int(tc_pair.group(4)), int(tc_pair.group(3)))
-            ratio_pct = (fail_tc / max(1, reg_tc)) * 100
-            verdict = "<b>CÓ BỊ CẢNH BÁO HỌC TẬP</b>" if ratio_pct > 50.0 else "<b>KHÔNG bị cảnh báo học tập vì tỷ lệ trượt kỳ</b>"
-            notes.append(f"• <b>Xét tỷ lệ tín chỉ trượt trong kỳ (Điều 18 Khoản 1b):</b> Trượt <b>{fail_tc}/{reg_tc} tín chỉ ({ratio_pct:.1f}%)</b> ➔ {verdict}.")
-        elif "dung 50%" in q_ascii and "truot" in q_ascii:
-            notes.append("• <b>Tình huống trượt đúng 50% tín chỉ (Điều 18 Khoản 1b):</b> <b>KHÔNG bị cảnh báo học tập</b> (vượt quá 50% mới bị cảnh báo).")
-
-        if "24 tin" in q_ascii or "25 tin" in q_ascii or ("chung chi" in q_ascii and "no" in q_ascii):
-            if "dung 24" in q_ascii:
-                notes.append("• <b>Nợ đúng 24 tín chỉ (Điều 18 Khoản 1b):</b> <b>CHƯA bị cảnh báo</b> vì phải vượt quá 24 tín chỉ (từ 25 TC trở lên).")
-            if "25 tin" in q_ascii:
-                notes.append("• <b>Nợ 25 tín chỉ (Điều 18 Khoản 1b):</b> <b>BỊ CẢNH BÁO HỌC TẬP</b> vì đã vượt quá 24 tín chỉ nợ đọng.")
-            if any(k in q_ascii for k in ["chung chi", "the chat", "quoc phong", "gdtc", "gdqp"]):
-                notes.append("• <b>Môn chứng chỉ (Điều 18 Khoản 1b & Điều 3 Khoản 2f):</b> <b>KHÔNG</b> tính vào 24 tín chỉ nợ đọng xét cảnh báo.")
-
-        if any(k in q_ascii for k in ["lien tiep", "cach quang", "khong lien tiep", "ngat quang"]):
-            notes.append("• <b>Quy tắc đếm số lần Cảnh báo (Điều 18 Khoản 2a):</b> Chỉ bị buộc thôi học khi <b>vượt quá 2 lần liên tiếp (lần 3 liên tiếp)</b> HOẶC <b>vượt quá 3 lần không liên tiếp (lần 4 cách quãng)</b>. Mới bị 2 lần liên tiếp hoặc 3 lần cách quãng thì <b>CHƯA bị buộc thôi học</b>.")
-
-        if ("18%" in q_ascii and "15%" in q_ascii) or "25%" in q_ascii:
-            if "18%" in q_ascii and "15%" in q_ascii:
-                notes.append("• <b>Nghỉ có phép 18% + không phép 15% (Điều 25 Khoản 1a):</b> <b>BỊ CẤM THI và phải học lại</b> vì tổng nghỉ là <b>33% (&gt; 30%)</b>.")
-            elif "25%" in q_ascii and "co phep" in q_ascii:
-                notes.append("• <b>Nghỉ 25% hoàn toàn có phép (Điều 25 Khoản 1a):</b> <b>KHÔNG bị cấm thi</b> (vì tổng nghỉ &le; 30% và không phép = 0%).")
-            elif "25%" in q_ascii:
-                notes.append("• <b>Nghỉ không phép 25% (Điều 25 Khoản 1a):</b> <b>BỊ CẤM THI và phải học lại</b> vì vượt quá ngưỡng 20% không phép.")
-
-        if any(k in q_ascii for k in ["1.8", "3.9", "dung 4.0", "7.95", "8.4", "2 diem co bi liet", "thi 3 diem", "thi lai em duoc 9"]):
-            if "1.8" in q_ascii or "2 diem co bi liet" in q_ascii:
-                notes.append("• <b>Điểm liệt thi cuối kỳ (Điều 13 Khoản 1):</b> Điểm thi cuối kỳ <b>&le; 2.0/10</b> là <b>ĐIỂM LIỆT</b> ➔ Xếp điểm <b>F</b> dù điểm quá trình cao.")
-            if "3.9" in q_ascii or "dung 4.0" in q_ascii:
-                notes.append("• <b>Mốc 3.9 và 4.0 (Điều 13 Khoản 3):</b> Đạt <b>4.0</b> là điểm <b>D (Qua môn)</b>; còn <b>3.9</b> (&lt; 4.0) là điểm <b>F (Học lại)</b>.")
-            if "7.95" in q_ascii or "8.4" in q_ascii:
-                notes.append("• <b>Làm tròn 7.95 / 8.4 (Điều 13 Khoản 3):</b> Làm tròn 1 chữ số thập phân nên <b>7.95 thành 8.0</b>, xếp loại <b>B+ (3.5 thang 4)</b>.")
-            if "thi lai" in q_ascii and "9" in q_ascii:
-                notes.append("• <b>Giới hạn điểm Thi lại (Điều 14 Khoản 3):</b> Điểm học phần sau khi thi lại bị giới hạn tối đa ở mức <b>điểm C</b>.")
-
-        if not notes:
-            return ""
-        return f"""<div class="bg-[#131314] border border-blue-500/40 rounded-2xl p-4 text-xs space-y-2 leading-relaxed">
-          <div class="text-sm font-bold text-blue-300">⚖️ Phân tích Tình huống & Đối chiếu Quy chế (QĐ 22/2023)</div>
-          <div class="text-[#e3e3e3]">{"<br><br>".join(notes)}</div></div>"""
+                notes.append("Điều 18.1b: " + ("Bị" if warning_reasons(None,None,reg,failed,None)['failed'] else "Không bị") + " cảnh báo vì tỷ lệ tín chỉ trượt.")
+        m = re.search(r'no(?: dong)?\s*(\d+)\s*(?:tin chi|tc)',q)
+        if m:
+            notes.append("Điều 18.1b: " + ("Bị" if int(m.group(1)) > 24 else "Không bị") + " cảnh báo do nợ tín chỉ, không tính chứng chỉ.")
+        u = re.search(r'(\d+(?:\.\d+)?)\s*%\s*(?:vang\s*)?(?:khong co phep|khong phep)|(?:khong co phep|khong phep)\s*(\d+(?:\.\d+)?)\s*%',q)
+        x = re.search(r'(\d+(?:\.\d+)?)\s*%\s*(?:vang\s*)?co phep|(?<!khong )co phep\s*(\d+(?:\.\d+)?)\s*%',q)
+        if u or x:
+            un = float(next(v for v in u.groups() if v is not None)) if u else 0
+            ex = float(next(v for v in x.groups() if v is not None)) if x else 0
+            try:
+                barred = exam_barred(100, un, ex)
+                notes.append("Điều 25.1a: " + ("Cấm thi và phải học lại." if barred else "Không vượt ngưỡng vắng đã nêu; cần kiểm tra tổng số giờ và lý do khác."))
+            except ValueError:
+                notes.append("Tỷ lệ vắng không hợp lệ.")
+        m = re.search(r'(?:thi cuoi ky|diem thi|thi lai)\s*(?:la|duoc|=)?\s*(\d+(?:\.\d+)?)',q)
+        if m:
+            v = number(m.group(1),0,10)
+            if v is None:
+                notes.append("Điểm thi phải nằm trong [0,10].")
+            elif v <= 2:
+                notes.append("Điều 13: điểm liệt, xếp F.")
+            elif 'thi lai' in q:
+                notes.append("Điều 14.3: điểm học phần sau thi lại tối đa C.")
+            else:
+                notes.append("Không bị điểm liệt theo điểm thi đã nêu; còn phụ thuộc tổng điểm và điều kiện thi.")
+        return "<div class='text-xs'>"+"<br>".join(notes)+"</div>" if notes else ""
 
     def check_special_policy_or_model_query(self, query: str, role: str) -> str:
         q_ascii = strip_accents(query)
@@ -403,30 +432,24 @@ class CMCChatbotEngine:
         matched_lines = []
         for kws, col, label, fmt in metric_map:
             if any(k in q_ascii for k in kws) and col in latest:
-                cur_val = float(latest.get(col) or 0)
+                cur_val = number(latest.get(col), -math.inf)
+                if cur_val is None:
+                    matched_lines.append(f'{label}: Chưa có dữ liệu')
+                    continue
                 cur_str = fmt.format(cur_val)
-                if is_delta and prev is not None and col in prev:
-                    prev_val = float(prev.get(col) or 0)
+                if is_delta and prev is not None and number(prev.get(col), -math.inf) is not None:
+                    prev_val = float(prev[col])
                     diff = cur_val - prev_val
                     trend = "tăng" if diff > 0 else ("giảm" if diff < 0 else "không đổi")
                     matched_lines.append(f"• <b>{label}:</b> Kỳ hiện tại (HK{int(latest['snapshot_term_index'])}) là <b>{cur_str}</b>, so với kỳ trước (HK{int(prev['snapshot_term_index'])}: {fmt.format(prev_val)}) đã <b>{trend} {fmt.format(abs(diff))}</b>.")
                 else:
                     matched_lines.append(f"• <b>{label} (HK{int(latest['snapshot_term_index'])}):</b> <b>{cur_str}</b>")
 
-        earn_tc = int(latest.get('credits_earned_cumulative') or 0)
-        req_tc = int(latest.get('credits_required') or 135)
-        if "thieu nhung dieu kien nao de xet tot nghiep" in q_ascii or "chung chi the chat" in q_ascii or "chuan tieng anh dau ra chua" in q_ascii:
-            certs = str(latest.get('verified_certificates') or 'Chưa hoàn thành')
-            gpa_c = float(latest.get('gpa4_cumulative') or 0)
-            debt = float(latest.get('tuition_debt_end_vnd') or 0)
-            missing = []
-            if earn_tc < req_tc:
-                missing.append(f"còn thiếu <b>{req_tc - earn_tc} tín chỉ</b> ({earn_tc}/{req_tc} TC)")
-            if gpa_c < 2.0:
-                missing.append(f"GPA tích lũy (<b>{gpa_c:.2f}</b>) &lt; 2.00")
-            if debt > 0:
-                missing.append(f"còn nợ học phí <b>{debt:,.0f} VNĐ</b>")
-            matched_lines.append(f"• <b>Kiểm tra điều kiện xét Tốt nghiệp (Điều 20):</b> Chứng chỉ đã có: <code>{certs}</code>. Cần hoàn thiện: " + (", ".join(missing) if missing else "Đã đạt đủ tiêu chí GPA và tín chỉ!"))
+        if any(k in q_ascii for k in ["dieu kien tot nghiep", "dieu kien nao de xet tot nghiep", "chung chi the chat", "chuan tieng anh dau ra chua", "du dieu kien tot nghiep"]):
+            conditions = graduation_conditions(latest)
+            labels = dict(credits='Tín chỉ',mandatory_courses='Học phần bắt buộc',gpa='GPA',english='Ngoại ngữ (SM B1 / GM B2)',physical_education='GDTC',national_defense='GDQP-AN',financial='Tài chính',program_outcomes='Chuẩn đầu ra/nội dung bắt buộc',discipline_and_criminal_clearance='Kỷ luật/TNHS')
+            status = lambda v: 'Đạt theo hồ sơ mô phỏng' if v is True else 'Chưa đạt' if v is False else 'Chưa đủ bằng chứng xác nhận'
+            matched_lines.append("Điều 19–20 (không phải quyết định tốt nghiệp): " + "; ".join(f"{labels[k]}: {status(v)}" for k,v in conditions.items()))
 
         if not matched_lines:
             return ""
@@ -434,129 +457,30 @@ class CMCChatbotEngine:
           <div class="text-sm font-bold text-blue-300">👤 Tra cứu Chỉ số Hồ sơ Cá nhân: {latest['student_id']} (Lớp {latest.get('class_code','')})</div>
           <div class="text-[#e3e3e3]">{"<br>".join(matched_lines)}</div></div>"""
 
-    def calc_next_term_gpa_projection(self, row: dict) -> dict:
-        gpa_t = float(row.get('gpa4_term') or 0)
-        gpa_c = float(row.get('gpa4_cumulative') or 0)
-        earn_tc = int(row.get('credits_earned_cumulative') or 15)
-        att = float(row.get('attendance_rate_term') or 85.0)
-        lms_days = float(row.get('lms_active_days_4weeks') or 12.0)
-        work_h = float(row.get('part_time_work_hours_week') or 0.0)
-        next_tc = 15
-
-        base_gpa = 0.55 * gpa_t + 0.45 * gpa_c
-        att_adj = (att - 80.0) * 0.015
-        lms_adj = (lms_days - 12.0) * 0.012
-        work_pen = max(0.0, (work_h - 12.0) * 0.02)
-
-        pred_gpa_cur = max(0.50, min(4.00, round(base_gpa + att_adj + lms_adj - work_pen, 2)))
-        pred_cum_cur = max(0.50, min(4.00, round((gpa_c * earn_tc + pred_gpa_cur * next_tc) / max(1, earn_tc + next_tc), 2)))
-
-        pred_gpa_imp = max(2.15, min(4.00, round(base_gpa + 0.65 + (0.25 if gpa_t < 2.0 else 0.15), 2)))
-        pred_cum_imp = max(0.50, min(4.00, round((gpa_c * earn_tc + pred_gpa_imp * next_tc) / max(1, earn_tc + next_tc), 2)))
-
-        target_cum = 2.00 if gpa_c < 2.00 else (2.50 if gpa_c < 2.50 else 3.20)
-        req_gpa_next = round((target_cum * (earn_tc + next_tc) - gpa_c * earn_tc) / next_tc, 2)
-
-        return {
-            "base_gpa": round(base_gpa, 2), "att_adj": round(att_adj, 2), "lms_adj": round(lms_adj, 2), "work_pen": round(work_pen, 2),
-            "pred_gpa_cur": pred_gpa_cur, "pred_cum_cur": pred_cum_cur,
-            "pred_gpa_imp": pred_gpa_imp, "pred_cum_imp": pred_cum_imp,
-            "target_cum": target_cum, "req_gpa_next": req_gpa_next, "next_tc": next_tc
-        }
+    def calc_next_term_gpa_projection(self, row: dict):
+        return projection(row)
 
     def answer_risk_and_whatif_query(self, query: str, records: pd.DataFrame) -> str:
-        q_ascii = strip_accents(query)
-        pred_kw = [
-            "du doan", "du bao", "ki sau", "ky sau", "ky toi", "ki toi", "tuong lai",
-            "nguy co", "xac suat", "thoi hoc", "canh bao som", "what-if", "what if",
-            "gia lap", "kich ban", "cong thuc", "tang chuyen can", "giam gio lam them",
-            "hoc lai", "cai thien", "muc tieu gpa", "can dat bao nhieu", "diem du doan"
-        ]
-        if not any(k in q_ascii for k in pred_kw):
+        q = strip_accents(query)
+        if not any(k in q for k in ["du doan","du bao","ky sau","ki sau","ky toi","tuong lai","nguy co","xac suat","what-if","what if","gia lap","kich ban","cong thuc","muc tieu gpa","can dat bao nhieu","cai thien"]):
             return ""
-
         latest = row_to_clean_dict(records.iloc[-1])
-        if latest.get("state_as_of") not in (None, "ENROLLED"):
-            return "<div>Không dự báo can thiệp cho sinh viên không ở trạng thái đang học tại mốc dữ liệu.</div>"
-        cur_term = int(latest.get('snapshot_term_index') or 1)
-        next_term = cur_term + 1
-        gpa_t = float(latest.get('gpa4_term') or 0)
-        gpa_c = float(latest.get('gpa4_cumulative') or 0)
-        earn_tc = int(latest.get('credits_earned_cumulative') or 0)
-        att = float(latest.get('attendance_rate_term') or 0)
-        work_h = float(latest.get('part_time_work_hours_week') or 0)
-        prob = float(latest.get('risk_probability') or 0) * 100
-        lvl = str(latest.get('risk_level') or 'Thấp')
-
-        proj = self.calc_next_term_gpa_projection(latest)
-
-        sim_input = dict(latest)
-        sim_input['attendance_rate_term'] = max(92.0, att)
-        sim_input['unexcused_absence_rate_term'] = 0.0
-        sim_input['part_time_work_hours_week'] = min(8.0, work_h)
-        sim_input['credits_failed_term'] = 0
-        sim_input['failed_credit_ratio'] = 0.0
-        sim_res = self.predict_what_if(sim_input)
-
-        req_note = (
-            f"Cần đạt GPA HK{next_term} tối thiểu <b>{proj['req_gpa_next']:.2f}/4.00</b> (với {proj['next_tc']} TC)"
-            if proj['req_gpa_next'] <= 4.0
-            else f"Do mức cần đạt là {proj['req_gpa_next']:.2f} (&gt; 4.00), bạn cần kết hợp <b>đạt GPA &ge; 3.20 ở HK{next_term} VÀ đăng ký học cải thiện các môn điểm D/F cũ (Điều 15)</b>"
-        )
-
-        return f"""
-        <div class="bg-[#131314] border border-blue-500/40 rounded-2xl p-4 text-xs space-y-3.5 leading-relaxed">
-          <div class="flex flex-wrap justify-between items-center border-b border-[#2c2e30] pb-2 gap-2">
-            <span class="text-sm font-bold text-blue-300">🔮 Dự đoán Điểm GPA Học kỳ {next_term} & Mô phỏng Học vụ ({latest['student_id']})</span>
-            <span class="px-2.5 py-0.5 rounded-full bg-blue-950 text-blue-300 font-bold">GPA Dự kiến HK{next_term}: {proj['pred_gpa_cur']:.2f} ➔ {proj['pred_gpa_imp']:.2f}/4.00</span>
-          </div>
-
-          <div class="overflow-x-auto">
-            <table class="w-full text-left text-xs border-collapse">
-              <thead>
-                <tr class="border-b border-[#333537] text-[#9aa0a6]">
-                  <th class="py-1.5 px-2">Kịch bản Dự báo (Học kỳ {next_term} - Dự kiến {proj['next_tc']} TC)</th>
-                  <th class="py-1.5 px-2">GPA Kỳ HK{next_term} Dự đoán</th>
-                  <th class="py-1.5 px-2">GPA Tích lũy Dự kiến</th>
-                  <th class="py-1.5 px-2">Khả năng Cảnh báo Học vụ</th>
-                </tr>
-              </thead>
-              <tbody class="divide-y divide-[#2c2e30]">
-                <tr>
-                  <td class="py-2 px-2 font-semibold text-amber-300">1. Giữ nguyên thói quen học tập hiện tại (Chuyên cần {att:.0f}%, Làm thêm {work_h:.0f}h/tuần)</td>
-                  <td class="py-2 px-2 font-bold text-amber-300">{proj['pred_gpa_cur']:.2f} / 4.00</td>
-                  <td class="py-2 px-2 font-semibold">{proj['pred_cum_cur']:.2f} / 4.00</td>
-                  <td class="py-2 px-2 font-bold text-rose-400">{prob:.1f}% ({lvl})</td>
-                </tr>
-                <tr>
-                  <td class="py-2 px-2 font-semibold text-emerald-300">2. Kịch bản Cải thiện What-If (Chuyên cần &ge; 92%, LMS tích cực, Làm thêm &le; 8h/tuần)</td>
-                  <td class="py-2 px-2 font-bold text-emerald-300">{proj['pred_gpa_imp']:.2f} / 4.00</td>
-                  <td class="py-2 px-2 font-semibold text-emerald-300">{proj['pred_cum_imp']:.2f} / 4.00</td>
-                  <td class="py-2 px-2 font-bold text-emerald-400">{sim_res['risk_percent']:.1f}% ({sim_res['risk_level']})</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-
-          <div class="bg-[#18191b] border border-[#333537] rounded-xl p-3 space-y-1.5">
-            <div class="font-bold text-amber-300">📐 Công thức Toán học & Trọng số Mô hình áp dụng cho {latest['student_id']}:</div>
-            <div class="text-[#d1d5db]">
-              <b>1. Công thức Dự đoán GPA Học kỳ {next_term}:</b><br>
-              <code>GPA_dự_đoán = 0.55×GPA_kỳ ({gpa_t:.2f}) + 0.45×GPA_tích_lũy ({gpa_c:.2f}) + Δ_chuyên_cần ({proj['att_adj']:+.2f}) + Δ_LMS ({proj['lms_adj']:+.2f}) - Δ_làm_thêm ({proj['work_pen']:.2f}) = <b>{proj['pred_gpa_cur']:.2f}/4.00</b></code>
-            </div>
-            <div class="text-[#d1d5db]">
-              <b>2. Công thức Dự báo GPA Tích lũy sau HK{next_term}:</b><br>
-              <code>GPA_TL_mới = (GPA_TL_hiện_tại × TC_đạt + GPA_HK{next_term} × TC_kỳ_tới) / (TC_đạt + TC_kỳ_tới) = ({gpa_c:.2f}×{earn_tc} + {proj['pred_gpa_cur']:.2f}×{proj['next_tc']}) / ({earn_tc}+{proj['next_tc']}) = <b>{proj['pred_cum_cur']:.2f}/4.00</b></code>
-            </div>
-            <div class="text-[#d1d5db]">
-              <b>3. Mô hình Ensemble Dự báo Cảnh báo sớm (Soft Voting):</b><br>
-              <code>P_cảnh_báo(x) = 0.55 × P_RandomForest(x) + 0.45 × P_HistGradientBoosting(x) = <b>{prob:.1f}%</b> (Ngưỡng cảnh báo τ = 21.0%)</code>
-            </div>
-          </div>
-
-          <div class="bg-emerald-950/30 border border-emerald-600/40 rounded-xl p-2.5 text-emerald-200">
-            🎯 <b>Mục tiêu GPA Kỳ sau để đạt mốc GPA tích lũy {proj['target_cum']:.2f}:</b> {req_note}.
-          </div>
+        if latest.get("state_as_of") not in (None,"ENROLLED"):
+            return "<div>Hồ sơ lịch sử; không dự báo can thiệp cho sinh viên không đang học.</div>"
+        p = self.calc_next_term_gpa_projection(latest)
+        if p is None:
+            return "<div>Không đủ dữ liệu GPA hoặc không còn tín chỉ mới để lập kịch bản.</div>"
+        risk = number(latest.get("risk_probability"),0,1)
+        risk_text = "Chưa có dự báo" if risk is None else f"{risk*100:.2f}% tại snapshot {latest.get('snapshot_cutoff','')} ({latest.get('prediction_status','UNKNOWN')})"
+        required = f"{p['req_gpa_next']:.2f}" if p['req_gpa_next'] <= 4 else "Không thể đạt chỉ bằng số tín chỉ mới giả định"
+        return f"""<div class="bg-[#131314] rounded-xl p-4 text-xs space-y-2">
+          <b>Kịch bản GPA sau HK{latest['snapshot_term_index']} (Điều 15, 17)</b>
+          <div>Mốc học vụ {latest.get('snapshot_cutoff','')}. Giả định học {p['next_tc']:.0f} tín chỉ mới tính GPA, không học lại/cải thiện. Đây là phép tính, không phải dự báo đã kiểm định.</div>
+          <div>Theo điểm chữ đã lưu trong dataset mô phỏng, chưa hiệu chỉnh sai khác làm tròn. Điểm trọng số hiện tại: {p['gpa_quality_points']:.2f}; tín chỉ tính GPA: {p['gpa_credit_count']:.0f}.</div>
+          <div>Kịch bản A: GPA kỳ tới {p['pred_gpa_cur']:.2f} → GPA tích lũy {p['pred_cum_cur']:.2f}.</div>
+          <div>Kịch bản B: GPA kỳ tới {p['pred_gpa_imp']:.2f} → GPA tích lũy {p['pred_cum_imp']:.2f}.</div>
+          <div>GPA kỳ mới tối thiểu cho mục tiêu {p['target_cum']:.2f}: {required}.</div>
+          <div>Nguy cơ thôi học ML: {risk_text}. Không phải cảnh báo học tập theo Điều 18. Kịch bản ML What-If chưa được kiểm định, tạm không dùng để khẳng định tác động.</div>
         </div>"""
 
     def answer_deep_benchmark_questions(self, query: str, role: str, mentioned_major: str) -> str:
@@ -685,7 +609,7 @@ class CMCChatbotEngine:
           <div class="flex flex-wrap justify-between items-center border-b border-[#333537] pb-2">
             <div><div class="text-sm font-bold text-white">🎓 Sinh viên: <span class="text-blue-300">{latest.get('student_id','')}</span> • Lớp: <span class="text-emerald-300">{latest.get('class_code','')}</span></div>
             <div class="text-[11px] text-[#9aa0a6]">Ngành: {latest.get('major_name','')} ({latest.get('degree_type','')} - Hệ {latest.get('education_mode','')})</div></div>
-            <span class="text-[11px] px-2.5 py-0.5 rounded-full bg-blue-950 text-blue-300 font-semibold">{latest.get('risk_level','')}</span>
+            <span class="text-[11px] px-2.5 py-0.5 rounded-full bg-blue-950 text-blue-300 font-semibold">{latest.get('risk_level','')} · {latest.get('prediction_status','UNKNOWN')}</span>
           </div>
           <div class="overflow-x-auto bg-[#131314] border border-[#333537] rounded-2xl p-3">
             <div class="text-xs font-semibold text-blue-300 mb-2">1. Bảng tổng hợp kết quả học tập qua các kỳ</div>
@@ -720,6 +644,8 @@ class CMCChatbotEngine:
             else:
                 status_badge = "Không đạt"
 
+            if c.get("eligibility_review") or c.get("grade_policy_review"):
+                status_badge += " · Cần đối chiếu quy chế"
             c = {
                 k: ("—" if v is None else v)
                 for k, v in c.items()
@@ -773,7 +699,7 @@ class CMCChatbotEngine:
             n_students=('record_uid', 'count'), gpa_mean=('gpa4_cumulative', 'mean'),
             owed_mean=('credits_owed_cumulative', 'mean'), failed_ratio_mean=('failed_credit_ratio', 'mean'),
             warning_count=('warning_bool', 'sum'),
-            high_risk_count=('risk_probability', lambda s: int((s >= self.meta.get('threshold', 0.21)).sum()))
+            high_risk_count=('intervention_risk', lambda s: int((s >= self.meta.get('threshold', 0.21)).sum()))
         ).sort_values(['high_risk_count', 'warning_count'], ascending=False)
         return [{
             "class_code": str(r['class_code']), "major_code": str(r['major_code']), "major_name": str(r['major_name']),
@@ -789,7 +715,7 @@ class CMCChatbotEngine:
             return {}
         n_stu = int(len(sub))
         warn_cnt = int(sub['warning_bool'].sum())
-        high_risk_cnt = int((sub['risk_probability'] >= self.meta.get('threshold', 0.21)).sum())
+        high_risk_cnt = int((sub['intervention_risk'] >= self.meta.get('threshold', 0.21)).sum())
         gpa_avg = round(float(sub['gpa4_cumulative'].mean() or 0), 2)
         owed_avg = round(float(sub['credits_owed_cumulative'].mean() or 0), 1)
         fail_avg = round(float(sub['failed_credit_ratio'].mean() * 100 or 0), 1)
@@ -800,7 +726,8 @@ class CMCChatbotEngine:
             "credits_earned_cumulative": int(s.get('credits_earned_cumulative') or 0), "credits_owed_cumulative": int(s.get('credits_owed_cumulative') or 0),
             "failed_credit_ratio": round(float(s.get('failed_credit_ratio') or 0), 3), "warning_streak": int(s.get('warning_streak') or 0),
             "attendance_rate_term": round(float(s.get('attendance_rate_term') or 0), 1), "tuition_debt_end_vnd": float(s.get('tuition_debt_end_vnd') or 0),
-            "risk_probability": round(float(s.get('risk_probability') or 0), 4), "risk_level": str(s.get('risk_level') or 'Thấp')
+            "risk_probability": round(float(s.get('risk_probability') or 0), 4), "risk_level": str(s.get('risk_level') or 'Thấp'), "prediction_status": s.get("prediction_status"),
+            "gpa_projection": self.calc_next_term_gpa_projection(row_to_clean_dict(s))
         } for _, s in sub.iterrows()]
         return {
             "class_code": c_code, "major_code": str(sub.iloc[0]['major_code']), "major_name": str(sub.iloc[0]['major_name']),
@@ -814,7 +741,7 @@ class CMCChatbotEngine:
             n_students=('record_uid', 'count'), n_classes=('class_code', 'nunique'),
             gpa_mean=('gpa4_cumulative', 'mean'), owed_mean=('credits_owed_cumulative', 'mean'),
             warning_count=('warning_bool', 'sum'),
-            high_risk_count=('risk_probability', lambda s: int((s >= self.meta.get('threshold', 0.21)).sum())),
+            high_risk_count=('intervention_risk', lambda s: int((s >= self.meta.get('threshold', 0.21)).sum())),
             total_debt_vnd=('tuition_debt_end_vnd', 'sum')
         ).sort_values('n_students', ascending=False)
         return [{
@@ -834,7 +761,7 @@ class CMCChatbotEngine:
         classes = self.get_all_classes_summary(m_code)
         n_stu = int(len(sub))
         warn_cnt = int(sub['warning_bool'].sum())
-        hr_cnt = int((sub['risk_probability'] >= self.meta.get('threshold', 0.21)).sum())
+        hr_cnt = int((sub['intervention_risk'] >= self.meta.get('threshold', 0.21)).sum())
         gpa_avg = round(float(sub['gpa4_cumulative'].mean() or 0), 2)
         owed_avg = round(float(sub['credits_owed_cumulative'].mean() or 0), 2)
         return {
@@ -991,16 +918,16 @@ class CMCChatbotEngine:
                 if c_detail:
                     rows = ""
                     for idx, s in enumerate(c_detail['students']):
-                        proj_gpa = max(0.50, min(4.00, round(0.55 * s['gpa4_term'] + 0.45 * s['gpa4_cumulative'] + (s['attendance_rate_term'] - 80.0) * 0.015, 2)))
+                        proj_gpa = f"{s['gpa_projection']['pred_gpa_cur']:.2f}" if s["gpa_projection"] else "N/A"
                         rows += f"""<tr class='border-b border-[#2c2e30] hover:bg-[#282a2c]/50'>
                           <td class='py-1.5 px-2 font-bold text-blue-300'>{idx+1}</td>
                           <td class='py-1.5 px-2 font-bold text-white'>{s['student_id']}</td>
                           <td class='py-1.5 px-2'>HK{s['snapshot_term_index']}</td>
                           <td class='py-1.5 px-2'>{s['gpa4_term']:.2f} / <b>{s['gpa4_cumulative']:.2f}</b></td>
-                          <td class='py-1.5 px-2 text-emerald-300 font-bold'>{proj_gpa:.2f} / 4.00</td>
+                          <td class='py-1.5 px-2 text-emerald-300 font-bold'>{proj_gpa} / 4.00</td>
                           <td class='py-1.5 px-2 text-amber-300 font-semibold'>{s['credits_owed_cumulative']} TC</td>
                           <td class='py-1.5 px-2'>{s['attendance_rate_term']:.0f}%</td>
-                          <td class='py-1.5 px-2 text-rose-400 font-bold'>{s['risk_probability']*100:.1f}%</td>
+                          <td class='py-1.5 px-2 text-rose-400 font-bold'>{s['risk_probability']*100:.1f}% ({s['prediction_status']})</td>
                           <td class='py-1.5 px-2 text-right whitespace-nowrap'>
                             <button type='button' onclick="askFromData('Dự đoán điểm kỳ sau của sinh viên {s['student_id']}')" class='px-2 py-0.5 rounded bg-emerald-950 hover:bg-emerald-800 text-emerald-300 text-[11px] font-semibold'>Dự đoán</button>
                             <button type='button' onclick="askFromData('Xem hồ sơ sinh viên {s['student_id']}')" class='px-2 py-0.5 rounded bg-blue-950 hover:bg-blue-800 text-blue-300 text-[11px] font-semibold'>Hồ sơ</button>
