@@ -1,11 +1,14 @@
 """Kiểm tra tích hợp dữ liệu và khả năng suy luận của mô hình thật."""
 import numpy as np
+from core.security import Principal
 from core.prediction import model_inputs
 from app import engine, get_student_me, data_view, get_advisor_classes, get_admin_faculties, get_advisor_class_detail
 
 
 def main():
-    view = data_view()
+    admin=Principal('ADMIN','admin')
+    student=Principal('BIT250093','student')
+    view = data_view(admin)
     expected = {'DEMO': (57569, 14642), 'ASOF_2026_DEMO': (54609,15796), 'FULL_SIMULATION':(57569,7754)}
     if not engine.research_revision:
         assert (len(engine.ml_df),len(engine.active_latest_df)) == expected[view['mode']]
@@ -20,15 +23,15 @@ def main():
     X = model_inputs(sample,engine.meta)
     probs = engine.pipeline.predict_proba(X)[:,1]
     assert np.allclose(probs,sample.risk_probability,atol=1e-10,rtol=0)
-    result = get_student_me('BIT250093')
+    result = get_student_me('BIT250093',student)
     assert result['courses'] and all(c['term']<=result['latest']['snapshot_term_index'] for c in result['courses'])
     if engine.research_revision:
         valid=engine.active_latest_df[engine.active_latest_df.prediction_status.eq('VALID')]
         assert valid.prediction_term.isin(engine.meta['supported_terms']).all()
         assert valid.prediction_cutoff.ge(engine.meta['model_available_as_of']).all()
         print('Độ bao phủ dự báo:',len(valid),'/',len(engine.active_latest_df))
-    assert get_advisor_classes()['classes'] and get_admin_faculties()['faculties']
-    rows = get_advisor_class_detail('IT25-09')['students']
+    assert get_advisor_classes(p=admin)['classes'] and get_admin_faculties(admin)['faculties']
+    rows = get_advisor_class_detail('IT25-09',admin)['students']
     statuses = [r['prediction_status']=='VALID' for r in rows]
     assert statuses == sorted(statuses,reverse=True)
     print(f"Mốc dữ liệu: {view['as_of']}; hồ sơ học kỳ: {len(engine.df)}; snapshot ML: {len(engine.ml_df)}")

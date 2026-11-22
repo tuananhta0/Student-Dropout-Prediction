@@ -47,12 +47,6 @@ python -m uvicorn app:app --host 127.0.0.1 --port 8000
 
 Thử kịch bản nhiều học phần, môn mới và What-If thanh toán học phí (chỉ khi model mới có dự báo hợp lệ). Chuẩn hóa feature từ snapshot ML thật; giả định thanh toán trước khi chốt kỳ cập nhật đồng thời công nợ, tỷ lệ nợ và dữ liệu quá hạn liên quan. Không giả định sửa chuyên cần/GPA/điểm như tác động nhân quả; xác suất có thể tăng hoặc giảm. GPA là công cụ kịch bản toán học, không phải dự báo hồi quy. Không tự chọn kết quả tốt nhất để ghi vào README trước khi xem báo cáo tập đầy đủ.
 
-Nếu muốn quay lại baseline, tắt server và xóa hai biến môi trường (không xóa dữ liệu):
+Kiểm thử baseline chỉ dành cho đối chiếu lịch sử. Phải đặt `CMC_ALLOW_BASELINE=1` và chọn đúng `dataset_full` cùng `artifacts_model`; không tự lùi về baseline. Sau kiểm thử cần bỏ cờ và chọn lại cặp model chính thức.
 
-```powershell
-Remove-Item Env:CMC_MODEL_DIR, Env:CMC_DATASET_ROOT -ErrorAction SilentlyContinue
-$env:CMC_DATA_MODE = 'DEMO'
-python -m uvicorn app:app --host 127.0.0.1 --port 8000
-```
-
-Chỉ triển khai trên localhost với dữ liệu mô phỏng; xác thực và phân quyền phía máy chủ, RAG thực sự và kiểm thử giao diện toàn diện vẫn là các công việc riêng. Không đưa các API hiện tại ra Internet hoặc dùng hồ sơ thật. Hai nút kịch bản mới vẫn sử dụng cơ chế tài khoản demo hiện có, không thay thế xác thực.
+Xem [bàn giao mô hình và dữ liệu](ban_giao.md) để tạo gói ZIP và tài khoản riêng; [tra cứu quy chế](tra_cuu_quy_che.md) để bật Gemini tùy chọn. Chỉ dùng localhost với dữ liệu mô phỏng.

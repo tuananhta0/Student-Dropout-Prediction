@@ -168,7 +168,7 @@
               <button type="button" onclick="selectClassQuick('IT25-18')" class="px-2.5 py-1 rounded-lg bg-[#131314] hover:bg-[#282a2c] border border-[#333537] text-emerald-300">IT25-18 (Có SV cảnh báo)</button>
               <button type="button" onclick="selectClassQuick('IT25-16')" class="px-2.5 py-1 rounded-lg bg-[#131314] hover:bg-[#282a2c] border border-[#333537] text-blue-300">IT25-16 (Lớp Giỏi)</button>
               <button type="button" onclick="selectClassQuick('IT25-20')" class="px-2.5 py-1 rounded-lg bg-[#131314] hover:bg-[#282a2c] border border-[#333537] text-purple-300">IT25-20</button>
-              <button type="button" onclick="askFromData('Xem lớp')" class="px-2.5 py-1 rounded-lg bg-emerald-950 hover:bg-emerald-900 text-emerald-300 font-semibold">📋 Mở Danh mục Lớp 19 Khoa trên Chat</button>
+              <button type="button" onclick="askFromData('Xem lớp')" class="px-2.5 py-1 rounded-lg bg-emerald-950 hover:bg-emerald-900 text-emerald-300 font-semibold">📋 Mở danh mục lớp trên Chat</button>
             </div>
           </div>
 
@@ -275,6 +275,25 @@
   <script>
     let currentUser = null;
     let allAdvisorClassesCache = [];
+    // Token chỉ giữ trong bộ nhớ của trang; không ghi vào localStorage.
+    async function apiFetch(path, options = {}) {
+      const session = currentUser;
+      const headers = new Headers(options.headers || {});
+      if (currentUser) headers.set('Authorization', 'Bearer ' + currentUser.access_token);
+      const res = await fetch(path, {...options, headers});
+      if (currentUser !== session) throw new Error('Phiên làm việc đã thay đổi');
+      const read = res.json.bind(res);
+      res.json = async () => { const value = await read(); if (currentUser !== session) throw new Error('Phiên làm việc đã thay đổi'); return value; };
+      if (res.status === 401) { resetSession(); throw new Error('Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.'); }
+      return res;
+    }
+    const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    const safeCode = value => /^[A-Z0-9_-]+$/i.test(String(value)) ? String(value) : '';
+    // Không đưa chuỗi do người dùng nhập vào HTML hoặc mã JavaScript.
+    function appendText(container, className, text) {
+      const el = document.createElement('div'); el.className=className; el.textContent=text; container.append(el);
+    }
+
 
     async function handleLogin(e) {
       if (e && e.preventDefault) e.preventDefault();
@@ -305,8 +324,15 @@
       }
     }
 
-    function logout() {
+    async function logout() {
+      try { if (currentUser) await apiFetch('/api/logout', {method:'POST'}); }
+      finally { resetSession(); }
+    }
+    function resetSession() {
       currentUser = null;
+      allAdvisorClassesCache = [];
+      for (const id of ['chatMessages','stuTermTable','stuCoursesTable','stuWarningsBox','stuProgressCard','stuGpaBars','stuNextTermBanner','advStudentsTable','admFacultiesTable','selAdvisorClass']) { document.getElementById(id)?.replaceChildren(); }
+      document.getElementById('scenarioControls')?.remove();
       document.getElementById('inpUsername').value = '';
       document.getElementById('inpPassword').value = '';
       document.getElementById('mainApp').classList.add('hidden');
@@ -339,7 +365,7 @@
       document.getElementById('badgeRole').innerText = ({student:'SINH VIÊN',advisor:'CỐ VẤN',admin:'QUẢN TRỊ'})[currentUser.role] || 'TÀI KHOẢN';
       document.getElementById('txtRoleLabel').innerText = currentUser.role_label;
       try {
-        const view = await fetch('/api/data-view');
+        const view = await apiFetch('/api/data-view');
         if (view.ok) {
           const v = await view.json();
           document.getElementById('txtRoleLabel').innerText += ` | Dữ liệu mô phỏng`;
@@ -360,7 +386,7 @@
           <div class="flex items-start gap-3">
             <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-blue-600 to-emerald-400 flex items-center justify-center text-xs font-bold shrink-0">✦</div>
             <div class="bg-[#1e1f20] border border-[#333537] text-[#e3e3e3] px-5 py-4 rounded-3xl rounded-tl-sm max-w-2xl text-xs space-y-2 leading-relaxed">
-              <div class="text-sm font-semibold text-white">Xin chào Sinh viên ${currentUser.user_id}! 👋</div>
+              <div class="text-sm font-semibold text-white">Xin chào Sinh viên ${safeCode(currentUser.user_id)}! 👋</div>
               <div class="text-[#c4c7c5]">Bạn có thể nhập trực tiếp câu hỏi vào ô chat bên dưới để tra cứu <b>Kịch bản GPA kỳ sau</b>, <b>Bảng điểm</b> hoặc <b>Quy chế đào tạo</b>.</div>
             </div>
           </div>
@@ -375,7 +401,7 @@
           <div class="flex items-start gap-3">
             <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-blue-600 to-emerald-400 flex items-center justify-center text-xs font-bold shrink-0">✦</div>
             <div class="bg-[#1e1f20] border border-[#333537] text-[#e3e3e3] px-5 py-4 rounded-3xl rounded-tl-sm max-w-2xl text-xs space-y-2 leading-relaxed">
-              <div class="text-sm font-semibold text-emerald-300">Xin chào Cố vấn Học tập (${currentUser.user_id})! 👋</div>
+              <div class="text-sm font-semibold text-emerald-300">Xin chào Cố vấn Học tập (${safeCode(currentUser.user_id)})! 👋</div>
               <div class="text-[#c4c7c5]">Bạn có thể nhập câu hỏi để tra cứu thông tin lớp, sinh viên nguy cơ cao hoặc gõ <b>"xem lớp"</b>.</div>
             </div>
           </div>
@@ -390,7 +416,7 @@
           <div class="flex items-start gap-3">
             <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-blue-600 to-emerald-400 flex items-center justify-center text-xs font-bold shrink-0">✦</div>
             <div class="bg-[#1e1f20] border border-[#333537] text-[#e3e3e3] px-5 py-4 rounded-3xl rounded-tl-sm max-w-2xl text-xs space-y-2 leading-relaxed">
-              <div class="text-sm font-semibold text-amber-300">Xin chào Quản trị viên Toàn trường (${currentUser.user_id})! 👋</div>
+              <div class="text-sm font-semibold text-amber-300">Xin chào Quản trị viên Toàn trường (${safeCode(currentUser.user_id)})! 👋</div>
               <div class="text-[#c4c7c5]">Bạn có toàn quyền truy xuất báo cáo 19 Khoa, thống kê vĩ mô toàn trường và tra cứu lớp học.</div>
             </div>
           </div>
@@ -411,8 +437,8 @@
 
     async function loadStudentSelfData(targetStudentId) {
       const stuId = targetStudentId || currentUser.user_id;
-      const res = await fetch(`/api/student/me?user_id=${encodeURIComponent(stuId)}&role=${encodeURIComponent(currentUser.role)}`);
-      if (!res.ok) return;
+      const res = await apiFetch(`/api/student/me?user_id=${encodeURIComponent(stuId)}`);
+      if (!res.ok) { alert('Không thể truy cập hồ sơ sinh viên.'); return; }
       const data = await res.json();
       const latest = data.latest;
       const proj = calcClientNextTermGpa(data.gpa_projection);
@@ -421,7 +447,7 @@
       document.getElementById('stuPredBadge').classList.toggle('hidden', !active);
 
       document.getElementById('panelStudentData').classList.remove('hidden');
-      document.getElementById('stuHeaderInfo').innerText = `🎓 Hồ sơ Sinh viên: ${latest.student_id} • Lớp: ${latest.class_code}`;
+      document.getElementById('stuHeaderInfo').innerText = `🎓 Hồ sơ Sinh viên: ${safeCode(latest.student_id)} • Lớp: ${latest.class_code}`;
       document.getElementById('stuSubInfo').innerText = `Ngành: ${latest.major_name} (${latest.degree_type === 'Bachelor' ? 'Cử nhân' : latest.degree_type === 'Engineer' ? 'Kỹ sư' : latest.degree_type} - Hệ ${latest.education_mode})`;
       document.getElementById('stuPredBadge').innerText = `🔮 Kịch bản GPA HK${proj.nextTerm}: ${proj.predCur} ➔ ${proj.predImp}/4.00`;
       if (latest.graduation_review_date) document.getElementById('stuSubInfo').innerText += ` • Ngày xét tốt nghiệp: ${latest.graduation_review_date}`;
@@ -431,7 +457,7 @@
       document.getElementById('stuNextTermBanner').innerHTML = `
         <div class="flex flex-wrap items-center justify-between gap-2">
           <div class="font-bold text-blue-300 text-sm">🔮 Kịch bản GPA (HK${proj.nextTerm} - ${proj.nextTc} tín chỉ mới, không học lại)</div>
-          <button type="button" onclick="askFromData('Dự đoán điểm kỳ sau của sinh viên ${latest.student_id}')"
+          <button type="button" onclick="askFromData('Dự đoán điểm kỳ sau của sinh viên ${safeCode(latest.student_id)}')"
             class="px-3 py-1 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs transition">
             Xem chi tiết Công thức & Kịch bản trên Chat ➔
           </button>
@@ -513,7 +539,7 @@
       document.getElementById('stuWarningsBox').innerHTML = (data.warnings || []).map(w => `
         <div class="flex items-start gap-2 bg-[#131314] border border-[#333537] rounded-xl p-2.5 text-xs">
           <span>${w.level === 'danger' ? '🔴' : (w.level === 'warning' ? '🟡' : (w.level === 'info' ? '🔵' : '🟢'))}</span>
-          <div><b class="text-white">${w.title}:</b> <span class="text-[#c4c7c5]">${w.detail}</span></div>
+          <div><b class="text-white">${esc(w.title)}:</b> <span class="text-[#c4c7c5]">${esc(w.detail)}</span></div>
         </div>
       `).join('');
 
@@ -527,13 +553,13 @@
         : data.courses.map(c => `
         <tr class="hover:bg-[#282a2c]/50">
           <td class="py-2 px-2 font-bold text-blue-300 whitespace-nowrap">HK${c.term}</td>
-          <td class="py-2 px-2 font-mono text-xs text-[#9aa0a6] whitespace-nowrap" title="${c.course_id}">${c.short_code || c.course_id}${active && ['F','D','D+','C','C+'].includes(c.grade_letter) ? `<button type="button" class="block text-blue-300" onclick="askFromData('Kịch bản học lại ${c.course_id} đạt B của sinh viên ${latest.student_id}')">Giả định đạt B</button>` : ''}</td>
-          <td class="py-2 px-2 font-medium text-white">${c.course_name || c.course_id}</td>
-          <td class="py-2 px-2 text-center whitespace-nowrap">${c.credits ?? '—'}</td>
-          <td class="py-2 px-2 text-center">${c.process_score ?? '—'}</td>
-          <td class="py-2 px-2 text-center">${c.exam_score ?? '—'}</td>
-          <td class="py-2 px-2 text-center font-bold">${c.final_score ?? '—'}</td>
-          <td class="py-2 px-2 text-center font-bold ${c.grade_letter === 'F' ? 'text-rose-400' : 'text-emerald-300'}">${c.grade_letter ?? '—'}</td>
+          <td class="py-2 px-2 font-mono text-xs text-[#9aa0a6] whitespace-nowrap" title="${safeCode(c.course_id)}">${esc(c.short_code || c.course_id)}${active && c.gpa_eligible && ['F','D','D+','C','C+'].includes(c.grade_letter) ? `<button type="button" class="block text-blue-300" onclick="askFromData('Kịch bản học lại ${safeCode(c.course_id)} đạt B của sinh viên ${safeCode(latest.student_id)}')">Giả định đạt B</button>` : ''}</td>
+          <td class="py-2 px-2 font-medium text-white">${esc(c.course_name || c.course_id)}</td>
+          <td class="py-2 px-2 text-center whitespace-nowrap">${esc(c.credits ?? '—')}</td>
+          <td class="py-2 px-2 text-center">${esc(c.process_score ?? '—')}</td>
+          <td class="py-2 px-2 text-center">${esc(c.exam_score ?? '—')}</td>
+          <td class="py-2 px-2 text-center font-bold">${esc(c.final_score ?? '—')}</td>
+          <td class="py-2 px-2 text-center font-bold ${c.grade_letter === 'F' ? 'text-rose-400' : 'text-emerald-300'}">${esc(c.grade_letter ?? '—')}</td>
           <td class="py-2 px-2 text-right whitespace-nowrap">${c.eligibility_review ? 'Cần đối chiếu điều kiện thi' : c.exam_eligible === false ? 'Cấm thi' : c.is_passed == null ? 'Chưa có kết quả' : c.is_passed ? '<span class="px-2 py-0.5 rounded bg-emerald-950 text-emerald-300 font-semibold">Đạt</span>' : '<span class="px-2 py-0.5 rounded bg-rose-950 text-rose-300 font-bold">Học lại (F)</span>'}${c.eligibility_review || c.grade_policy_review ? ' · Cần đối chiếu quy chế' : ''}</td>
         </tr>
       `).join('');
@@ -555,7 +581,7 @@
       const grades = ['F','D','D+','C','C+','B','B+','A','A+'];
       const best = new Map();
       for (const c of data.courses || []) {
-        if (!grades.includes(c.grade_letter)) continue;
+        if (!c.gpa_eligible || !grades.includes(c.grade_letter)) continue;
         if (!best.has(c.course_id) || grades.indexOf(c.grade_letter) > grades.indexOf(best.get(c.course_id).grade_letter)) best.set(c.course_id,c);
       }
       const selects = new Map();
@@ -573,12 +599,12 @@
         const l = document.createElement('label'); l.textContent = label+' ';
         const el = document.createElement('input'); el.type='number'; el.min=min; el.max=max; el.step=step; el.value='0'; el.className='w-20 bg-[#131314] border border-[#333537] rounded p-1'; l.append(el); controls.append(l); return el;
       };
-      const credits = inputNumber('Tín chỉ môn mới',0,30,1), gpa = inputNumber('GPA môn mới',0,4,.1);
+      const credits = inputNumber('Tín chỉ môn mới',0,Math.min(latest.new_course_credits_available ?? 0,latest.registration_max_credits ?? 0,30),1), gpa = inputNumber('GPA môn mới',0,4,.1);
       const status = document.createElement('p'); status.className='text-emerald-300';
       const post = async (path,payload,render,out) => {
         out.textContent='Đang tính…';
         try {
-          const response=await fetch(path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({user_id:stuId,role:currentUser.role,...payload})});
+          const response=await apiFetch(path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({user_id:stuId,...payload})});
           const value=await response.json();
           if (!response.ok) throw new Error(typeof value.detail==='string'?value.detail:'Thông tin nhập không hợp lệ');
           out.textContent=render(value);
@@ -604,8 +630,8 @@
     }
 
     async function initAdvisorClasses(majorCode = '') {
-      const url = `/api/advisor/classes?role=${encodeURIComponent(currentUser.role)}` + (majorCode ? `&major_code=${encodeURIComponent(majorCode)}` : '');
-      const res = await fetch(url);
+      const url = `/api/advisor/classes` + (majorCode ? `?major_code=${encodeURIComponent(majorCode)}` : '');
+      const res = await apiFetch(url);
       if (!res.ok) return;
       const data = await res.json();
       allAdvisorClassesCache = data.classes || [];
@@ -613,7 +639,8 @@
 
       const sel = document.getElementById('selAdvisorClass');
       const hasIT2518 = allAdvisorClassesCache.some(c => c.class_code === 'IT25-18');
-      const defaultCls = (!majorCode && hasIT2518) ? 'IT25-18' : (allAdvisorClassesCache[0] ? allAdvisorClassesCache[0].class_code : 'IT25-01');
+      if (!allAdvisorClassesCache.length) { document.getElementById('advClassSummaryText').textContent='Không có lớp được phân công'; return; }
+      const defaultCls = (!majorCode && hasIT2518) ? 'IT25-18' : allAdvisorClassesCache[0].class_code;
       sel.value = defaultCls;
       await loadAdvisorClassDetail(defaultCls);
       if (majorCode) {
@@ -623,8 +650,8 @@
 
     function renderClassDropdownOptions(list) {
       const sel = document.getElementById('selAdvisorClass');
-      sel.innerHTML = list.slice(0, 300).map(c =>
-        `<option value="${c.class_code}">${c.class_code} - ${c.major_name} (${c.n_students} SV | Cần hỗ trợ: ${c.high_risk_count})</option>`
+      sel.innerHTML = list.map(c =>
+        `<option value="${esc(c.class_code)}">${esc(c.class_code)} - ${esc(c.major_name)} (${c.n_students} SV | Cần hỗ trợ: ${c.high_risk_count})</option>`
       ).join('');
     }
 
@@ -644,26 +671,26 @@
     }
 
     async function loadAdvisorClassDetail(classCode) {
-      const res = await fetch(`/api/advisor/class/${encodeURIComponent(classCode)}?role=${encodeURIComponent(currentUser.role)}`);
-      if (!res.ok) return;
+      const res = await apiFetch(`/api/advisor/class/${encodeURIComponent(classCode)}`);
+      if (!res.ok) { document.getElementById('advClassSummaryText').textContent='Không có quyền hoặc không tìm thấy lớp.'; document.getElementById('advStudentsTable').replaceChildren(); return; }
       const d = await res.json();
       document.getElementById('advClassSummaryText').innerText = d.summary_text || '';
       document.getElementById('advStudentsTable').innerHTML = (d.students || []).map(s => {
         const predGpa = s.gpa_projection ? s.gpa_projection.pred_gpa_cur.toFixed(2) : "Chưa có";
         return `
         <tr class="hover:bg-[#282a2c]/50">
-          <td class="py-2 px-2.5 font-bold text-blue-300">${s.student_id}</td>
+          <td class="py-2 px-2.5 font-bold text-blue-300">${safeCode(s.student_id)}</td>
           <td class="py-2 px-2.5">HK${s.snapshot_term_index}</td>
           <td class="py-2 px-2.5">${s.gpa4_term.toFixed(2)} / <b>${s.gpa4_cumulative.toFixed(2)}</b></td>
           <td class="py-2 px-2.5 font-bold text-emerald-300">${predGpa} / 4.00</td>
           <td class="py-2 px-2.5">${s.credits_earned_cumulative} TC</td>
           <td class="py-2 px-2.5 ${s.credits_owed_cumulative > 0 ? 'text-amber-300 font-bold' : 'text-slate-400'}">${s.credits_owed_cumulative} TC</td>
           <td class="py-2 px-2.5">${s.attendance_rate_term}%</td>
-          <td class="py-2 px-2.5 font-bold ${s.prediction_status !== 'VALID' ? 'text-slate-400' : 'text-blue-300'}">${s.risk_display}</td>
+          <td class="py-2 px-2.5 font-bold ${s.prediction_status !== 'VALID' ? 'text-slate-400' : 'text-blue-300'}">${esc(s.risk_display)}</td>
           <td class="py-2 px-2.5 text-right space-x-1 whitespace-nowrap">
-            <button type="button" onclick="inspectStudentInTab('${s.student_id}')"
+            <button type="button" onclick="inspectStudentInTab('${safeCode(s.student_id)}')"
               class="px-2.5 py-1 rounded-lg bg-emerald-950 hover:bg-emerald-900 text-emerald-300 font-semibold">📊 Bảng điểm</button>
-            <button type="button" onclick="askFromData('Dự đoán điểm kỳ sau của sinh viên ${s.student_id}')"
+            <button type="button" onclick="askFromData('Dự đoán điểm kỳ sau của sinh viên ${safeCode(s.student_id)}')"
               class="px-2.5 py-1 rounded-lg bg-blue-950 hover:bg-blue-900 text-blue-300 font-semibold">🔮 Kịch bản GPA</button>
           </td>
         </tr>`;
@@ -671,13 +698,13 @@
     }
 
     async function initAdminFaculties() {
-      const res = await fetch(`/api/admin/faculties?role=${encodeURIComponent(currentUser.role)}`);
+      const res = await apiFetch(`/api/admin/faculties`);
       if (!res.ok) return;
       const data = await res.json();
       document.getElementById('admFacultiesTable').innerHTML = (data.faculties || []).map(f => `
         <tr class="hover:bg-[#282a2c]/50">
-          <td class="py-2 px-2.5 font-bold text-amber-300">${f.major_code}</td>
-          <td class="py-2 px-2.5 font-medium text-white">${f.major_name}</td>
+          <td class="py-2 px-2.5 font-bold text-amber-300">${safeCode(f.major_code)}</td>
+          <td class="py-2 px-2.5 font-medium text-white">${esc(f.major_name)}</td>
           <td class="py-2 px-2.5">${f.n_classes} lớp</td>
           <td class="py-2 px-2.5">${f.n_students.toLocaleString('vi-VN')} SV</td>
           <td class="py-2 px-2.5 font-semibold">${f.gpa_mean.toFixed(2)}</td>
@@ -685,9 +712,9 @@
           <td class="py-2 px-2.5 text-rose-400 font-bold">${f.high_risk_count} SV (${f.high_risk_pct}%)</td>
           <td class="py-2 px-2.5">${f.total_debt_billion.toFixed(2)} tỷ</td>
           <td class="py-2 px-2.5 text-right space-x-1 whitespace-nowrap">
-            <button type="button" onclick="initAdvisorClasses('${f.major_code}')"
+            <button type="button" onclick="initAdvisorClasses('${safeCode(f.major_code)}')"
               class="px-2.5 py-1 rounded-lg bg-emerald-950 hover:bg-emerald-900 text-emerald-300 font-semibold">🏫 Xem Lớp & SV</button>
-            <button type="button" onclick="askFromData('Tổng kết Khoa ${f.major_code}')"
+            <button type="button" onclick="askFromData('Tổng kết Khoa ${safeCode(f.major_code)}')"
               class="px-2.5 py-1 rounded-lg bg-amber-950 hover:bg-amber-900 text-amber-300 font-semibold">📊 Báo cáo Khoa</button>
           </td>
         </tr>
@@ -708,35 +735,34 @@
       inp.value = '';
 
       const box = document.getElementById('chatMessages');
-      box.innerHTML += `
-        <div class="flex justify-end">
-          <div class="bg-blue-600 text-white px-4 py-2.5 rounded-3xl rounded-tr-sm max-w-xl text-xs">${msg}</div>
-        </div>
-      `;
+      const session = currentUser;
+      const line = document.createElement('div'); line.className='flex justify-end';
+      appendText(line,'bg-blue-600 text-white px-4 py-2.5 rounded-3xl rounded-tr-sm max-w-xl text-xs',msg);
+      box.append(line);
       box.scrollTop = box.scrollHeight;
 
       try {
-        const res = await fetch('/api/chat', {
+        const res = await apiFetch('/api/chat', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            message: msg,
-            role: currentUser.role,
-            logged_in_user: currentUser.user_id
+            message: msg
           })
         });
         const data = await res.json();
-        box.innerHTML += `
+        if (currentUser !== session) return;
+        if (!res.ok) throw new Error(typeof data.detail === "string" ? data.detail : "Không thể xử lý yêu cầu");
+        box.insertAdjacentHTML("beforeend", `
           <div class="flex items-start gap-3">
             <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-blue-600 to-emerald-400 flex items-center justify-center text-xs font-bold shrink-0">✦</div>
             <div class="bg-[#1e1f20] border border-[#333537] text-[#e3e3e3] px-5 py-4 rounded-3xl rounded-tl-sm max-w-3xl w-full text-xs leading-relaxed">
               ${data.reply || 'Không có phản hồi.'}
             </div>
           </div>
-        `;
+        `);
         box.scrollTop = box.scrollHeight;
       } catch (err) {
-        box.innerHTML += `<div class="text-xs text-rose-400">Lỗi kết nối: ${err.message}</div>`;
+        if (currentUser === session) appendText(box,'text-xs text-rose-400',err.message);
       }
     }
   </script>

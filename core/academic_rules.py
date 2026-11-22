@@ -145,7 +145,9 @@ def projection(row):
     earned = number(row.get('credits_earned_cumulative'))
     if None in (pts, credits, gpa, term, remaining, earned) or pts > 4*credits:
         return None
-    n = min(15, max(0, remaining-earned))
+    available = number(row.get('new_course_credits_available'))
+    cap = number(row.get('registration_max_credits'))
+    n = min(15, max(0, remaining-earned) if available is None else available, 15 if cap is None else cap)
     if n == 0:
         return None
     # Giả định rõ ràng, không tự suy đoán hành vi.

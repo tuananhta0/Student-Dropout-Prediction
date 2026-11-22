@@ -212,6 +212,7 @@ class CMCChatbotEngine:
             expected = course_grade(r.get('course_final_score10'), r.get('exam_final_score10'),
                                     barred=None if eligible is None else not eligible)
             rows.append({
+                "gpa_eligible": (strict_bool(self.course_catalog.loc[cid, "is_gpa_eligible"]) is True and strict_bool(self.course_catalog.loc[cid, "is_certificate_course"]) is False) if hasattr(self,"course_catalog") and cid in self.course_catalog.index else None,
                 "attendance_barred": barred,
                 "eligibility_review": barred is not None and eligible is not None and barred == eligible,
                 "grade_policy_review": expected is not None and expected != r.get('grade_letter'),
@@ -501,9 +502,11 @@ class CMCChatbotEngine:
             raise ValueError('Danh sách học lại không hợp lệ')
         changes = {ids.get(k.lower(),k):v for k,v in changes.items()}
         last = records.iloc[-1]
-        remaining = max(0, float(last['credits_required'])-float(last['gpa_credit_count']))
+        remaining = number(last.get('new_course_credits_available'))
+        if remaining is None:
+            raise ValueError('Chưa có sổ tín chỉ môn mới trong chương trình')
         if number(new_credits,0,remaining) is None:
-            raise ValueError('Tín chỉ môn mới vượt số tín chỉ chưa tính GPA hoặc không hợp lệ')
+            raise ValueError('Tín chỉ môn mới vượt số tín chỉ chưa từng học hoặc không hợp lệ')
         selected = attempts.loc[attempts.course_id.isin(changes)].drop_duplicates('course_id')
         if float(new_credits) + selected.registered_credits.sum() > float(last['registration_max_credits']):
             raise ValueError('Tổng tín chỉ giả định vượt giới hạn đăng ký học kỳ')

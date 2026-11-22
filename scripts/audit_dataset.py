@@ -186,10 +186,21 @@ def audit(source, scored_path, output):
     return not any(checks.values())
 
 
+def resolve_scored_path(source_only, scored=None):
+    """Chọn artifact trước khi nạp Dataset để không ghép nhầm hai phiên bản."""
+    if source_only:
+        return None
+    if scored is not None:
+        return Path(scored)
+    from core.runtime_config import configure_runtime
+    return Path(configure_runtime()) / 'student_snapshots_scored.csv.gz'
+
+
 if __name__=='__main__':
     p=argparse.ArgumentParser(description=__doc__)
     p.add_argument('--output',type=Path,default=ROOT/'data/kiem_tra_du_lieu')
-    p.add_argument('--scored',type=Path,default=ROOT/'artifacts_model/student_snapshots_scored.csv.gz')
+    p.add_argument('--scored',type=Path,help='Chỉ định CSV dự báo tương ứng với dữ liệu nguồn; mặc định dùng cấu hình model đang chạy')
     p.add_argument('--source-only',action='store_true',help='Kiểm tra dữ liệu nguồn trước huấn luyện, không cần artifact đã chấm điểm')
     args=p.parse_args()
-    raise SystemExit(0 if audit(Dataset(),None if args.source_only else args.scored,args.output) else 1)
+    scored_path = resolve_scored_path(args.source_only, args.scored)
+    raise SystemExit(0 if audit(Dataset(),scored_path,args.output) else 1)

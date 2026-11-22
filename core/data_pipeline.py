@@ -199,6 +199,21 @@ def mandatory_course_ledger(source):
     return terms.reset_index().rename(columns={'term_index':'snapshot_term_index'})[[*KEY,'mandatory_courses_remaining']]
 
 
+
+def new_course_ledger(source):
+    """Tín chỉ học phần tính GPA chưa từng đăng ký trong chương trình mô phỏng."""
+    cc = source.table('curriculum_courses').merge(source.table('courses')[['course_id','credits','is_gpa_eligible','is_certificate_course']],on='course_id',validate='many_to_one')
+    eligible = cc.loc[cc.is_gpa_eligible & ~cc.is_certificate_course & cc.credit_counted_to_graduation,['curriculum_id','course_id','credits']]
+    total = eligible.groupby('curriculum_id').credits.sum()
+    students=source.table('students')[['record_uid','curriculum_id']]
+    attempts=source.table('course_attempts')[['record_uid','course_id','term_index']].merge(students,on='record_uid',validate='many_to_one')
+    first=attempts.merge(eligible,on=['curriculum_id','course_id'],validate='many_to_one').sort_values('term_index').drop_duplicates(['record_uid','course_id'])
+    used=first.groupby(['record_uid','term_index']).credits.sum().rename('used')
+    terms=source.table('term_academics')[['record_uid','term_index']].merge(students,on='record_uid',validate='many_to_one').set_index(['record_uid','term_index']).sort_index().join(used)
+    terms['new_course_credits_available']=terms.curriculum_id.map(total)-terms.used.fillna(0).groupby(level=0).cumsum()
+    require(terms.new_course_credits_available.notna().all() and terms.new_course_credits_available.ge(0).all(),'Số tín chỉ môn mới không hợp lệ')
+    return terms.reset_index().rename(columns={'term_index':'snapshot_term_index'})[[*KEY,'new_course_credits_available']]
+
 def runtime_view(scored, source, mode='ASOF_2026_DEMO'):
     """Giữ nguyên đặc trưng ML và xác suất; chỉ bổ sung trường hiển thị."""
     snapshots = source.table('prediction_snapshots')
@@ -271,7 +286,7 @@ def academic_view(ml, source, mode):
     static = ['record_uid','student_id','cohort_year','major_code','major_name','class_code','degree_type','education_mode','gender','home_province','enrollment_date','living_status','admission_method','designed_semesters','max_semesters','admission_score_missing_reason','admission_score']
     frame = frame.merge(students[static+['scholarship_percent']],on='record_uid',validate='many_to_one')
     evidence = admission_evidence(students)[['record_uid','admission_evidence_status']]
-    frame = frame.merge(evidence,on='record_uid',validate='many_to_one').drop(columns='admission_score')
+    frame = frame.merge(evidence,on='record_uid',validate='many_to_one')  # Điểm tuyển sinh chỉ dùng trong dịch vụ đã kiểm tra quyền.
     frame = frame.sort_values(['record_uid','snapshot_term_index'])
     remaining = frame.credits_required - frame.groupby('record_uid').credits_earned_cumulative.shift().fillna(0)
     out_of_range = frame.credits_registered_term.lt(frame.registration_min_credits) | frame.credits_registered_term.gt(frame.registration_max_credits)
@@ -283,6 +298,7 @@ def academic_view(ml, source, mode):
     frame['current_state'] = asof_state(frame, source.table('state_transitions'), 'snapshot_cutoff')
     frame = merge_exact(frame,gpa_ledger(source),KEY,'GPA')
     frame = merge_exact(frame,mandatory_course_ledger(source),KEY,'học phần bắt buộc')
+    frame = merge_exact(frame,new_course_ledger(source),KEY,'tín chỉ môn mới')
     # Ghép xác suất lịch sử tại hoặc trước ngày học vụ, không thay đổi feature của model.
     risk = ml[['record_uid','snapshot_term_index','snapshot_cutoff','risk_probability','risk_level','prediction_valid_until']].rename(columns={'snapshot_term_index':'prediction_term','snapshot_cutoff':'prediction_cutoff'})
     frame['_date'] = dates(frame.snapshot_cutoff)
