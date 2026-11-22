@@ -147,7 +147,9 @@ def projection(row):
         return None
     available = number(row.get('new_course_credits_available'))
     cap = number(row.get('registration_max_credits'))
-    n = min(15, max(0, remaining-earned) if available is None else available, 15 if cap is None else cap)
+    owed=number(row.get("credits_owed_cumulative"))
+    budget=max(0,remaining-earned-(owed or 0))
+    n = min(15, budget, budget if available is None else available, 15 if cap is None else cap)
     if n == 0:
         return None
     # Giả định rõ ràng, không tự suy đoán hành vi.

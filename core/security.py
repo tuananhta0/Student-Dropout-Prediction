@@ -1,14 +1,28 @@
 """Phiên demo có thời hạn, xác thực và phân quyền độc lập với client."""
 from dataclasses import dataclass
 import hmac
-import hashlib
 import json
 import os
 from pathlib import Path
-from core.data_pipeline import ROOT
 import secrets
 import threading
 import time
+from collections import deque
+
+class RateLimiter:
+    """Giới hạn cửa sổ trượt theo khóa, dung lượng hữu hạn."""
+    def __init__(self, limit, window, capacity=4096):
+        self.limit=limit; self.window=window; self.capacity=capacity; self.items={}; self.lock=threading.Lock()
+    def check(self,key):
+        with self.lock:
+            now=time.monotonic()
+            for k,values in list(self.items.items()):
+                while values and values[0]<=now-self.window: values.popleft()
+                if not values: self.items.pop(k,None)
+            if key not in self.items and len(self.items)>=self.capacity: raise HTTPException(429,"Quá nhiều yêu cầu")
+            values=self.items.setdefault(key,deque())
+            if len(values)>=self.limit: raise HTTPException(429,"Quá nhiều yêu cầu; thử lại sau",headers={"Retry-After":str(max(1,int(self.window-(now-values[0])+1)))})
+            values.append(now)
 from fastapi import HTTPException
 
 # Phân công mô phỏng cố định theo ngành; không phải phân công thật của CMC.
@@ -40,20 +54,14 @@ class SessionStore:
         with self.lock: self.items.pop(token,None)
 
 
-def hash_password(password, salt):
-    return hashlib.pbkdf2_hmac('sha256',password.encode(),bytes.fromhex(salt),600000).hex()
-
-
 def check_password(username, password):
-    path=Path(os.getenv('CMC_ACCOUNTS_FILE',ROOT/'data/accounts.json'))
-    if not path.is_file(): raise HTTPException(503,'Chưa tạo tài khoản demo; chạy scripts.create_accounts')
-    accounts=json.loads(path.read_text(encoding='utf-8'))
-    entry=accounts.get(username)
-    # Tính hash cả khi không có tài khoản để giảm khác biệt thời gian.
-    salt=entry['salt'] if entry else '00'*16
-    actual=hash_password(password,salt)
-    expected=entry['hash'] if entry else '00'*32
-    return bool(entry) and hmac.compare_digest(actual,expected)
+    """Demo localhost: mật khẩu đúng bằng mã tài khoản đã chuẩn hóa.
+
+    Không đọc file mật khẩu cũ, không tạo tài khoản hoặc hash. Hàm
+    authenticate vẫn kiểm tra mã tồn tại và xác định vai trò phía server.
+    Đây không phải xác thực an toàn cho dữ liệu thật.
+    """
+    return bool(username) and hmac.compare_digest(username.encode('utf-8'), password.encode('utf-8'))
 
 
 def authenticate(engine, username, password):
@@ -78,10 +86,40 @@ def require_major(p, major):
         raise HTTPException(403,'Ngành ngoài phạm vi cố vấn được phân công')
 
 
+def assigned_classes(p):
+    path=os.getenv('CMC_ADVISOR_SCOPE_FILE')
+    if p.role!='advisor' or not path: return None
+    data=json.loads(Path(path).read_text(encoding='utf-8'))
+    values=data.get(p.user_id,[])
+    if not isinstance(values,list) or any(not isinstance(v,str) for v in values): raise HTTPException(503,'Cấu hình lớp không hợp lệ')
+    return set(v.upper() for v in values)
+
+
+def require_class(p,code):
+    require_major(p,code[:2])
+    allowed=assigned_classes(p)
+    if allowed is not None and code.upper() not in allowed: raise HTTPException(403,'Lớp ngoài phạm vi cố vấn')
+
+
+def scoped_classes(p,rows):
+    if p.role!='advisor': return rows
+    allowed=assigned_classes(p)
+    return [r for r in rows if r['major_code'] in ADVISOR_MAJORS[p.user_id] and (allowed is None or r['class_code'] in allowed)]
+
+
+def scoped_frame(p,frame):
+    if p.role!='advisor': return frame
+    out=frame[frame.major_code.isin(ADVISOR_MAJORS[p.user_id])]
+    allowed=assigned_classes(p)
+    return out if allowed is None else out[out.class_code.isin(allowed)]
+
+
 def permitted_student(engine,p,target):
     if p.role=='student' and target.strip().upper()!=p.user_id:
         raise HTTPException(403,'Chỉ được xem hồ sơ của bản thân')
     r=engine.get_student_records(target.strip().upper())
     if r.empty: raise HTTPException(404,'Không tìm thấy hồ sơ sinh viên')
-    if p.role=='advisor': require_major(p,str(r.iloc[-1]['major_code']))
+    if p.role=='advisor':
+        require_major(p,str(r.iloc[-1]['major_code']))
+        require_class(p,str(r.iloc[-1]['class_code']))
     return r

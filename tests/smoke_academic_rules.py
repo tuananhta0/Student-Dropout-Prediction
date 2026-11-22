@@ -1,5 +1,6 @@
 """Kiểm tra GPA, dữ liệu xét tốt nghiệp và kịch bản học lại trên toàn hệ thống."""
-from app import engine, get_student_me
+from app import engine, get_student_me, retrieval
+from core.intent_router import route
 from core.security import Principal
 from core.academic_rules import graduation_conditions
 
@@ -18,7 +19,7 @@ def main():
         assert p['pred_cum_imp']==2.84 and len(data['courses'])==15
         result = engine.calculate_retake(engine.get_student_records('BIT250093').iloc[-1]['record_uid'], {data['courses'][0]['course_id']:'A'})
         assert result['gpa_credits']==42 and result['gpa_after']>=result['gpa_before']
-        reply=engine.answer_query('Kịch bản học lại '+data['courses'][0]['course_id']+' đạt A',logged_in_user='BIT250093')['reply']
+        reply=route(engine,retrieval,Principal('BIT250093','student'),'Kịch bản học lại '+data['courses'][0]['course_id']+' đạt A',{})['reply']
         assert 'không cộng trùng' in reply
         print('BIT250093: HK3 → HK4; GPA tích lũy 2,71; kịch bản học lại:',result)
     if engine.research_revision and len(active):

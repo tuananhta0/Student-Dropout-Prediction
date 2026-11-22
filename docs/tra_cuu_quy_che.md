@@ -6,7 +6,7 @@ Nguồn chính: QĐ 22/2023/QĐ-ĐHCMC-HĐT và Quy chế đính kèm, file `reg
 
 - `core/intent_router.py` phân luồng quy chế, hồ sơ, GPA, nguy cơ, thống kê; gọi công cụ Python sau kiểm tra quyền. Không đưa hồ sơ, token, điểm số, mã SV hay câu hỏi nguyên văn vào LLM.
 - `core/retrieval.py`: chuẩn hóa truy vấn, Điều/Khoản ưu tiên lọc chính xác; các câu hỏi tự nhiên xếp hạng BM25; khi không đủ căn cứ trả lời từ chối. Có thể hỏi tiếp “Khoản 2 thì sao?” trong cùng phiên đăng nhập. Mỗi đoạn có ID, điều/khoản và số trang PDF thật. SHA256 khóa đúng bản nguồn. Khi PDF đổi phải đối chiếu lại nội dung và hash; thời điểm tra cứu không đồng nghĩa văn bản vẫn là quy định mới nhất.
-- Chế độ mặc định không cần API, trả bằng chứng trực tiếp. Chế độ Gemini tùy chọn dùng embedding đa ngôn ngữ và cosine để xếp lại các ứng viên BM25; câu truy vấn embedding được tạo từ tên chủ đề công khai, không phải câu hỏi nguyên văn. LLM diễn giải các đoạn bằng chứng, trả JSON với ID trích dẫn, kiểm tra ID hợp lệ; nếu lỗi quay về bằng chứng. ID hợp lệ không đảm bảo mọi câu sinh đúng ngữ nghĩa; cần kiểm tra nội dung trước nghiệm thu. Không gọi chế độ mặc định là RAG có LLM.
+- Chế độ mặc định không cần API, trả bằng chứng trực tiếp. Chế độ Gemini tùy chọn dùng embedding đa ngôn ngữ và cosine trên toàn corpus, hợp nhất với BM25; truy vấn được chiếu sang danh sách cụm chủ đề công khai cố định, không gửi câu hỏi nguyên văn. Cache theo hash corpus và model; thử lại một lần với lỗi 503/504/timeout. LLM diễn giải các đoạn bằng chứng, trả JSON với ID trích dẫn, kiểm tra ID hợp lệ; nếu lỗi quay về bằng chứng. ID hợp lệ không đảm bảo mọi câu sinh đúng ngữ nghĩa; cần kiểm tra nội dung trước nghiệm thu. Không gọi chế độ mặc định là RAG có LLM.
 
 ## Chạy thử
 
@@ -26,7 +26,7 @@ $secret = Read-Host 'Nhap GEMINI API key' -AsSecureString
 $env:GEMINI_API_KEY = [System.Net.NetworkCredential]::new('', $secret).Password
 $env:CMC_RAG_CLOUD = '1'
 $env:CMC_EMBED_MODEL = 'gemini-embedding-001'
-$env:CMC_LLM_MODEL = 'gemini-3.8-flash'
+$env:CMC_LLM_MODEL = 'gemini-3.1-flash-lite'
 python -B -X utf8 -m scripts.benchmark_rag --cloud
 ```
 
@@ -35,3 +35,9 @@ Nếu nhà cung cấp thay model hoặc quyền không hợp lệ, đổi ID the
 ### Chẩn đoán generation
 
 Chạy `python -B -X utf8 -m scripts.benchmark_rag --cloud --probe` trước benchmark đầy đủ. Lệnh chỉ sinh một câu Điều/Khoản, không gọi embedding, không ghi đè báo cáo. Mã `OK` mới xác nhận generation thành công. `HTTP_429` là giới hạn API/quota; `HTTP_403` là lỗi quyền; `HTTP_404` là lỗi tài nguyên/model; `MAX_TOKENS`, `EMPTY_RESPONSE`, `INVALID_JSON`, `INVALID_CITATIONS` là lỗi đầu ra. `DISABLED` nghĩa là cloud chưa bật hoặc thiếu khóa. Nhật ký chỉ in mã lỗi an toàn, không in khóa, exception gốc hay nội dung phản hồi lỗi. Vẫn giữ bằng chứng trực tiếp khi generation thất bại.
+
+## Bộ câu hỏi mở rộng
+
+`python -m scripts.benchmark_rag --extended --output data/kiem_tra_rag/bao_cao_mo_rong.json` kiểm tra 18 câu diễn đạt khác, gồm 14 câu có nguồn và 4 câu ngoài phạm vi. Thêm `--cloud` để đo pipeline Gemini. CSV `*_doi_chieu.csv` có ô đánh giá thủ công để một thành viên khác đọc câu trả lời, so với PDF, chấm đúng ngữ nghĩa và độ đầy đủ; không tự đánh dấu đạt hoặc coi bộ hồi quy tự soạn là test độc lập. Luồng cloud chỉ truyền cụm chủ đề từ danh sách cố định và quy chế công khai; có thể mất sắc thái câu hỏi do chủ động hạn chế thông tin.
+
+Để đánh giá độc lập, thành viên không sửa retrieval tự viết file JSON gồm các cặp `["câu hỏi", số_Điều]`, dùng `null` cho câu ngoài phạm vi. Không đưa bộ câu hỏi này vào tuning. Chạy `python -m scripts.benchmark_rag --cases data/cau_hoi_doc_lap.json --output data/kiem_tra_rag/bao_cao_doc_lap.json` (thêm `--cloud` khi cần).

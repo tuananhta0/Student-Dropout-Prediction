@@ -4,8 +4,17 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>CMC Academic AI Portal (V3.2.1)</title>
-  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="/static/portal.css" />
   <style>
+    @media (max-width: 760px) {
+      #mainApp:not(.hidden) { flex-direction: column; }
+      #mainApp aside { width: 100%; padding: .5rem; max-height: 36vh; overflow-y: auto; }
+      #mainApp main { min-height: 0; }
+      #mainApp aside nav { display: flex; gap: .5rem; }
+      #viewData, #chatMessages { padding: .75rem; }
+      #viewData table { min-width: 600px; }
+      #stuGpaBars { overflow-x: auto; }
+    }
     ::-webkit-scrollbar { width: 6px; height: 6px; }
     ::-webkit-scrollbar-track { background: #131314; }
     ::-webkit-scrollbar-thumb { background: #333537; border-radius: 9999px; }
@@ -37,7 +46,7 @@
 
         <div id="loginError" class="hidden text-xs text-rose-400 bg-rose-950/50 border border-rose-700/50 rounded-xl p-2.5"></div>
 
-        <button type="submit" onclick="handleLogin(event)"
+        <button type="submit"
           class="w-full bg-blue-600 hover:bg-blue-500 text-white font-semibold py-2.5 rounded-xl text-sm shadow-lg transition">
           Đăng nhập Hệ thống
         </button>
@@ -103,7 +112,7 @@
           <form onsubmit="sendChatMessage(event); return false;" class="max-w-4xl mx-auto flex items-center gap-2 bg-[#1e1f20] border border-[#333537] rounded-full px-4 py-2">
             <input id="chatInput" type="text" placeholder="Nhập câu hỏi..."
               class="flex-1 bg-transparent text-xs text-white outline-none" />
-            <button type="submit" class="px-4 py-1.5 rounded-full bg-blue-600 hover:bg-blue-500 text-xs font-semibold text-white transition">
+            <button id="chatSend" type="submit" class="px-4 py-1.5 rounded-full bg-blue-600 hover:bg-blue-500 text-xs font-semibold text-white transition">
               Gửi
             </button>
           </form>
@@ -159,7 +168,7 @@
                 <input id="inpSearchClass" type="text" placeholder="🔍 Gõ tìm lớp (VD: IT25-18, BA24...)"
                   oninput="filterClassDropdown(this.value)"
                   class="bg-[#131314] border border-[#333537] focus:border-emerald-500 rounded-xl px-3 py-2 text-xs text-white outline-none w-52" />
-                <select id="selAdvisorClass" onchange="loadAdvisorClassDetail(this.value)"
+                <div class="flex gap-2 items-center text-xs"><button type="button" onclick="changeClassPage(-1)" class="border rounded p-1">Trang trước</button><span id="classPageLabel"></span><button type="button" onclick="changeClassPage(1)" class="border rounded p-1">Trang sau</button></div><select id="selAdvisorClass" onchange="loadAdvisorClassDetail(this.value)"
                   class="bg-[#131314] border border-[#333537] rounded-xl px-3 py-2 text-xs text-white outline-none"></select>
               </div>
             </div>
@@ -295,11 +304,15 @@
     }
 
 
+    let loginPending=false;
     async function handleLogin(e) {
       if (e && e.preventDefault) e.preventDefault();
       const u = document.getElementById('inpUsername').value.trim();
-      const p = document.getElementById('inpPassword').value.trim();
+      const p = document.getElementById('inpPassword').value;
       const errBox = document.getElementById('loginError');
+      if(loginPending) return;
+      loginPending=true;
+      const submit=document.querySelector('#loginForm button[type=submit]'); submit.disabled=true;
       errBox.classList.add('hidden');
 
       try {
@@ -321,7 +334,7 @@
       } catch (err) {
         errBox.innerText = 'Lỗi kết nối tới máy chủ: ' + err.message;
         errBox.classList.remove('hidden');
-      }
+      } finally { loginPending=false; submit.disabled=false; }
     }
 
     async function logout() {
@@ -457,7 +470,7 @@
       document.getElementById('stuNextTermBanner').innerHTML = `
         <div class="flex flex-wrap items-center justify-between gap-2">
           <div class="font-bold text-blue-300 text-sm">🔮 Kịch bản GPA (HK${proj.nextTerm} - ${proj.nextTc} tín chỉ mới, không học lại)</div>
-          <button type="button" onclick="askFromData('Dự đoán điểm kỳ sau của sinh viên ${safeCode(latest.student_id)}')"
+          <button type="button" onclick="askFromData('Kịch bản GPA kỳ sau của sinh viên ${safeCode(latest.student_id)}')"
             class="px-3 py-1 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs transition">
             Xem chi tiết Công thức & Kịch bản trên Chat ➔
           </button>
@@ -477,23 +490,23 @@
       document.getElementById('stuTermTable').innerHTML = (data.history || []).map(r => `
         <tr class="hover:bg-[#282a2c]/50">
           <td class="py-2 px-2.5 font-bold text-blue-300">HK${r.snapshot_term_index}</td>
-          <td class="py-2 px-2.5 font-bold ${r.gpa4_term < 1.0 ? 'text-rose-400' : (r.gpa4_term < 2.0 ? 'text-amber-300' : 'text-emerald-300')}">${Number(r.gpa4_term).toFixed(2)}</td>
-          <td class="py-2 px-2.5 font-semibold">${Number(r.gpa4_cumulative).toFixed(2)}</td>
-          <td class="py-2 px-2.5">${r.credits_earned_cumulative}/${r.credits_required} TC</td>
-          <td class="py-2 px-2.5 ${r.credits_failed_term > 0 ? 'text-rose-400 font-semibold' : 'text-slate-400'}">${r.credits_failed_term} TC (${Math.round(r.failed_credit_ratio * 100)}%)</td>
-          <td class="py-2 px-2.5 ${r.credits_owed_cumulative > 0 ? 'text-amber-300 font-bold' : 'text-slate-400'}">${r.credits_owed_cumulative} TC</td>
-          <td class="py-2 px-2.5">${Number(r.attendance_rate_term).toFixed(0)}%</td>
-          <td class="py-2 px-2.5">${Number(r.tuition_debt_end_vnd).toLocaleString('vi-VN')}đ</td>
+          <td class="py-2 px-2.5 font-bold ${r.gpa4_term < 1.0 ? 'text-rose-400' : (r.gpa4_term < 2.0 ? 'text-amber-300' : 'text-emerald-300')}">${fmtNumber(r.gpa4_term,2)}</td>
+          <td class="py-2 px-2.5 font-semibold">${fmtNumber(r.gpa4_cumulative,2)}</td>
+          <td class="py-2 px-2.5">${r.credits_earned_cumulative ?? "Chưa có"}/${r.credits_required} TC</td>
+          <td class="py-2 px-2.5 ${r.credits_failed_term > 0 ? 'text-rose-400 font-semibold' : 'text-slate-400'}">${r.credits_failed_term} TC (${r.failed_credit_ratio == null ? "Chưa có" : Math.round(r.failed_credit_ratio * 100)+"%"})</td>
+          <td class="py-2 px-2.5 ${r.credits_owed_cumulative > 0 ? 'text-amber-300 font-bold' : 'text-slate-400'}">${r.credits_owed_cumulative ?? "Chưa có"} TC</td>
+          <td class="py-2 px-2.5">${fmtNumber(r.attendance_rate_term,0)}%</td>
+          <td class="py-2 px-2.5">${r.tuition_debt_end_vnd == null ? 'Chưa có' : Number(r.tuition_debt_end_vnd).toLocaleString('vi-VN')}đ</td>
         </tr>
       `).join('');
 
       const historyBars = (data.history || []).map(r => {
-        const g = Number(r.gpa4_term);
-        const h = Math.max(0, Math.min(100, Math.round((g / 4.0) * 100)));
+        const g = r.gpa4_term;
+        const h = g == null ? 0 : Math.max(0, Math.min(100, Math.round((g / 4.0) * 100)));
         const col = g < 1.0 ? 'bg-rose-500' : (g < 2.0 ? 'bg-amber-400' : 'bg-emerald-400');
         return `
           <div class="flex flex-col items-center flex-1">
-            <span class="text-xs font-bold mb-1">${g.toFixed(2)}</span>
+            <span class="text-xs font-bold mb-1">${fmtNumber(g,2)}</span>
             <div class="w-10 bg-[#131314] h-24 rounded-xl flex items-end p-1 border border-[#333537]">
               <div class="${col} w-full rounded-lg" style="height:${h}%"></div>
             </div>
@@ -514,25 +527,25 @@
       `;
       document.getElementById('stuGpaBars').innerHTML = historyBars + (active ? predBar : '');
 
-      const earn = Number(latest.credits_earned_cumulative || 0);
-      const req = Math.max(1, Number(latest.credits_required || 135));
-      const progPct = Math.min(100, Math.round((earn / req) * 100));
-      const passPct = Math.max(0, Math.round((1 - Number(latest.failed_credit_ratio || 0)) * 100));
-      const attPct = Math.min(100, Math.round(Number(latest.attendance_rate_term || 0)));
+      const earn = latest.credits_earned_cumulative;
+      const req = latest.credits_required;
+      const progPct = earn == null || !req ? null : Math.min(100, Math.round((earn / req) * 100));
+      const passPct = latest.failed_credit_ratio == null ? null : Math.max(0, Math.round((1 - latest.failed_credit_ratio) * 100));
+      const attPct = latest.attendance_rate_term == null ? null : Math.min(100, Math.round(latest.attendance_rate_term));
 
       document.getElementById('stuProgressCard').innerHTML = `
         <div class="font-bold text-amber-300">Tỷ lệ học tập trọng tâm (Kỳ hiện tại)</div>
         <div>
-          <div class="flex justify-between text-[11px] mb-1"><span>Tiến độ tích lũy tín chỉ</span><b>${earn}/${req} TC (${progPct}%)</b></div>
-          <div class="w-full bg-[#131314] h-2.5 rounded-full overflow-hidden"><div class="bg-blue-500 h-full" style="width:${progPct}%"></div></div>
+          <div class="flex justify-between text-[11px] mb-1"><span>Tiến độ tích lũy tín chỉ</span><b>${progPct == null ? "Chưa có dữ liệu" : `${earn}/${req} TC (${progPct}%)`}</b></div>
+          <div class="w-full bg-[#131314] h-2.5 rounded-full overflow-hidden"><div class="bg-blue-500 h-full" style="width:${progPct ?? 0}%"></div></div>
         </div>
         <div>
-          <div class="flex justify-between text-[11px] mb-1"><span>Tỷ lệ qua môn học kỳ gần nhất</span><b>${passPct}%</b></div>
-          <div class="w-full bg-[#131314] h-2.5 rounded-full overflow-hidden"><div class="bg-emerald-500 h-full" style="width:${passPct}%"></div></div>
+          <div class="flex justify-between text-[11px] mb-1"><span>Tỷ lệ tín chỉ đạt học kỳ gần nhất</span><b>${passPct == null ? "Chưa có dữ liệu" : `${passPct}%`}</b></div>
+          <div class="w-full bg-[#131314] h-2.5 rounded-full overflow-hidden"><div class="bg-emerald-500 h-full" style="width:${passPct ?? 0}%"></div></div>
         </div>
         <div>
-          <div class="flex justify-between text-[11px] mb-1"><span>Tỷ lệ chuyên cần học kỳ (không phải điều kiện thi từng môn)</span><b>${attPct}%</b></div>
-          <div class="w-full bg-[#131314] h-2.5 rounded-full overflow-hidden"><div class="bg-indigo-400 h-full" style="width:${attPct}%"></div></div>
+          <div class="flex justify-between text-[11px] mb-1"><span>Tỷ lệ chuyên cần học kỳ (không phải điều kiện thi từng môn)</span><b>${attPct == null ? "Chưa có dữ liệu" : `${attPct}%`}</b></div>
+          <div class="w-full bg-[#131314] h-2.5 rounded-full overflow-hidden"><div class="bg-indigo-400 h-full" style="width:${attPct ?? 0}%"></div></div>
         </div>
       `;
 
@@ -599,7 +612,7 @@
         const l = document.createElement('label'); l.textContent = label+' ';
         const el = document.createElement('input'); el.type='number'; el.min=min; el.max=max; el.step=step; el.value='0'; el.className='w-20 bg-[#131314] border border-[#333537] rounded p-1'; l.append(el); controls.append(l); return el;
       };
-      const credits = inputNumber('Tín chỉ môn mới',0,Math.min(latest.new_course_credits_available ?? 0,latest.registration_max_credits ?? 0,30),1), gpa = inputNumber('GPA môn mới',0,4,.1);
+      const credits = inputNumber('Tín chỉ môn mới',0,Math.min(latest.new_course_credits_available ?? 0,latest.registration_max_credits ?? 0,Math.max(0,(latest.credits_required ?? 0)-(latest.credits_earned_cumulative ?? 0)-(latest.credits_owed_cumulative ?? 0)),30),1), gpa = inputNumber('GPA môn mới',0,4,.1);
       const status = document.createElement('p'); status.className='text-emerald-300';
       const post = async (path,payload,render,out) => {
         out.textContent='Đang tính…';
@@ -632,7 +645,7 @@
     async function initAdvisorClasses(majorCode = '') {
       const url = `/api/advisor/classes` + (majorCode ? `?major_code=${encodeURIComponent(majorCode)}` : '');
       const res = await apiFetch(url);
-      if (!res.ok) return;
+      if (!res.ok) { document.getElementById('advClassSummaryText').textContent='Không thể tải danh sách lớp.'; document.getElementById('advStudentsTable').replaceChildren(); return; }
       const data = await res.json();
       allAdvisorClassesCache = data.classes || [];
       renderClassDropdownOptions(allAdvisorClassesCache);
@@ -641,17 +654,29 @@
       const hasIT2518 = allAdvisorClassesCache.some(c => c.class_code === 'IT25-18');
       if (!allAdvisorClassesCache.length) { document.getElementById('advClassSummaryText').textContent='Không có lớp được phân công'; return; }
       const defaultCls = (!majorCode && hasIT2518) ? 'IT25-18' : allAdvisorClassesCache[0].class_code;
-      sel.value = defaultCls;
+      const idx=filteredClasses.findIndex(c=>c.class_code===defaultCls);
+      classPage=Math.max(0,Math.floor(idx/classPageSize)); renderClassDropdownOptions(filteredClasses,false);
+      sel.value=defaultCls;
       await loadAdvisorClassDetail(defaultCls);
       if (majorCode) {
         document.getElementById('panelAdvisorData').scrollIntoView({ behavior: 'smooth' });
       }
     }
 
-    function renderClassDropdownOptions(list) {
+    let filteredClasses = [], classPage = 0, classRequest = 0;
+    const classPageSize = 50;
+    function changeClassPage(delta) {
+      classPage = Math.max(0, Math.min(Math.max(0,Math.ceil(filteredClasses.length/classPageSize)-1),classPage+delta));
+      renderClassDropdownOptions(filteredClasses,false);
+      const sel=document.getElementById('selAdvisorClass');
+      if (sel.value) loadAdvisorClassDetail(sel.value);
+    }
+    function renderClassDropdownOptions(list, reset=true) {
+      if (reset) { filteredClasses=list; classPage=0; }
+      document.getElementById('classPageLabel').textContent=`${list.length} lớp · Trang ${classPage+1}/${Math.max(1,Math.ceil(list.length/classPageSize))}`;
       const sel = document.getElementById('selAdvisorClass');
-      sel.innerHTML = list.map(c =>
-        `<option value="${esc(c.class_code)}">${esc(c.class_code)} - ${esc(c.major_name)} (${c.n_students} SV | Cần hỗ trợ: ${c.high_risk_count})</option>`
+      sel.innerHTML = list.slice(classPage*classPageSize,(classPage+1)*classPageSize).map(c =>
+        `<option value="${esc(c.class_code)}">${esc(c.class_code)} - ${esc(c.major_name)} (${c.n_students} SV | Có dự báo: ${c.valid_predictions ?? "?"} | Cần hỗ trợ: ${c.high_risk_count})</option>`
       ).join('');
     }
 
@@ -661,17 +686,22 @@
       renderClassDropdownOptions(filtered);
       if (filtered.length > 0) {
         loadAdvisorClassDetail(filtered[0].class_code);
-      }
+      } else { classRequest++; document.getElementById("advClassSummaryText").textContent="Không có lớp phù hợp"; document.getElementById("advStudentsTable").replaceChildren(); }
     }
 
     function selectClassQuick(classCode) {
+      const idx=allAdvisorClassesCache.findIndex(c=>c.class_code===classCode);
+      if(idx<0) return;
+      filteredClasses=allAdvisorClassesCache; classPage=Math.floor(idx/classPageSize); renderClassDropdownOptions(filteredClasses,false);
       const sel = document.getElementById('selAdvisorClass');
       sel.value = classCode;
       loadAdvisorClassDetail(classCode);
     }
 
     async function loadAdvisorClassDetail(classCode) {
+      const req=++classRequest; const session=currentUser;
       const res = await apiFetch(`/api/advisor/class/${encodeURIComponent(classCode)}`);
+      if (req!==classRequest || currentUser!==session) return;
       if (!res.ok) { document.getElementById('advClassSummaryText').textContent='Không có quyền hoặc không tìm thấy lớp.'; document.getElementById('advStudentsTable').replaceChildren(); return; }
       const d = await res.json();
       document.getElementById('advClassSummaryText').innerText = d.summary_text || '';
@@ -681,25 +711,27 @@
         <tr class="hover:bg-[#282a2c]/50">
           <td class="py-2 px-2.5 font-bold text-blue-300">${safeCode(s.student_id)}</td>
           <td class="py-2 px-2.5">HK${s.snapshot_term_index}</td>
-          <td class="py-2 px-2.5">${s.gpa4_term.toFixed(2)} / <b>${s.gpa4_cumulative.toFixed(2)}</b></td>
+          <td class="py-2 px-2.5">${fmtNumber(s.gpa4_term,2)} / <b>${fmtNumber(s.gpa4_cumulative,2)}</b></td>
           <td class="py-2 px-2.5 font-bold text-emerald-300">${predGpa} / 4.00</td>
-          <td class="py-2 px-2.5">${s.credits_earned_cumulative} TC</td>
-          <td class="py-2 px-2.5 ${s.credits_owed_cumulative > 0 ? 'text-amber-300 font-bold' : 'text-slate-400'}">${s.credits_owed_cumulative} TC</td>
-          <td class="py-2 px-2.5">${s.attendance_rate_term}%</td>
+          <td class="py-2 px-2.5">${fmtNumber(s.credits_earned_cumulative,0)} TC</td>
+          <td class="py-2 px-2.5 ${s.credits_owed_cumulative > 0 ? 'text-amber-300 font-bold' : 'text-slate-400'}">${fmtNumber(s.credits_owed_cumulative,0)} TC</td>
+          <td class="py-2 px-2.5">${fmtNumber(s.attendance_rate_term,0)}%</td>
           <td class="py-2 px-2.5 font-bold ${s.prediction_status !== 'VALID' ? 'text-slate-400' : 'text-blue-300'}">${esc(s.risk_display)}</td>
           <td class="py-2 px-2.5 text-right space-x-1 whitespace-nowrap">
             <button type="button" onclick="inspectStudentInTab('${safeCode(s.student_id)}')"
               class="px-2.5 py-1 rounded-lg bg-emerald-950 hover:bg-emerald-900 text-emerald-300 font-semibold">📊 Bảng điểm</button>
-            <button type="button" onclick="askFromData('Dự đoán điểm kỳ sau của sinh viên ${safeCode(s.student_id)}')"
+            <button type="button" onclick="askFromData('Kịch bản GPA kỳ sau của sinh viên ${safeCode(s.student_id)}')"
               class="px-2.5 py-1 rounded-lg bg-blue-950 hover:bg-blue-900 text-blue-300 font-semibold">🔮 Kịch bản GPA</button>
           </td>
         </tr>`;
       }).join('');
     }
 
+    function fmtNumber(value, digits=0) { return typeof value === "number" && Number.isFinite(value) ? value.toFixed(digits) : "Chưa có"; }
+
     async function initAdminFaculties() {
       const res = await apiFetch(`/api/admin/faculties`);
-      if (!res.ok) return;
+      if (!res.ok) { document.getElementById('admFacultiesTable').textContent='Không thể tải thống kê khoa.'; return; }
       const data = await res.json();
       document.getElementById('admFacultiesTable').innerHTML = (data.faculties || []).map(f => `
         <tr class="hover:bg-[#282a2c]/50">
@@ -707,9 +739,9 @@
           <td class="py-2 px-2.5 font-medium text-white">${esc(f.major_name)}</td>
           <td class="py-2 px-2.5">${f.n_classes} lớp</td>
           <td class="py-2 px-2.5">${f.n_students.toLocaleString('vi-VN')} SV</td>
-          <td class="py-2 px-2.5 font-semibold">${f.gpa_mean.toFixed(2)}</td>
+          <td class="py-2 px-2.5 font-semibold">${fmtNumber(f.gpa_mean,2)}</td>
           <td class="py-2 px-2.5 text-amber-300 font-semibold">${f.warning_count} SV</td>
-          <td class="py-2 px-2.5 text-rose-400 font-bold">${f.high_risk_count} SV (${f.high_risk_pct}%)</td>
+          <td class="py-2 px-2.5 text-rose-400 font-bold">${f.valid_predictions ? `${f.high_risk_count}/${f.valid_predictions} (${f.high_risk_pct}%)` : "Chưa có dự báo"}<br><small>Độ bao phủ: ${f.valid_predictions ?? 0}/${f.n_students}</small></td>
           <td class="py-2 px-2.5">${f.total_debt_billion.toFixed(2)} tỷ</td>
           <td class="py-2 px-2.5 text-right space-x-1 whitespace-nowrap">
             <button type="button" onclick="initAdvisorClasses('${safeCode(f.major_code)}')"
@@ -727,11 +759,15 @@
       sendChatMessage(new Event('submit'));
     }
 
+    let chatPending = false;
     async function sendChatMessage(e) {
       if (e && e.preventDefault) e.preventDefault();
       const inp = document.getElementById('chatInput');
       const msg = inp.value.trim();
-      if (!msg || !currentUser) return;
+      if (!msg || !currentUser || chatPending) return;
+      chatPending = true;
+      const send = document.getElementById('chatSend');
+      send.disabled = true; send.textContent = 'Đang xử lý…';
       inp.value = '';
 
       const box = document.getElementById('chatMessages');
@@ -763,6 +799,8 @@
         box.scrollTop = box.scrollHeight;
       } catch (err) {
         if (currentUser === session) appendText(box,'text-xs text-rose-400',err.message);
+      } finally {
+        chatPending = false; send.disabled = false; send.textContent = 'Gửi';
       }
     }
   </script>

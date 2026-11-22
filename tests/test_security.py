@@ -33,12 +33,10 @@ class SecurityTests(unittest.TestCase):
         cls.original=sys.modules.pop('app',None)
         with patch('core.runtime_config.configure_runtime',return_value='dummy'),patch('core.chatbot_engine.CMCChatbotEngine',return_value=FakeEngine()):
             cls.module=importlib.import_module('app')
-        cls.password_patch=patch('core.security.check_password',side_effect=lambda u,p:u==p)
-        cls.password_patch.start()
         cls.client=TestClient(cls.module.app,raise_server_exceptions=False)
     @classmethod
     def tearDownClass(cls):
-        cls.password_patch.stop();cls.client.close();sys.modules.pop('app',None)
+        cls.client.close();sys.modules.pop('app',None)
         if cls.original is not None:sys.modules['app']=cls.original
     def login(self,u):
         r=self.client.post('/api/login',json={'username':u,'password':u});self.assertEqual(r.status_code,200,r.text)

@@ -49,4 +49,10 @@ Thử kịch bản nhiều học phần, môn mới và What-If thanh toán họ
 
 Kiểm thử baseline chỉ dành cho đối chiếu lịch sử. Phải đặt `CMC_ALLOW_BASELINE=1` và chọn đúng `dataset_full` cùng `artifacts_model`; không tự lùi về baseline. Sau kiểm thử cần bỏ cờ và chọn lại cặp model chính thức.
 
-Xem [bàn giao mô hình và dữ liệu](ban_giao.md) để tạo gói ZIP và tài khoản riêng; [tra cứu quy chế](tra_cuu_quy_che.md) để bật Gemini tùy chọn. Chỉ dùng localhost với dữ liệu mô phỏng.
+Xem [bàn giao mô hình và dữ liệu](ban_giao.md) để tạo gói ZIP và xem quy ước đăng nhập demo; [tra cứu quy chế](tra_cuu_quy_che.md) để bật Gemini tùy chọn. Chỉ dùng localhost với dữ liệu mô phỏng.
+
+## Đánh giá bổ sung không huấn luyện lại
+
+`python -B -X utf8 -m scripts.review_experiment` kiểm tra cặp model/dataset, dựng lại đúng tập test đã khóa, đối chiếu AP và số mẫu, tổng hợp confusion matrix, ECE, fairness và kết quả theo học kỳ. Chỉ chọn snapshot quan sát đầu tiên mỗi sinh viên cho phép đo cấp sinh viên. Các khóa cũ là theo dõi sau mốc đóng băng, không phải tập test độc lập. Xem `data/kiem_tra_ml/bao_cao.json`.
+
+Audit STRESS chạy trên thư mục `data/du_lieu_hieu_chinh/artifacts/runs/V3_2_STRESS` bằng `python -m scripts.audit_dataset --stress-run data/du_lieu_hieu_chinh/artifacts/runs/V3_2_STRESS --output data/kiem_tra_stress`. Không dùng STRESS cho huấn luyện hoặc runtime.

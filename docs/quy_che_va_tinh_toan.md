@@ -34,3 +34,5 @@ Chỉ dùng các ngưỡng đã công bố có thể so sánh. Thiếu tổ hợ
 ## Kịch bản bổ sung
 
 Giao diện cho phép chọn nhiều học phần đã có điểm để học lại hoặc cải thiện, nhập số tín chỉ môn mới và GPA giả định. Backend kiểm tra tổng tín chỉ kỳ mới và không cộng trùng tín chỉ đã tính. Kết quả xét tốt nghiệp kèm ngày bản ghi xét. Với model nghiên cứu mới, kịch bản thanh toán lấy đầu vào từ snapshot ML hợp lệ, không phải hồ sơ học vụ thiếu feature. Đây là phép thử độ nhạy chứ không phải bằng chứng nhân quả. Xem [hướng dẫn thực nghiệm](huan_luyen_va_thuc_nghiem.md).
+
+Kịch bản môn mới giới hạn bởi số tín chỉ chưa đăng ký, phần khối lượng còn lại sau tín chỉ đã đạt và nợ đọng, cùng giới hạn đăng ký kỳ. Chương trình mô phỏng hiện gồm các học phần bắt buộc; không có đồ thị tiên quyết hay ngân sách nhóm tự chọn/thay thế đầy đủ để đảm bảo lịch đăng ký thực tế. Không coi phép tính GPA là phê duyệt đăng ký.

@@ -10,6 +10,8 @@ import os
 from pathlib import Path
 import re
 import threading
+import time
+import tempfile
 import unicodedata
 
 import numpy as np
@@ -19,6 +21,48 @@ ROOT = Path(__file__).resolve().parents[1]
 PDF = 'Quy-che-dao-tao-trinh-do-dai-hoc.pdf'
 PDF_SHA = '10692552bf4245f4ee5a5487cbad69d123ea7bdb2fde6c13d1658d97ed857ea7'
 STOP = set('la cua va trong cho ve co duoc hay nhu the nao nhieu gi toi em mot nhung cac khong sinh vien truong cmc theo quy dinh quy che'.split())
+
+
+# Cụm diễn đạt công khai, độc lập với kết quả BM25. Không gửi từ do người dùng nhập.
+PARAPHRASES = {
+    'cham lai bai thi': 'phuc tra ket qua thi', 'cham lai diem': 'phuc tra ket qua thi',
+    'nhac nho lien tiep': 'canh bao hoc tap lien tiep', 'duoi hoc': 'buoc thoi hoc',
+    'hoc het bao nhieu nam thi phai ra truong': 'thoi gian hoc toi da', 'bao nhieu nam': 'thoi gian hoc toi da', 'hoc het bao lau': 'thoi gian hoc toi da',
+    'chuyen sang truong': 'chuyen truong', 'chuyen sang dai hoc': 'chuyen truong',
+    'bi om': 'nghi hoc tam thoi bao luu', 'nghi vi benh': 'nghi hoc tam thoi bao luu',
+    'phuc khao': 'phuc tra', 'song nganh': 'hai chuong trinh',
+    'thoi gian toi da': 'thoi gian hoc toi da', 'rot mon': 'hoc lai', 'truot mot mon muon nang diem': 'hoc lai cai thien diem', 'luan van': 'khoa luan',
+}
+TOPICS = ('phuc tra ket qua thi|thoi gian hoc toi da|canh bao hoc tap|buoc thoi hoc|chuyen truong|chuyen nganh|bao luu|nghi hoc tam thoi|hoc phan tien quyet|hoc phan bat buoc|hoc phan tu chon|dang ky tin chi|rut hoc phan|diem liet|thi lai|hoc lai|cai thien diem|gpa|tot nghiep|tieng anh|hoc truc tuyen|ke hoach dao tao|quy mo lop|co van hoc tap|trach nhiem sinh vien|muc tieu dao tao|lop nhap hoc|trao doi sinh vien|luu tru khoa luan|hieu luc thi hanh|cam thi|ha hang tot nghiep|hoc phi rut mon|hoc phi|khoa luan|moi tiet|quy che ap dung|hai chuong trinh|tin chi|diem thi').split('|')
+
+
+def normalize_query(question):
+    query=strip_accents(question)
+    for old,new in PARAPHRASES.items():
+        query=query.replace(old,new)
+    return query
+
+
+def public_focus(question):
+    """Chỉ xuất cụm có sẵn trong danh sách công khai, không sao chép đầu vào."""
+    q=normalize_query(question)
+    if any(x in q for x in ('the ngan hang','chuyen khoan','vi dien tu','so tai khoan','thanh toan bang','mat khau','api key')):
+        return ''
+    return '; '.join(t for t in TOPICS if re.search(r'\b'+re.escape(t)+r'\b',q))
+
+
+def unsupported(question):
+    q=strip_accents(question)
+    return any(x in q for x in ('the ngan hang','chuyen khoan','vi dien tu','so tai khoan','thanh toan bang','mat khau','api key','thoi tiet','mat trang','nau an','gia vang','vay tien','gui xe','hoc phi bao nhieu','muc hoc phi','hoc phi mot tin','hoc phi bao nhieu mot thang'))
+
+
+def retry_transient(call):
+    # Một lần thử lại cho lỗi dịch vụ; không thử lại 429 hoặc lỗi dữ liệu.
+    try: return call()
+    except Exception as exc:
+        if safe_api_error(exc) not in ('HTTP_503','HTTP_504','TIMEOUT'): raise
+        time.sleep(1)
+        return call()
 
 
 def tokens(text):
@@ -88,6 +132,8 @@ class RegulationSearch:
         self.client = None
         self.matrix = None
         self.lock = threading.Lock()
+        self.matrix_lock = threading.Lock()
+        self.matrix_model = None
 
     def _cloud(self):
         # Chỉ kích hoạt theo lựa chọn rõ ràng; không gửi hồ sơ, lịch sử chat hoặc token.
@@ -102,8 +148,8 @@ class RegulationSearch:
 
     def _embed(self, texts, task):
         from google.genai import types
-        response = self._cloud().models.embed_content(model=os.getenv('CMC_EMBED_MODEL','gemini-embedding-001'), contents=texts,
-                config=types.EmbedContentConfig(task_type=task,output_dimensionality=768))
+        response = retry_transient(lambda: self._cloud().models.embed_content(model=os.getenv('CMC_EMBED_MODEL','gemini-embedding-001'), contents=texts,
+                config=types.EmbedContentConfig(task_type=task,output_dimensionality=768)))
         m = np.asarray([x.values for x in response.embeddings],dtype=float)
         if m.shape != (len(texts),768) or not np.isfinite(m).all():
             raise ValueError('Embedding không hợp lệ')
@@ -112,11 +158,24 @@ class RegulationSearch:
         return m/norms
 
     def _semantic(self, focus):
-        with self.lock:
-            matrix = self.matrix
-        if matrix is None:
-            matrix = self._embed([c['title']+' '+c['text'] for c in self.chunks], 'RETRIEVAL_DOCUMENT')
-            with self.lock: self.matrix = matrix
+        model=os.getenv('CMC_EMBED_MODEL','gemini-embedding-001')
+        key=hashlib.sha256(f'{self.corpus_sha}|{model}|768|RETRIEVAL_DOCUMENT|v1'.encode()).hexdigest()
+        path=self.root/'data/kiem_tra_rag/cache'/f'{key}.npy'
+        with self.matrix_lock:
+            if self.matrix is None or self.matrix_model!=model:
+                matrix=None
+                try:
+                    candidate=np.load(path,allow_pickle=False)
+                    if candidate.shape==(len(self.chunks),768) and np.isfinite(candidate).all() and np.allclose(np.linalg.norm(candidate,axis=1),1,atol=1e-5): matrix=candidate
+                except (OSError,ValueError): pass
+                if matrix is None:
+                    matrix=self._embed([c['title']+' '+c['text'] for c in self.chunks], 'RETRIEVAL_DOCUMENT')
+                    path.parent.mkdir(parents=True,exist_ok=True)
+                    with tempfile.NamedTemporaryFile(dir=path.parent,suffix='.npy',delete=False) as tmp:
+                        np.save(tmp,matrix,allow_pickle=False); name=tmp.name
+                    os.replace(name,path)
+                self.matrix,self.matrix_model=matrix,model
+            matrix=self.matrix
         return matrix @ self._embed([focus], 'RETRIEVAL_QUERY')[0]
 
     def retrieve(self, question, limit=5, cloud=False, trace=None):
@@ -125,8 +184,9 @@ class RegulationSearch:
         if len(arts)>1 and clauses: return []
         if arts:
             return [c for c in self.chunks if c['article'] in arts and (not clauses or any(k in span(c['clause']) for k in clauses))][:12]
-        query = strip_accents(question)
-        query = query.replace('phuc khao','phuc tra').replace('song nganh','hai chuong trinh').replace('thoi gian toi da','thoi gian hoc toi da')
+        if unsupported(question): return []
+        query = normalize_query(question)
+        focus = public_focus(question)
         q = set(tokens(query))
         original = set(re.findall(r'[^\W_]+', unicodedata.normalize('NFC', question.lower())))
         accented = {w for w in original if w != strip_accents(w) and strip_accents(w) in q}
@@ -139,20 +199,20 @@ class RegulationSearch:
             if phrase and len(phrase.split()) >= 2 and phrase in title: score += 12
             if accented:
                 original_doc = set(re.findall(r'[^\W_]+',self.chunks[i]['text'].lower()+' '+self.chunks[i]['title'].lower()))
-                if not accented & original_doc and 'phuc khao' not in strip_accents(question): score=0
+                if not accented & original_doc and query == strip_accents(question): score=0
             scores.append(score)
         # Lọc từ hiếm/trùng chủ đề trước, không lấy kết quả ngẫu nhiên khi không có căn cứ.
         ranking = sorted(range(len(scores)),key=lambda i:scores[i],reverse=True)
         candidates = [i for i in ranking if scores[i]>=max(2.,scores[ranking[0]]*.50) and (len(q & self.bags[i].keys())>=2 or (len(q)==1 and any(len(w)>=4 and self.df[w]<=2 for w in q & self.bags[i].keys())))]
-        if not candidates: return []
-        if cloud:
+        if cloud and focus:
             try:
                 if self._cloud():
-                    # Chỉ gửi tên chủ đề công khai, không gửi nguyên câu hỏi người dùng.
-                    focus = '; '.join(self.chunks[i]['title'] for i in candidates[:3])
                     similarities = self._semantic(focus)
                     if trace is not None: trace['embedding_used']=True
-                    candidates.sort(key=lambda i:scores[i]/max(scores)+.35*float(similarities[i]),reverse=True)
+                    # Tìm ngữ nghĩa trên toàn corpus, không giới hạn bởi BM25.
+                    semantic=[i for i in np.argsort(-similarities)[:limit] if similarities[i]>=.55]
+                    candidates=list(dict.fromkeys(candidates+semantic))
+                    candidates.sort(key=lambda i:scores[i]/max(1,max(scores))+.65*float(similarities[i]),reverse=True)
             except Exception as exc:
                 code = safe_api_error(exc)
                 if trace is not None: trace['embedding_error'] = code
@@ -178,14 +238,14 @@ class RegulationSearch:
                     # Không gửi câu hỏi gốc hoặc dữ liệu cá nhân ra ngoài. LLM chỉ diễn giải chủ đề công khai được truy xuất.
                     prompt = ('Tóm lược bằng tiếng Việt các bằng chứng quy chế dưới đây. Không thêm quy định, số liệu hoặc kết luận cá nhân. '
                               'Nếu thiếu căn cứ, nói rõ. Trả JSON gồm answer (chuỗi) và citations (mảng ID chỉ từ bằng chứng).\n'
-                              'Chủ đề tra cứu: '+ '; '.join(dict.fromkeys(c['title'] for c in evidence))+'\n'+json.dumps(evidence,ensure_ascii=False))
+                              'Ý định công khai: '+ (public_focus(question) or '; '.join(dict.fromkeys(c['title'] for c in evidence)))+'\n'+json.dumps(evidence,ensure_ascii=False))
                     allowed = {c['id'] for c in evidence}
                     schema = {'type':'OBJECT','properties':{
                         'answer':{'type':'STRING'},
                         'citations':{'type':'ARRAY','items':{'type':'STRING','enum':sorted(allowed)}}
                     },'required':['answer','citations']}
-                    r = client.models.generate_content(model=os.getenv('CMC_LLM_MODEL','gemini-3.8-flash'),contents=prompt,
-                        config=types.GenerateContentConfig(response_mime_type='application/json',response_schema=schema,temperature=0,max_output_tokens=4096))
+                    r = retry_transient(lambda: client.models.generate_content(model=os.getenv('CMC_LLM_MODEL','gemini-3.1-flash-lite'),contents=prompt,
+                        config=types.GenerateContentConfig(response_mime_type='application/json',response_schema=schema,temperature=0,max_output_tokens=4096)))
                     # Một số model dùng chung ngân sách token cho suy luận và đầu ra.
                     status = finish_status(r)
                     if status not in ('STOP','UNKNOWN','NO_CANDIDATES'):
@@ -213,4 +273,4 @@ class RegulationSearch:
         for c in evidence:
             page = c['pages'].split('–')[0]
             blocks.append(f"<div class='border border-slate-600 rounded-lg p-3'><b>Điều {c['article']}, Khoản {c['clause']}: {html.escape(c['title'])}</b><p>{html.escape(c['text'])}</p><p><a href='/regulations/{PDF}#page={page}' target='_blank' rel='noopener noreferrer'>QĐ 22/2023 · trang PDF {c['pages']}</a></p></div>")
-        return {'reply':intro+''.join(blocks)+'<p>Bản tóm lược đã đối chiếu ảnh trang; văn bản PDF gốc là căn cứ. Áp dụng từ năm học 2023–2024.</p>', 'regulations':evidence, 'method':method,**trace}
+        return {'reply':intro+''.join(blocks)+'<p>Bản tóm lược đã đối chiếu ảnh trang; văn bản PDF gốc là căn cứ. Áp dụng từ năm học 2023–2024.</p>', 'regulations':evidence, 'method':method,'retrieval_method':'hybrid' if trace['embedding_used'] else 'bm25',**trace}

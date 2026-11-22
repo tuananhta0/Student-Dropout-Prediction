@@ -6,6 +6,7 @@ from unittest.mock import patch
 import pandas as pd
 
 from core.chatbot_engine import CMCChatbotEngine
+from core.retrieval import RegulationSearch
 from scripts import train_model
 
 
@@ -60,11 +61,11 @@ class StabilityTests(unittest.TestCase):
         )
 
     def test_article_retrieval(self):
-        result = self.engine.answer_query("Điều 18")
+        result = RegulationSearch().answer("Điều 18")
         self.assertIn("Điều 18", result["reply"])
 
     def test_keyword_retrieval(self):
-        result = self.engine.answer_query("Rút học phần")
+        result = RegulationSearch().answer("Rút học phần")
         self.assertIn("Điều 12", result["reply"])
 
     def test_no_model_fallback(self):

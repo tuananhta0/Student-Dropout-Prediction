@@ -7,7 +7,6 @@ import json
 import zipfile
 from core.data_pipeline import digest, MAIN
 from scripts.release_model import DATA_FILES,MODEL_FILES,pack,install
-from scripts.create_accounts import create
 from core.security import check_password
 from core.runtime_config import configure_runtime
 from scripts.audit_dataset import resolve_scored_path
@@ -44,9 +43,10 @@ class ReleaseTests(unittest.TestCase):
             self.assertIsNone(resolve_scored_path(True))
             self.assertEqual(resolve_scored_path(False,Path('custom/scored.csv.gz')),Path('custom/scored.csv.gz'))
             configure.assert_not_called()
-    def test_password_file(self):
+    def test_demo_password_needs_no_file(self):
         with tempfile.TemporaryDirectory() as t:
-            f=Path(t)/'accounts.json';values=create(f,['ADMIN','BIT250093']);self.assertNotEqual(values['ADMIN'],values['BIT250093']);self.assertEqual(create(f,['ADMIN']),{})
-            self.assertNotIn(values['ADMIN'],f.read_text())
+            f=Path(t)/'accounts.json'
             with patch.dict('os.environ',{'CMC_ACCOUNTS_FILE':str(f)}):
-                self.assertTrue(check_password('ADMIN',values['ADMIN']));self.assertFalse(check_password('ADMIN','ADMIN'))
+                self.assertTrue(check_password('ADMIN','ADMIN'))
+                self.assertFalse(check_password('ADMIN','GV001'))
+                self.assertFalse(f.exists())

@@ -1,0 +1,1 @@
+{"private":true,"scripts":{"build:css":"node scripts/build_css.cjs"},"devDependencies":{"tailwindcss":"4.1.10"}}

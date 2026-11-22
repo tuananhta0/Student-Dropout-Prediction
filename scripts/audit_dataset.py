@@ -13,6 +13,7 @@ from core.data_pipeline import (Dataset, ROOT, KEY, MODES, EXIT_TYPES, EXTRA_FEA
 def audit(source, scored_path, output):
     output.mkdir(parents=True, exist_ok=True)
     checks, reviews, stats = {}, {}, {}
+    scenario=source.manifest["scenario_id"]
 
     def check(name, bad):
         n = int(np.asarray(bad).sum()) if not np.isscalar(bad) else int(bad)
@@ -49,7 +50,7 @@ def audit(source, scored_path, output):
     check('graduation_calendar_fk',gc.grade_release_date.isna())
     check('graduation_flags_boolean',sum(not pd.api.types.is_bool_dtype(grad_clearance[col]) or grad_clearance[col].isna().any() for col in grad_clearance if col.startswith('clear_')))
     check('graduation_available_before_term',gc.grade_release_date.notna() & gc.available_at.lt(gc.grade_release_date))
-    check('scenario_main', ~s.scenario_id.eq('V3_2_MAIN'))
+    check('scenario_main' if scenario=='V3_2_MAIN' else 'scenario_stress', ~s.scenario_id.eq(scenario))
     for name, df in [('enrollment',e),('academics',t),('attempts',a),('requirements',req),('states',states),('events',events),('snapshots',x)]:
         check(name+'_student_fk', ~df.record_uid.isin(s.record_uid))
     check('students_curriculum_fk', ~s.curriculum_id.isin(curr.curriculum_id))
@@ -129,6 +130,12 @@ def audit(source, scored_path, output):
     review('admission_missing_non_direct',s.loc[s.admission_score.isna() & ~direct,['record_uid','admission_method','admission_score_missing_reason']])
     bachelor = curr.degree_type.eq('Bachelor'); engineer = curr.degree_type.eq('Engineer')
     check('curriculum_credit_duration', ~(bachelor & curr.credits_required.between(120,135) & curr.designed_semesters.eq(9) & curr.max_semesters.eq(18) | engineer & curr.credits_required.between(150,164) & curr.designed_semesters.eq(11) & curr.max_semesters.eq(22)))
+    # Dataset hiện là chương trình mô phỏng; kiểm tra tổng khối lượng bắt buộc, không giả tạo tiên quyết.
+    counted=cc.merge(c[['course_id','credits','is_gpa_eligible']],on='course_id',validate='many_to_one')
+    required=counted[counted.credit_counted_to_graduation & counted.required_or_elective.eq('REQUIRED')].groupby('curriculum_id').credits.sum()
+    check('curriculum_required_budget',curr.curriculum_id.map(required).fillna(0).gt(curr.credits_required))
+    review('curriculum_electives',counted.loc[~counted.required_or_elective.eq('REQUIRED'),['curriculum_id','course_id','credits','required_or_elective']])
+
 
     scored = None
     ca = course_features(x,a)
@@ -156,7 +163,7 @@ def audit(source, scored_path, output):
         unique(labels,KEY,mode)
         cutoff = source.cutoff(mode)
         check(mode+'_label_keys', len(labels.merge(frame[KEY],on=KEY,validate='one_to_one'))!=len(frame) or len(labels)!=len(frame))
-        check(mode+'_label_view', labels.observation_view_id.ne(mode) | labels.scenario_id.ne('V3_2_MAIN') | dates(labels.observation_as_of).ne(cutoff))
+        check(mode+'_label_view', labels.observation_view_id.ne(mode) | labels.scenario_id.ne(scenario) | dates(labels.observation_as_of).ne(cutoff))
         check(mode+'_censor_null', labels.label_observed.ne(labels.dropout_next_2_terms.notna()))
         check(mode+'_label_domain', labels.label_observed & ~labels.dropout_next_2_terms.isin([0,1]))
         # Tính lại nhãn theo học kỳ và thời điểm sự kiện khả dụng.
@@ -180,7 +187,7 @@ def audit(source, scored_path, output):
             joined=labels.merge(scored[KEY+['dropout_next_2_terms']],on=KEY,validate='one_to_one',suffixes=('_src','_scored'))
             check('full_scored_label_match',~np.isclose(joined.dropout_next_2_terms_src,joined.dropout_next_2_terms_scored,equal_nan=True))
     stats['source_missing_counts']={name:{k:int(v) for k,v in df.isna().sum().items() if v} for name,df in source.cache.items()}
-    report={'dataset_version':source.manifest.get('research_revision','3.2.1'),'scenario':'V3_2_MAIN','blocking_errors':checks,'review_required':reviews,'views':stats,'limitations':source.manifest['known_limitations'], 'temporal_split_note':'Các tập không trùng sinh viên nhưng khoảng thời gian có thể chồng lấn; cần thực nghiệm rolling-origin.', 'policy_note':'Không suy ra quyết định học vụ hoặc trúng tuyển chính thức từ dữ liệu mô phỏng.'}
+    report={'dataset_version':source.manifest.get('research_revision','3.2.1'),'scenario':scenario,'blocking_errors':checks,'review_required':reviews,'views':stats,'limitations':source.manifest['known_limitations'], 'temporal_split_note':'Các tập không trùng sinh viên nhưng khoảng thời gian có thể chồng lấn; cần thực nghiệm rolling-origin.', 'policy_note':'Không suy ra quyết định học vụ hoặc trúng tuyển chính thức từ dữ liệu mô phỏng.'}
     (output/'kiem_tra_du_lieu.json').write_text(json.dumps(report,ensure_ascii=False,indent=2),encoding='utf-8')
     print('Báo cáo kiểm tra dữ liệu:',output/'kiem_tra_du_lieu.json')
     return not any(checks.values())
@@ -201,6 +208,11 @@ if __name__=='__main__':
     p.add_argument('--output',type=Path,default=ROOT/'data/kiem_tra_du_lieu')
     p.add_argument('--scored',type=Path,help='Chỉ định CSV dự báo tương ứng với dữ liệu nguồn; mặc định dùng cấu hình model đang chạy')
     p.add_argument('--source-only',action='store_true',help='Kiểm tra dữ liệu nguồn trước huấn luyện, không cần artifact đã chấm điểm')
+    p.add_argument('--stress-run',type=Path,help='Đường dẫn V3_2_STRESS đã hiệu chỉnh; chỉ kiểm tra nguồn')
     args=p.parse_args()
+    if args.stress_run:
+        from scripts.train_model import StressDataset
+        if args.scored: p.error('Không ghép dự báo MAIN với STRESS')
+        raise SystemExit(0 if audit(StressDataset(args.stress_run),None,args.output) else 1)
     scored_path = resolve_scored_path(args.source_only, args.scored)
     raise SystemExit(0 if audit(Dataset(),scored_path,args.output) else 1)

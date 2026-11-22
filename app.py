@@ -11,9 +11,10 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import HTMLResponse, JSONResponse, FileResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 from core.chatbot_engine import CMCChatbotEngine, row_to_clean_dict, risk_display
-from core.security import (SessionStore, authenticate, permitted_student, require_role, require_major, ADVISOR_MAJORS)
+from core.security import (SessionStore, RateLimiter, authenticate, permitted_student, require_role, require_major, require_class, scoped_classes, ADVISOR_MAJORS)
 from core.runtime_config import configure_runtime
 from core.retrieval import RegulationSearch, PDF
 from core.intent_router import route
@@ -21,12 +22,16 @@ from core.data_pipeline import ROOT
 
 app = FastAPI(title="CMC Academic AI Portal", docs_url=None, redoc_url=None, openapi_url=None)
 app.add_middleware(TrustedHostMiddleware, allowed_hosts=['localhost','127.0.0.1','[::1]','testserver'])
+app.mount('/static',StaticFiles(directory=ROOT/'static'),name='static')
 engine = CMCChatbotEngine(artifact_dir=configure_runtime())
 retrieval = RegulationSearch()
 sessions = SessionStore()
 bearer = HTTPBearer(auto_error=False)
 contexts = {}
 context_lock = threading.Lock()
+chat_busy=set()
+login_limit=RateLimiter(30,60)
+chat_limit=RateLimiter(15,60)
 logger = logging.getLogger(__name__)
 
 # Chỉ demo localhost. Host header không thay thế kiểm tra địa chỉ kết nối.
@@ -39,6 +44,8 @@ async def local_only(request: Request, call_next):
     response.headers['Referrer-Policy']='no-referrer'
     response.headers['X-Frame-Options']='DENY'
     response.headers['Cache-Control']='no-store'
+    # Giao diện cũ còn JS/CSS inline, không cho tải script hoặc kết nối từ xa.
+    response.headers['Content-Security-Policy']="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'"
     return response
 
 @app.exception_handler(RequestValidationError)
@@ -89,7 +96,8 @@ def data_view(p=Depends(principal)):
     return base
 
 @app.post('/api/login')
-def login(req: LoginRequest):
+def login(req: LoginRequest,request: Request):
+    login_limit.check(request.client.host)
     p=authenticate(engine,req.username,req.password)
     if p.role=='student':
         row=engine.get_student_records(p.user_id).iloc[-1]
@@ -160,14 +168,14 @@ def get_advisor_classes(major_code: str='',p=Depends(principal)):
     require_role(p,'advisor','admin')
     if major_code: require_major(p,major_code)
     rows=engine.get_all_classes_summary(major_code)
-    if p.role=='advisor': rows=[r for r in rows if r['major_code'] in ADVISOR_MAJORS[p.user_id]]
+    rows=scoped_classes(p,rows)
     return {'classes':rows}
 
 @app.get('/api/advisor/class/{class_code}')
 def get_advisor_class_detail(class_code: str,p=Depends(principal)):
     require_role(p,'advisor','admin')
     if not re.fullmatch(r'[A-Z]{2}\d{2}-\d{2,3}',class_code.upper()): raise HTTPException(422,'Mã lớp không hợp lệ')
-    require_major(p,class_code[:2])
+    require_class(p,class_code.upper())
     detail=engine.get_class_detail(class_code)
     if not detail: raise HTTPException(404,'Không tìm thấy lớp')
     require_major(p,detail['major_code'])
@@ -202,9 +210,17 @@ def sanitize_reply(text):
 @app.post('/api/chat')
 def chat_endpoint(req: ChatRequest, token: str=Depends(credential)):
     p=sessions.resolve(token)
-    with context_lock: context=dict(contexts.get(token,{}))
-    result=route(engine,retrieval,p,req.message,context)
+    chat_limit.check(p.user_id)
     with context_lock:
-        if token in contexts: contexts[token]=context
+        if token in chat_busy: raise HTTPException(409,'Đang xử lý câu hỏi trước')
+        chat_busy.add(token)
+        context=dict(contexts.get(token,{}))
+    try:
+        result=route(engine,retrieval,p,req.message,context)
+        sessions.resolve(token)  # Không trả kết quả nếu đã đăng xuất.
+        with context_lock:
+            if token in contexts: contexts[token]=context
+    finally:
+        with context_lock: chat_busy.discard(token)
     # Không trả hồ sơ thô hoặc kết quả công cụ ngoài phạm vi đã cấp.
-    return {'reply':sanitize_reply(result['reply']),'regulations':result.get('regulations',[]),'intent':result['intent'],'method':result['method'],'embedding_used':result.get('embedding_used',False)}
+    return {'reply':sanitize_reply(result['reply']),'regulations':result.get('regulations',[]),'intent':result['intent'],'method':result['method'],'embedding_used':result.get('embedding_used',False),'retrieval_method':result.get('retrieval_method'),'generation_status':result.get('generation_status','NOT_REQUESTED')}

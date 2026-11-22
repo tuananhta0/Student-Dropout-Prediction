@@ -25,12 +25,11 @@ python -m pip install -r requirements.txt
 Nếu đã huấn luyện model mới ở vị trí chuẩn, không cần cài lại. Nếu clone trên máy khác, cài gói model và dataset từ máy huấn luyện theo [hướng dẫn bàn giao](docs/ban_giao.md). Không tự động sử dụng model cũ nếu thiếu gói mới.
 
 ```powershell
-python -m scripts.create_accounts
 $env:CMC_DATA_MODE = 'DEMO'
-python -m uvicorn app:app --host 127.0.0.1 --port 8000
+python -m uvicorn app:app --host 127.0.0.1 --port 8000 --no-proxy-headers
 ```
 
-Mở http://127.0.0.1:8000. Mặc định trình diễn mốc mô phỏng 03/02/2027; không phải ngày hiện tại ngoài đời. Đăng nhập bằng mật khẩu riêng do lệnh tạo tài khoản in ra một lần, không còn mật khẩu mặc định trùng tên đăng nhập.
+Mở http://127.0.0.1:8000. Mặc định trình diễn mốc mô phỏng 03/02/2027; không phải ngày hiện tại ngoài đời. Mật khẩu demo chính là mã tài khoản viết hoa (ví dụ `BIT250093` / `BIT250093`, `ADMIN` / `ADMIN`). Không cần tạo tài khoản hay file mật khẩu. Đây là cơ chế demo không bảo mật danh tính; chỉ dùng localhost và dữ liệu mô phỏng.
 
 ## 🔑 Tài khoản demo
 
