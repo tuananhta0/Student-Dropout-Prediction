@@ -1,4 +1,6 @@
 import re
+import os
+from data_pipeline import Dataset, runtime_view, visible_attempts
 import json
 import math
 import unicodedata
@@ -106,84 +108,19 @@ class CMCChatbotEngine:
         if not self.df["risk_probability"].between(0, 1).all():
             raise ValueError("Invalid stored risk probabilities")
 
-        self.df["class_code"] = self.df["class_code"].fillna("UNKNOWN").astype(str)
-        self.df["major_name"] = self.df["major_name"].fillna(
-            self.df["major_code"]
-        ).astype(str)
-
-        self.df["warning_bool"] = (
-            self.df["warning_current"].astype(str).str.lower() == "true"
-        )
-        self.latest_df = (
-            self.df.sort_values("snapshot_term_index")
-            .drop_duplicates("record_uid", keep="last")
-            .copy()
-        )
-
-        self.df_attempts = None
-        self.course_names = {}
-        self._load_course_tables()
-
-    def _load_course_tables(self):
-        logger = logging.getLogger(__name__)
-        roots = [
-            Path("dataset_full/artifacts/runs/V3_2_MAIN/master"),
-            Path("../artifacts/runs/V3_2_MAIN/master"),
-            Path("data"),
-            Path("."),
-        ]
-
-        for root in roots:
-            path = root / "courses.csv.gz"
-            if not path.is_file():
-                continue
-            try:
-                dfc = pd.read_csv(path)
-                name_col = next(
-                    (c for c in ("course_name", "title") if c in dfc.columns),
-                    None
-                )
-                if name_col is None or "course_id" not in dfc.columns:
-                    raise ValueError("Invalid courses schema")
-
-                valid = dfc.dropna(subset=["course_id", name_col])
-                self.course_names = dict(zip(
-                    valid["course_id"].astype(str),
-                    valid[name_col].astype(str)
-                ))
-            except Exception:
-                logger.exception("Cannot load course catalog: %s", path)
-            break
-
-        required = {
-            "record_uid", "term_index", "course_id",
-            "registered_credits", "process_score10",
-            "exam_final_score10", "course_final_score10",
-            "grade_letter", "is_passed", "exam_eligible"
-        }
-
-        for root in roots:
-            path = root / "course_attempts.csv.gz"
-            if not path.is_file():
-                continue
-            try:
-                attempts = pd.read_csv(
-                    path, usecols=lambda c: c in required,
-                    low_memory=False
-                )
-                missing = required - set(attempts.columns)
-                if missing:
-                    raise ValueError(f"Missing course columns: {sorted(missing)}")
-
-                self.df_attempts = attempts
-            except Exception:
-                logger.exception("Cannot load course attempts: %s", path)
-            break
-
-        if self.df_attempts is None:
-            logger.warning(
-                "Course attempts unavailable; detailed grades are disabled"
-            )
+        self.data_mode = os.environ.get("CMC_DATA_MODE", "ASOF_2026_DEMO")
+        source = Dataset()
+        self.df, self.latest_df = runtime_view(self.df, source, self.data_mode)
+        self.data_as_of = source.cutoff(self.data_mode).date().isoformat()
+        self.df["warning_bool"] = self.df["warning_current"].astype(str).str.lower().eq("true")
+        self.latest_df["warning_bool"] = self.latest_df["warning_current"].astype(str).str.lower().eq("true")
+        self.active_latest_df = self.latest_df[self.latest_df.state_as_of.eq("ENROLLED")].copy()
+        self.df_attempts = visible_attempts(source.table("course_attempts"), self.latest_df)
+        catalog = source.table("courses")
+        self.course_names = dict(zip(catalog.course_id, catalog.course_name))
+        # Rebuild statistics for this view; legacy summary is never displayed.
+        from train_model import build_analytics_summary
+        self.analytics = build_analytics_summary(self.df, self.df_attempts)
 
     def resolve_course_info(self, course_id: str) -> tuple:
         cid = str(course_id).strip()
@@ -227,6 +164,12 @@ class CMCChatbotEngine:
 
         if term_filter is not None:
             sub = sub[sub["term_index"] == term_filter]
+            records = self.get_student_records(record_uid)
+            selected = records[records.snapshot_term_index.eq(term_filter)]
+            if selected.empty:
+                return []
+            cutoff = selected.iloc[-1]['snapshot_cutoff']
+            sub = sub[sub.available_at.le(cutoff) & sub.score_published_at.le(cutoff)]
 
         if only_failed:
             sub = sub[
@@ -264,6 +207,8 @@ class CMCChatbotEngine:
         return rows
 
     def evaluate_student_warnings(self, row: dict) -> list:
+        if row.get('state_as_of') not in (None, 'ENROLLED'):
+            return [{"level": "info", "title": "Không còn ở trạng thái đang học", "detail": "Điểm và nguy cơ trên hồ sơ là dữ liệu lịch sử tại snapshot, không phải khuyến nghị can thiệp hiện tại."}]
         alerts, term = [], int(row.get('snapshot_term_index') or 1)
         gpa_t, gpa_c = float(row.get('gpa4_term') or 0), float(row.get('gpa4_cumulative') or 0)
         f_ratio, f_tc = float(row.get('failed_credit_ratio') or 0), int(row.get('credits_failed_term') or 0)
@@ -427,7 +372,7 @@ class CMCChatbotEngine:
         if any(k in q_ascii for k in model_kw):
             return f"""<div class="bg-[#131314] border border-amber-500/40 rounded-2xl p-4 text-xs space-y-2 leading-relaxed">
               <div class="text-sm font-bold text-amber-300">🤖 Thông số Mô hình Dự báo Học máy & Giới hạn Sử dụng</div>
-              <div class="text-[#d1d5db]">Mô hình Ensemble đạt <b>ROC-AUC = {self.meta.get('test_roc_auc', 0.8312)}</b>, <b>PR-AUC = {self.meta.get('test_pr_auc', 0.5460)}</b> (gấp ~18.2 lần tỷ lệ nền 3%) và <b>Brier Score = {self.meta.get('test_brier', 0.0518)}</b>. Ngưỡng cảnh báo <b>0.21</b> ưu tiên Recall để hỗ trợ sớm. Mọi dự báo chỉ dùng để tham khảo tư vấn học tập.</div></div>"""
+              <div class="text-[#d1d5db]">Mô hình Ensemble đạt <b>ROC-AUC = {self.meta.get('test_roc_auc', 0.8312)}</b>, <b>PR-AUC = {self.meta.get('test_pr_auc', 0.5460)}</b> và <b>Brier Score = {self.meta.get('test_brier', 0.0518)}</b>. Ngưỡng cảnh báo <b>0.21</b> ưu tiên Recall để hỗ trợ sớm. Mọi dự báo chỉ dùng để tham khảo tư vấn học tập.</div></div>"""
         return ""
 
     def answer_personal_metric_query(self, query: str, records: pd.DataFrame) -> str:
@@ -531,6 +476,8 @@ class CMCChatbotEngine:
             return ""
 
         latest = row_to_clean_dict(records.iloc[-1])
+        if latest.get("state_as_of") not in (None, "ENROLLED"):
+            return "<div>Không dự báo can thiệp cho sinh viên không ở trạng thái đang học tại mốc dữ liệu.</div>"
         cur_term = int(latest.get('snapshot_term_index') or 1)
         next_term = cur_term + 1
         gpa_t = float(latest.get('gpa4_term') or 0)
@@ -642,7 +589,7 @@ class CMCChatbotEngine:
               <div class="text-sm font-bold text-emerald-300">📈 Phân tích Chênh lệch giữa Lớp Mạnh nhất – Lớp Yếu nhất & Điểm đầu vào</div>
               <ul class="list-disc pl-5 space-y-1 text-[#d1d5db]">
                 <li><b>Đối chiếu thực tế:</b> Lớp dẫn đầu là <b>{top_c['class_code']}</b> (GPA TB: <b>{top_c['gpa_mean']}/4.0</b>, nợ TB: {top_c['owed_mean']} TC) so với lớp cần hỗ trợ nhất là <b>{bot_c['class_code']}</b> (GPA TB: <b>{bot_c['gpa_mean']}/4.0</b>, nợ TB: {bot_c['owed_mean']} TC, {bot_c['high_risk_count']} SV nguy cơ cao).</li>
-                <li><b>Nguyên nhân:</b> Sự khác biệt chủ yếu đến từ <b>tỷ lệ chuyên cần (&gt;92% vs &lt;78%)</b>, <b>tỷ lệ nộp bài đúng hạn trên LMS</b> và <b>giờ làm thêm</b>. Điểm đầu vào chỉ có tương quan nhẹ ở HK1 chứ không phải nguyên nhân nhân quả quyết định.</li>
+                <li><b>Nguyên nhân:</b> Chưa có phân tích đủ để quy nguyên nhân cho chênh lệch này.</li>
               </ul></div>""")
 
         if ("he gm" in q_ascii and "he sm" in q_ascii) or ("gm voi sm" in q_ascii):
@@ -661,7 +608,7 @@ class CMCChatbotEngine:
             overdue_cnt = s.get("overdue_30d_students", 0)
             cards.append(f"""<div class="bg-[#131314] border border-amber-500/40 rounded-2xl p-4 text-xs space-y-2 leading-relaxed">
               <div class="text-sm font-bold text-amber-300">🏛️ Phân tích Chính sách Đào tạo, Tài chính & Vận hành Hệ thống Cảnh báo Sớm</div>
-              <div class="text-[#d1d5db]">• <b>Tài chính & Học bổng:</b> Tổng nợ học phí toàn trường hiện tại là <b>{total_debt_b:.2f} tỷ VNĐ</b> ({overdue_cnt:,} SV quá hạn &gt;30 ngày). Nhóm có Học bổng và được Tư vấn tài chính có tỷ lệ thôi học tự nguyện thấp hơn rõ rệt.<br>• <b>Vận hành Mô hình ML:</b> PR-AUC đạt <b>{self.meta.get('test_pr_auc', 0.5460)}</b>, Recall@Top10% bao ఎవరు ~58% số ca rủi ro; chu kỳ huấn luyện lại (Retrain) là <b>6 tháng/lần</b>.</div></div>""")
+              <div class="text-[#d1d5db]">• <b>Tài chính & Học bổng:</b> Tổng nợ học phí toàn trường hiện tại là <b>{total_debt_b:.2f} tỷ VNĐ</b> ({overdue_cnt:,} SV quá hạn &gt;30 ngày). Không suy ra tác động nhân quả từ thống kê mô phỏng.<br>• <b>Vận hành Mô hình ML:</b> PR-AUC đạt <b>{self.meta.get('test_pr_auc', 0.5460)}</b>, Chỉ số Recall@Top10% cần được tính từ tập đánh giá; chưa có lịch tái huấn luyện được xác nhận.</div></div>""")
 
         return "".join(cards)
 
@@ -693,9 +640,9 @@ class CMCChatbotEngine:
         ])
 
         blocks.append(f"""<div class="bg-[#131314] border border-[#333537] rounded-2xl p-4 text-xs space-y-3 leading-relaxed">
-          <div class="text-sm font-bold text-emerald-300">📊 Báo cáo Tổng hợp Số liệu Học vụ, Phổ điểm & Dự báo (V3.2.1)</div>
+          <div class="text-sm font-bold text-emerald-300">📊 Báo cáo Tổng hợp từ snapshot đã công bố (V3.2.1; {getattr(self, "data_as_of", "")})</div>
           <div class="overflow-x-auto"><table class="w-full text-left text-xs">
-            <thead><tr class="border-b border-[#333537] text-[#9aa0a6]"><th class="py-1.5 px-2">Khóa</th><th class="py-1.5 px-2">Quy mô</th><th class="py-1.5 px-2">GPA TB</th><th class="py-1.5 px-2">Cảnh báo</th><th class="py-1.5 px-2">Cần hỗ trợ sớm</th><th class="py-1.5 px-2">Tỷ lệ Thôi học</th></tr></thead>
+            <thead><tr class="border-b border-[#333537] text-[#9aa0a6]"><th class="py-1.5 px-2">Khóa</th><th class="py-1.5 px-2">Quy mô</th><th class="py-1.5 px-2">GPA TB</th><th class="py-1.5 px-2">Cảnh báo</th><th class="py-1.5 px-2">Cần hỗ trợ sớm</th><th class="py-1.5 px-2">Tỷ lệ đã thôi học tại mốc dữ liệu</th></tr></thead>
             <tbody>{cohort_rows}</tbody></table></div>
           <ul class="list-disc pl-5 space-y-1 text-[#d1d5db]">
             <li><b>Cảnh báo sớm:</b> Có <b>{s.get('warning_streak_2_students',0):,} SV</b> cảnh báo 2 kỳ liên tiếp; <b>{s.get('owed_near_24_students',0):,} SV</b> nợ 20–24 TC; <b>{s.get('unexcused_over_20_students',0):,} SV</b> vắng không phép &gt;20%.</li>
@@ -819,7 +766,7 @@ class CMCChatbotEngine:
         return f"""<div class="bg-[#18191b] border border-amber-500/40 rounded-2xl p-4 space-y-3"><div class="flex items-center gap-2 text-xs text-amber-300 font-semibold"><span>🤔</span><span>Câu hỏi <i>"{query}"</i> chưa rõ trọng tâm. Ý của bạn có phải là:</span></div><div class="grid grid-cols-1 gap-2">{buttons_html}</div></div>"""
 
     def get_all_classes_summary(self, major_code: str = "") -> list:
-        sub = self.latest_df
+        sub = self.active_latest_df
         if major_code:
             sub = sub[sub['major_code'].astype(str).str.upper() == major_code.strip().upper()]
         grp = sub.groupby(['class_code', 'major_code', 'major_name'], as_index=False).agg(
@@ -837,7 +784,7 @@ class CMCChatbotEngine:
 
     def get_class_detail(self, class_code: str) -> dict:
         c_code = class_code.strip().upper()
-        sub = self.latest_df[self.latest_df['class_code'].astype(str).str.upper() == c_code].sort_values('risk_probability', ascending=False)
+        sub = self.active_latest_df[self.active_latest_df['class_code'].astype(str).str.upper() == c_code].sort_values('risk_probability', ascending=False)
         if sub.empty:
             return {}
         n_stu = int(len(sub))
@@ -862,7 +809,7 @@ class CMCChatbotEngine:
         }
 
     def get_faculties_overview(self) -> list:
-        sub = self.latest_df
+        sub = self.active_latest_df
         grp = sub.groupby(['major_code', 'major_name'], as_index=False).agg(
             n_students=('record_uid', 'count'), n_classes=('class_code', 'nunique'),
             gpa_mean=('gpa4_cumulative', 'mean'), owed_mean=('credits_owed_cumulative', 'mean'),
@@ -881,7 +828,7 @@ class CMCChatbotEngine:
 
     def get_faculty_detail(self, major_code: str) -> dict:
         m_code = major_code.strip().upper()
-        sub = self.latest_df[self.latest_df['major_code'].astype(str).str.upper() == m_code]
+        sub = self.active_latest_df[self.active_latest_df['major_code'].astype(str).str.upper() == m_code]
         if sub.empty:
             return {}
         classes = self.get_all_classes_summary(m_code)
@@ -1066,7 +1013,7 @@ class CMCChatbotEngine:
                         <thead><tr class="border-b border-[#333537] text-[#9aa0a6]"><th class="py-1 px-2">#</th><th class="py-1 px-2">Mã SV</th><th class="py-1 px-2">Kỳ</th><th class="py-1 px-2">GPA Kỳ/TL</th><th class="py-1 px-2">Dự đoán GPA Kỳ sau</th><th class="py-1 px-2">TC Nợ</th><th class="py-1 px-2">Chuyên cần</th><th class="py-1 px-2">Cảnh báo sớm</th><th class="py-1 px-2 text-right">Thao tác</th></tr></thead>
                         <tbody>{rows}</tbody></table></div></div>""")
 
-        target_stu = user_id if role == "student" else (mentioned_id or ("BIT250007" if parsed["is_personal"] or parsed["is_course"] else ""))
+        target_stu = user_id if role == "student" else mentioned_id
         if target_stu:
             recs = self.get_student_records(target_stu)
             if not recs.empty:

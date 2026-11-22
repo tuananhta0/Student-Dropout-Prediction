@@ -26,6 +26,13 @@ def index():
         return HTMLResponse("<h3>Thiếu file index.html</h3>", status_code=404)
     return HTMLResponse(content=html_path.read_text(encoding="utf-8"))
 
+@app.get("/api/data-view")
+def data_view():
+    return {"mode": engine.data_mode, "as_of": engine.data_as_of,
+            "synthetic": True, "snapshots": len(engine.df),
+            "active_students": len(engine.active_latest_df),
+            "students_with_snapshots": len(engine.latest_df)}
+
 @app.post("/api/login")
 def login(req: LoginRequest):
     u = req.username.strip().upper()
@@ -38,7 +45,7 @@ def login(req: LoginRequest):
             "user_id": "ADMIN",
             "role": "admin",
             "role_label": "Quản trị Học vụ Toàn trường (19 Khoa)",
-            "permissions": ["Xem thống kê toàn bộ 19 Khoa & 2.258 Lớp", "Xem toàn bộ 20.000 Sinh viên", "Tra cứu Quy chế PDF"]
+            "permissions": ["Xem thống kê sinh viên đang học tại mốc dữ liệu", "Xem hồ sơ sinh viên mô phỏng", "Tra cứu Quy chế PDF"]
         }
 
     if u in ["GV001", "GV002", "GV003", "ADVISOR", "COVAN"]:

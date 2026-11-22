@@ -1,4 +1,5 @@
 import os
+from data_pipeline import Dataset, main_run, course_features, enrich, runtime_view, visible_attempts, KEY
 import json
 import joblib
 import pypdf
@@ -11,18 +12,14 @@ from sklearn.preprocessing import StandardScaler, OneHotEncoder
 from sklearn.ensemble import RandomForestClassifier, HistGradientBoostingClassifier, VotingClassifier
 from sklearn.metrics import average_precision_score, roc_auc_score, brier_score_loss, f1_score, precision_score, recall_score
 
-DATASET_ROOT = Path("dataset_full") if (Path("dataset_full") / "artifacts").exists() else Path("..")
-MAIN_RUN = DATASET_ROOT / "artifacts" / "runs" / "V3_2_MAIN"
+MAIN_RUN = main_run()
+DATASET_ROOT = MAIN_RUN.parents[2]
 OUTPUT_DIR = Path("artifacts_model")
 
 def find_file(rel_path: str, fallback_name: str = "") -> Path:
-    name = fallback_name or Path(rel_path).name
-
     candidates = [
         MAIN_RUN / rel_path,
-        DATASET_ROOT / rel_path,
-        Path("data") / name,
-        Path(rel_path),
+
     ]
 
     for candidate in candidates:
@@ -41,11 +38,15 @@ def find_file(rel_path: str, fallback_name: str = "") -> Path:
 def build_analytics_summary(df_all: pd.DataFrame, df_ca: pd.DataFrame = None) -> dict:
     latest = df_all.sort_values('snapshot_term_index').drop_duplicates('record_uid', keep='last').copy()
     latest['warn_bool'] = latest['warning_current'].astype(str).str.lower() == 'true'
-    latest['high_risk_bool'] = latest['risk_probability'] >= 0.21
-    latest['dropout_bool'] = latest.get('dropout_next_2_terms', pd.Series(0, index=latest.index)).astype(float) > 0
+    latest['high_risk_bool'] = (latest['risk_probability'] >= 0.21) & latest['state_as_of'].eq('ENROLLED')
+    latest['dropout_bool'] = latest['state_as_of'].eq('DROPOUT')
 
     summary = {
         "total_students": int(len(latest)),
+        "active_students": int(latest['state_as_of'].eq('ENROLLED').sum()),
+        "state_counts": {str(k): int(v) for k, v in latest.state_as_of.value_counts().items()},
+        "data_as_of": str(latest['data_as_of'].iloc[0]),
+        "data_mode": str(latest['data_mode'].iloc[0]),
         "total_snapshots": int(len(df_all)),
         "total_classes": int(latest['class_code'].nunique()),
         "total_majors": int(latest['major_code'].nunique()),
@@ -58,7 +59,7 @@ def build_analytics_summary(df_all: pd.DataFrame, df_ca: pd.DataFrame = None) ->
         "attendance_under_80_students": int((latest['attendance_rate_term'].fillna(100) < 80).sum()),
         "high_risk_no_advisor": int(((latest['high_risk_bool']) & (latest.get('advisor_contacts_to_date', pd.Series(0, index=latest.index)).fillna(0) == 0)).sum()),
         "high_risk_no_tutoring": int(((latest['high_risk_bool']) & (latest.get('tutoring_sessions_to_date', pd.Series(0, index=latest.index)).fillna(0) == 0)).sum()),
-        "under_min_credits_students": int((latest['credits_registered_term'].fillna(15) < 10).sum())
+        "under_min_credits_students": int((latest['credits_registered_term'] < latest['registration_min_credits']).sum())
     }
 
     #thong ke theo khoa / khoi tuyen sinh (2022-2025)
@@ -129,10 +130,6 @@ def build_analytics_summary(df_all: pd.DataFrame, df_ca: pd.DataFrame = None) ->
 
     #thong ke nguyen nhan thoi hoc
     exit_reasons = {}
-    if 'exit_reason_for_evaluation' in latest.columns:
-        ex_sub = latest[latest['exit_reason_for_evaluation'].notna() & (latest['exit_reason_for_evaluation'].astype(str) != 'nan') & (latest['exit_reason_for_evaluation'].astype(str) != '')]
-        for r_val, cnt in ex_sub['exit_reason_for_evaluation'].value_counts().items():
-            exit_reasons[str(r_val)] = int(cnt)
     summary["exit_reasons"] = exit_reasons
 
     #pho diem toan truong va ty le truot mon tu course_attempts
@@ -170,42 +167,19 @@ def build_analytics_summary(df_all: pd.DataFrame, df_ca: pd.DataFrame = None) ->
     return summary
 
 def main():
-    ps_path = find_file("features/prediction_snapshots.csv.gz")
-    lf_path = find_file("labels/snapshot_labels_full_simulation.csv.gz")
-    fr_path = find_file("docs/feature_registry.csv")
-    stu_path = find_file("master/students.csv.gz")
-    ca_path = find_file("master/course_attempts.csv.gz")
-    req_path = find_file("master/academic_requirement_events.csv.gz")
-
-    print("All required training input files are available.")
-
-    df_X = pd.read_csv(ps_path, low_memory=False)
-    df_y = pd.read_csv(lf_path, low_memory=False)
-    df_fr = pd.read_csv(fr_path)
-    df_stu = pd.read_csv(stu_path, low_memory=False)
-    df_ca = pd.read_csv(ca_path, low_memory=False)
-    df_req = pd.read_csv(req_path)
-
-    ca_agg = df_ca.groupby(['record_uid', 'term_index'], as_index=False).agg(
-        ca_score10_min=('course_final_score10', 'min'),
-        ca_exam10_min=('exam_final_score10', 'min'),
-        ca_ineligible_exams=('exam_eligible', lambda s: int((~s.astype(bool)).sum())),
-        ca_unexcused_hours_sum=('unexcused_absent_hours', 'sum')
-    )
-    req_map = df_req.groupby('record_uid')['requirement_type'].apply(lambda s: ", ".join(sorted(set(s)))).to_dict()
-
-    df = pd.merge(
-        df_X,
-        df_y[['record_uid', 'snapshot_term_index', 'dropout_next_2_terms', 'exit_reason_for_evaluation']],
-        on=['record_uid', 'snapshot_term_index']
-    )
-    df = pd.merge(
-        df,
-        ca_agg,
-        left_on=['record_uid', 'snapshot_term_index'],
-        right_on=['record_uid', 'term_index'],
-        how='left'
-    ).drop(columns=['term_index'], errors='ignore')
+    # Training remains FULL_SIMULATION research only, independent of runtime mode.
+    source = Dataset(main_run())
+    df_X = source.table('prediction_snapshots')
+    df_y = source.table('snapshot_labels_FULL_SIMULATION')
+    df_fr = source.table('feature_registry')
+    df_stu = source.table('students')
+    df_ca = source.table('course_attempts')
+    if not df_y.label_observed.all() or df_y.dropout_next_2_terms.isna().any():
+        raise ValueError('FULL_SIMULATION contains unobserved labels')
+    ca_agg = course_features(df_X, df_ca)
+    from data_pipeline import merge_exact
+    df = merge_exact(df_X, df_y[KEY + ['dropout_next_2_terms', 'exit_reason_for_evaluation']], KEY, 'full labels')
+    df = merge_exact(df, ca_agg, KEY, 'course aggregates')
 
     allowed = df_fr[df_fr['role'] == 'FEATURE_ALLOWED_ASOF']['feature_name'].tolist()
     extra_master_cols = ['ca_score10_min', 'ca_exam10_min', 'ca_ineligible_exams', 'ca_unexcused_hours_sum']
@@ -273,11 +247,13 @@ def main():
     ).astype(str)
 
     stu_extra_cols = [c for c in ['record_uid', 'major_name', 'gender', 'home_province', 'enrollment_date', 'class_code', 'living_status', 'admission_method', 'admission_score_ratio', 'current_state'] if c in df_stu.columns]
-    df_stu_sub = df_stu[stu_extra_cols].drop_duplicates('record_uid')
+    df_stu_sub = df_stu[stu_extra_cols]
     drop_existing = [c for c in stu_extra_cols if c != 'record_uid' and c in df.columns]
-    df_full_index = pd.merge(df.drop(columns=drop_existing, errors='ignore'), df_stu_sub, on='record_uid', how='left')
-    df_full_index['verified_certificates'] = df_full_index['record_uid'].map(lambda u: req_map.get(u, "Chưa hoàn thành"))
+    df_full_index = pd.merge(df.drop(columns=drop_existing, errors='ignore'), df_stu_sub, on='record_uid', how='left', validate='many_to_one')
+    df_full_index = enrich(df_full_index, source)
 
+    runtime, latest = runtime_view(df_full_index, source, "FULL_SIMULATION")
+    summary = build_analytics_summary(runtime, visible_attempts(df_ca, latest))
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     joblib.dump(ensemble_pipeline, OUTPUT_DIR / "dropout_pipeline.joblib")
     with open(OUTPUT_DIR / "model_metadata.json", "w", encoding="utf-8") as f:
@@ -285,7 +261,6 @@ def main():
 
     df_full_index.to_csv(OUTPUT_DIR / "student_snapshots_scored.csv.gz", index=False, compression="gzip")
 
-    summary = build_analytics_summary(df_full_index, df_ca)
     with open(OUTPUT_DIR / "analytics_summary.json", "w", encoding="utf-8") as f:
         json.dump(summary, f, ensure_ascii=False, indent=2)
 

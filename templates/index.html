@@ -338,6 +338,13 @@
       document.getElementById('txtUserId').innerText = currentUser.user_id;
       document.getElementById('badgeRole').innerText = currentUser.role.toUpperCase();
       document.getElementById('txtRoleLabel').innerText = currentUser.role_label;
+      try {
+        const view = await fetch('/api/data-view');
+        if (view.ok) {
+          const v = await view.json();
+          document.getElementById('txtRoleLabel').innerText += ` | Mô phỏng ${v.mode} (${v.as_of})`;
+        }
+      } catch (err) { console.warn('Data view unavailable', err); }
 
       document.getElementById('panelStudentData').classList.add('hidden');
       document.getElementById('panelAdvisorData').classList.add('hidden');
@@ -430,12 +437,15 @@
       const data = await res.json();
       const latest = data.latest;
       const proj = calcClientNextTermGpa(latest);
+      const active = latest.state_as_of === 'ENROLLED';
+      document.getElementById('stuNextTermBanner').classList.toggle('hidden', !active);
+      document.getElementById('stuPredBadge').classList.toggle('hidden', !active);
 
       document.getElementById('panelStudentData').classList.remove('hidden');
       document.getElementById('stuHeaderInfo').innerText = `🎓 Hồ sơ Sinh viên: ${latest.student_id} • Lớp: ${latest.class_code}`;
       document.getElementById('stuSubInfo').innerText = `Ngành: ${latest.major_name} (${latest.degree_type} - Hệ ${latest.education_mode})`;
       document.getElementById('stuPredBadge').innerText = `🔮 Dự đoán GPA HK${proj.nextTerm}: ${proj.predCur} ➔ ${proj.predImp}/4.00`;
-      document.getElementById('stuRiskBadge').innerText = `Cảnh báo sớm: ${(latest.risk_probability * 100).toFixed(1)}% (${latest.risk_level})`;
+      document.getElementById('stuRiskBadge').innerText = `Snapshot ${latest.snapshot_cutoff}: ${(latest.risk_probability * 100).toFixed(1)}% (${latest.risk_level}) | ${latest.state_as_of}`;
 
       document.getElementById('stuNextTermBanner').innerHTML = `
         <div class="flex flex-wrap items-center justify-between gap-2">
@@ -495,7 +505,7 @@
           <span class="text-[11px] text-blue-300 font-semibold mt-1">HK${proj.nextTerm} (Dự báo)</span>
         </div>
       `;
-      document.getElementById('stuGpaBars').innerHTML = historyBars + predBar;
+      document.getElementById('stuGpaBars').innerHTML = historyBars + (active ? predBar : '');
 
       const earn = Number(latest.credits_earned_cumulative || 0);
       const req = Math.max(1, Number(latest.credits_required || 135));

@@ -83,3 +83,6 @@ Student-Dropout-Prediction/
 ├── regulations/                        # Văn bản PDF Quy chế đào tạo & Thôi học ĐH CMC
 └── artifacts_model/                    # Mô hình .joblib, metadata & dữ liệu đã chấm điểm
 ```
+### Phase 2: Dataset integration
+
+The runtime now requires the verified V3.2.1 MAIN data. See [PHASE2_DATA.md](PHASE2_DATA.md) for installation, data modes, audit and smoke tests. The default is the synthetic `ASOF_2026_DEMO` view (2026-10-01); the model itself is unchanged.
