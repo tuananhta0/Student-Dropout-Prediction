@@ -4,6 +4,9 @@ import math
 import unicodedata
 import difflib
 import joblib
+import logging
+import warnings
+from sklearn.exceptions import InconsistentVersionWarning
 import pandas as pd
 from pathlib import Path
 
@@ -34,11 +37,6 @@ MAJOR_ALIASES = {
     "KL": ["ngon ngu han", "tieng han", "han quoc", "khoa kl"], "CL": ["ngon ngu trung", "tieng trung", "trung quoc", "khoa cl"]
 }
 
-COMMON_COURSES = {1: "Đại số tuyến tính & Giải tích", 2: "Nhập môn ngành & Tư duy số", 3: "Triết học Mác – Lênin", 4: "Pháp luật đại cương", 5: "Kỹ năng mềm & Giao tiếp", 6: "Kinh tế chính trị Mác – Lênin", 7: "Xác suất thống kê ứng dụng", 8: "Tiếng Anh học thuật 1", 9: "Chủ nghĩa xã hội khoa học", 10: "Tiếng Anh học thuật 2", 16: "Lịch sử Đảng CSVN", 21: "Tư tưởng Hồ Chí Minh"}
-TECH_COURSES = {2: "Nhập môn Lập trình", 6: "Toán rời rạc", 8: "Cấu trúc dữ liệu & Giải thuật", 9: "Kiến trúc máy tính & HĐH", 11: "Lập trình Hướng đối tượng (OOP)", 12: "Cơ sở dữ liệu", 13: "Mạng máy tính", 14: "Công nghệ phần mềm", 15: "Lập trình Web", 17: "An toàn thông tin", 18: "Trí tuệ nhân tạo & Học máy", 19: "Phân tích & Thiết kế hệ thống", 20: "Phát triển ứng dụng di động", 22: "Điện toán đám mây & DevOps", 23: "Kiểm thử phần mềm", 24: "Quản trị dự án CNTT", 25: "Xử lý dữ liệu lớn", 26: "Học sâu (Deep Learning)", 27: "Thực tập doanh nghiệp", 28: "Đồ án chuyên ngành", 29: "Khóa luận tốt nghiệp"}
-BIZ_COURSES = {2: "Kinh tế vi mô", 6: "Kinh tế vĩ mô", 8: "Nguyên lý Quản trị học", 9: "Nguyên lý Kế toán", 11: "Nguyên lý Marketing", 12: "Tài chính – Tiền tệ", 13: "Quản trị Nhân sự", 14: "Thương mại điện tử", 15: "Hành vi khách hàng", 17: "Tài chính doanh nghiệp", 18: "Quản trị Chiến lược", 19: "Quản trị Logistics"}
-LANG_DESIGN_COURSES = {2: "Cơ sở tạo hình & Mỹ thuật", 6: "Ngữ âm & Giao tiếp sơ cấp 1", 8: "Ngữ pháp & Đọc hiểu 1", 9: "Văn hóa & Đất nước học", 11: "Thực hành Nghe – Nói", 12: "Thiết kế Đồ họa số", 14: "Thiết kế UI/UX", 15: "Tiếng Hàn/Trung thương mại"}
-
 STRUCTURED_REGULATIONS = [
     {"rule_id": "DIEU_1_2_27", "article_num": ["1", "2", "27"], "topic": "Phạm vi & Hiệu lực", "title": "Điều 1, 2 & 27: Phạm vi áp dụng và Hiệu lực Quy chế (QĐ 22/2023)", "source": "QĐ 22/2023/QĐ-ĐHCMC-HĐT, Điều 1, 2, 27", "keywords": ["điều 1", "điều 2", "điều 27", "phạm vi", "năm học nào", "2023-2024", "khóa 2022", "bản tóm tắt", "bản gốc"], "summary_rows": [["Đối tượng (Điều 1)", "Áp dụng cho SV đại học hệ chính quy tại ĐH CMC"], ["Hiệu lực (Điều 27.1)", "Áp dụng từ năm học 2023–2024; ưu tiên đối chiếu văn bản gốc QĐ 22/2023"]], "takeaway": "Quy chế QĐ 22/2023 có hiệu lực từ năm học 2023–2024; văn bản gốc QĐ 22/2023 có giá trị pháp lý cao nhất."},
     {"rule_id": "DIEU_3_5", "article_num": ["3", "5"], "topic": "Tín chỉ & Thời gian tối đa", "title": "Điều 3 & Điều 5: Tín chỉ, Học phần tiên quyết và Thời gian học tối đa", "source": "QĐ 22/2023/QĐ-ĐHCMC-HĐT, Điều 3 & Điều 5", "keywords": ["điều 3", "điều 5", "tín chỉ", "thời gian đào tạo", "thời gian tối đa", "cử nhân", "kỹ sư", "18 học kỳ", "22 học kỳ", "tiên quyết", "học trước", "tương đương", "thể chất", "quốc phòng", "50 phút", "giờ tín chỉ"], "summary_rows": [["Quy đổi 1 tín chỉ (Điều 3.1)", "1 TC = 15 giờ tín chỉ (1 tiết lý thuyết 50 phút + 2 tiết tự học; hoặc 2–3 tiết thực hành)"], ["Môn tiên quyết vs Học trước (Điều 3.2)", "Môn tiên quyết (3.2b): Phải học và THI ĐẠT mới được học môn sau. Môn học trước (3.2c): Đã học xong (dù chưa đạt) vẫn được đăng ký môn sau"], ["Môn điều kiện (Điều 3.2f)", "GD Thể chất, GD Quốc phòng, Tiếng Anh điều kiện: Không tính vào GPA nhưng bắt buộc đạt để xét tốt nghiệp"], ["Thời gian tối đa (Điều 3.5)", "Cử nhân (120–135 TC): Chuẩn 9 kỳ, tối đa 18 học kỳ • Kỹ sư (150–164 TC): Chuẩn 11 kỳ, tối đa 22 học kỳ"]], "takeaway": "Cử nhân học tối đa 18 học kỳ, Kỹ sư tối đa 22 học kỳ. Trượt môn tiên quyết không được đăng ký môn kế tiếp."},
@@ -55,122 +53,215 @@ STRUCTURED_REGULATIONS = [
 class CMCChatbotEngine:
     def __init__(self, artifact_dir: str = "artifacts_model"):
         self.artifact_dir = Path(artifact_dir)
-        meta_path = self.artifact_dir / "model_metadata.json"
-        self.meta = json.loads(meta_path.read_text(encoding="utf-8")) if meta_path.exists() else {"threshold": 0.21, "test_pr_auc": 0.5460, "test_roc_auc": 0.8312, "test_brier": 0.0518, "feature_cols": [], "cat_cols": [], "num_cols": [], "num_medians": {}}
-        self.pipeline = None
+
         pipe_path = self.artifact_dir / "dropout_pipeline.joblib"
-        if pipe_path.exists():
-            try: self.pipeline = joblib.load(pipe_path)
-            except Exception: pass
+        meta_path = self.artifact_dir / "model_metadata.json"
         scored_path = self.artifact_dir / "student_snapshots_scored.csv.gz"
-        self.df = pd.read_csv(scored_path, low_memory=False) if scored_path.exists() else self._build_fallback_df()
-        if 'class_code' not in self.df.columns: self.df['class_code'] = self.df['major_code'].astype(str) + "25-01"
-        self.df['class_code'] = self.df['class_code'].fillna("IT25-01").astype(str)
-        if 'major_name' not in self.df.columns: self.df['major_name'] = self.df['major_code'].astype(str)
-        self.df['major_name'] = self.df['major_name'].fillna(self.df['major_code']).astype(str)
-        self.df['warning_bool'] = self.df['warning_current'].astype(str).str.lower() == 'true'
-        self.latest_df = self.df.sort_values('snapshot_term_index').drop_duplicates('record_uid', keep='last').copy()
-        self.df_attempts, self.course_names = None, {}
-        self._load_course_tables()
         summary_path = self.artifact_dir / "analytics_summary.json"
-        self.analytics = json.loads(summary_path.read_text(encoding="utf-8")) if summary_path.exists() else self._default_analytics()
 
-    def _default_analytics(self) -> dict:
-        return {
-            "total_students": int(len(self.latest_df)),
-            "warning_streak_2_students": int((self.latest_df['warning_streak'].fillna(0) >= 2).sum()),
-            "owed_near_24_students": int(((self.latest_df['credits_owed_cumulative'].fillna(0) >= 20) & (self.latest_df['credits_owed_cumulative'].fillna(0) <= 24)).sum()),
-            "unexcused_over_20_students": int((self.latest_df.get('unexcused_absence_rate_term', pd.Series(0, index=self.latest_df.index)).fillna(0) > 20).sum()),
-            "high_risk_no_advisor": int(((self.latest_df['risk_probability'] >= 0.21) & (self.latest_df.get('advisor_contacts_to_date', pd.Series(0, index=self.latest_df.index)).fillna(0) == 0)).sum()),
-            "total_tuition_debt_vnd": float(self.latest_df['tuition_debt_end_vnd'].fillna(0).sum()),
-            "overdue_30d_students": int((self.latest_df.get('tuition_overdue_days_end', pd.Series(0, index=self.latest_df.index)).fillna(0) > 30).sum()),
-            "by_cohort": {
-                "2022": {"n_students": 4850, "gpa_mean": 2.52, "warning_rate_pct": 10.4, "high_risk_count": 412, "high_risk_pct": 8.5, "dropout_rate_pct": 3.1, "hk1_att_under_80_pct": 6.2},
-                "2023": {"n_students": 5020, "gpa_mean": 2.49, "warning_rate_pct": 11.1, "high_risk_count": 465, "high_risk_pct": 9.3, "dropout_rate_pct": 2.9, "hk1_att_under_80_pct": 6.8},
-                "2024": {"n_students": 5110, "gpa_mean": 2.46, "warning_rate_pct": 11.8, "high_risk_count": 510, "high_risk_pct": 10.0, "dropout_rate_pct": 2.7, "hk1_att_under_80_pct": 7.1},
-                "2025": {"n_students": 5020, "gpa_mean": 2.44, "warning_rate_pct": 12.2, "high_risk_count": 538, "high_risk_pct": 10.7, "dropout_rate_pct": 2.6, "hk1_att_under_80_pct": 7.5}
-            },
-            "by_education_mode": {"GM": {"n_students": 8000, "gpa_mean": 2.51, "warning_rate_pct": 10.8, "dropout_rate_pct": 2.5}, "SM": {"n_students": 12000, "gpa_mean": 2.45, "warning_rate_pct": 11.6, "dropout_rate_pct": 2.9}},
-            "by_degree_type": {"Bachelor": {"n_students": 15200, "gpa_mean": 2.48, "warning_rate_pct": 11.2, "dropout_rate_pct": 2.7}, "Engineer": {"n_students": 4800, "gpa_mean": 2.44, "warning_rate_pct": 12.1, "dropout_rate_pct": 2.9}},
-            "by_living_status": {"Thuê trọ": {"warning_rate_pct": 12.8, "dropout_rate_pct": 3.2}, "Ký túc xá": {"warning_rate_pct": 10.5, "dropout_rate_pct": 2.4}, "Cùng gia đình": {"warning_rate_pct": 9.9, "dropout_rate_pct": 2.2}},
-            "by_admission_method": {"CMC200_HocBa_30": {"warning_rate_pct": 13.4}, "CMC100_THPT_30": {"warning_rate_pct": 10.2}, "CMC402_HSA_150": {"warning_rate_pct": 8.6}},
-            "grade_distribution_pct": {"A+": 4.2, "A": 8.5, "B+": 14.1, "B": 21.3, "C+": 18.4, "C": 15.2, "D+": 7.8, "D": 4.9, "F": 5.6},
-            "exam_dead_point_pct": 3.4, "ineligible_exam_attempts": 1840,
-            "top_failed_courses": [{"course_id": "CURR_2025_IT_SM_Bachelor_C001", "fail_count": 620, "fail_rate_pct": 28.4}, {"course_id": "CURR_2025_IT_SM_Bachelor_C008", "fail_count": 540, "fail_rate_pct": 26.1}, {"course_id": "CURR_2025_IT_SM_Bachelor_C011", "fail_count": 490, "fail_rate_pct": 24.5}]
-        }
+        for path in (pipe_path, meta_path, scored_path, summary_path):
+            if not path.is_file() or path.stat().st_size == 0:
+                raise FileNotFoundError(
+                    f"Required artifact missing or empty: {path}"
+                )
 
-    def _build_fallback_df(self) -> pd.DataFrame:
-        return pd.DataFrame([
-            {"record_uid": "SIMV31_000007", "student_id": "BIT250007", "class_code": "IT25-18", "major_code": "IT", "major_name": "Công nghệ thông tin", "degree_type": "Bachelor", "education_mode": "SM", "cohort_year": 2025, "snapshot_term_index": 1, "gpa4_term": 1.75, "gpa4_cumulative": 1.75, "credits_registered_term": 15, "credits_earned_cumulative": 9, "credits_required": 135, "credits_failed_term": 6, "failed_credit_ratio": 0.4, "credits_owed_cumulative": 6, "warning_current": False, "warning_streak": 0, "warnings_total_to_date": 0, "attendance_rate_term": 82.0, "unexcused_absence_rate_term": 12.0, "tuition_debt_end_vnd": 0, "tuition_overdue_days_end": 0, "advisor_contacts_to_date": 1, "tutoring_sessions_to_date": 0, "study_hours_week": 8.0, "part_time_work_hours_week": 18.0, "process_score10_mean_term": 5.8, "assignment_on_time_rate_term": 72.0, "assignment_miss_streak_weeks": 2, "lms_logins_4weeks": 14, "lms_active_days_4weeks": 9, "retake_count_cumulative": 1, "courses_failed_term": 2, "courses_failed_cumulative": 2, "leave_semesters_to_date": 0, "risk_probability": 0.19, "risk_level": "Trung bình (Theo dõi)", "verified_certificates": "GDQP"},
-            {"record_uid": "SIMV31_000007", "student_id": "BIT250007", "class_code": "IT25-18", "major_code": "IT", "major_name": "Công nghệ thông tin", "degree_type": "Bachelor", "education_mode": "SM", "cohort_year": 2025, "snapshot_term_index": 2, "gpa4_term": 0.90, "gpa4_cumulative": 1.00, "credits_registered_term": 15, "credits_earned_cumulative": 18, "credits_required": 135, "credits_failed_term": 6, "failed_credit_ratio": 0.4, "credits_owed_cumulative": 12, "warning_current": True, "warning_streak": 1, "warnings_total_to_date": 1, "attendance_rate_term": 76.0, "unexcused_absence_rate_term": 18.0, "tuition_debt_end_vnd": 4447850, "tuition_overdue_days_end": 35, "advisor_contacts_to_date": 1, "tutoring_sessions_to_date": 1, "study_hours_week": 6.5, "part_time_work_hours_week": 22.0, "process_score10_mean_term": 4.9, "assignment_on_time_rate_term": 64.0, "assignment_miss_streak_weeks": 3, "lms_logins_4weeks": 9, "lms_active_days_4weeks": 6, "retake_count_cumulative": 2, "courses_failed_term": 2, "courses_failed_cumulative": 4, "leave_semesters_to_date": 0, "risk_probability": 0.235, "risk_level": "Cao (Cảnh báo)", "verified_certificates": "GDQP"},
-            {"record_uid": "SIMV31_000006", "student_id": "BIT250006", "class_code": "IT25-16", "major_code": "IT", "major_name": "Công nghệ thông tin", "degree_type": "Bachelor", "education_mode": "GM", "cohort_year": 2025, "snapshot_term_index": 1, "gpa4_term": 3.30, "gpa4_cumulative": 3.30, "credits_registered_term": 15, "credits_earned_cumulative": 15, "credits_required": 135, "credits_failed_term": 0, "failed_credit_ratio": 0.0, "credits_owed_cumulative": 0, "warning_current": False, "warning_streak": 0, "warnings_total_to_date": 0, "attendance_rate_term": 96.0, "unexcused_absence_rate_term": 2.0, "tuition_debt_end_vnd": 0, "tuition_overdue_days_end": 0, "advisor_contacts_to_date": 2, "tutoring_sessions_to_date": 0, "study_hours_week": 16.0, "part_time_work_hours_week": 0.0, "process_score10_mean_term": 8.4, "assignment_on_time_rate_term": 98.0, "assignment_miss_streak_weeks": 0, "lms_logins_4weeks": 38, "lms_active_days_4weeks": 24, "retake_count_cumulative": 0, "courses_failed_term": 0, "courses_failed_cumulative": 0, "leave_semesters_to_date": 0, "risk_probability": 0.032, "risk_level": "Thấp (An toàn)", "verified_certificates": "GDTC, GDQP, ENG_B2"},
-            {"record_uid": "SIMV31_000008", "student_id": "BIT250008", "class_code": "IT25-20", "major_code": "IT", "major_name": "Công nghệ thông tin", "degree_type": "Bachelor", "education_mode": "SM", "cohort_year": 2025, "snapshot_term_index": 1, "gpa4_term": 2.10, "gpa4_cumulative": 2.10, "credits_registered_term": 15, "credits_earned_cumulative": 12, "credits_required": 135, "credits_failed_term": 3, "failed_credit_ratio": 0.2, "credits_owed_cumulative": 3, "warning_current": False, "warning_streak": 0, "warnings_total_to_date": 0, "attendance_rate_term": 88.0, "unexcused_absence_rate_term": 6.0, "tuition_debt_end_vnd": 0, "tuition_overdue_days_end": 0, "advisor_contacts_to_date": 1, "tutoring_sessions_to_date": 1, "study_hours_week": 11.0, "part_time_work_hours_week": 10.0, "process_score10_mean_term": 6.5, "assignment_on_time_rate_term": 85.0, "assignment_miss_streak_weeks": 1, "lms_logins_4weeks": 22, "lms_active_days_4weeks": 15, "retake_count_cumulative": 1, "courses_failed_term": 1, "courses_failed_cumulative": 1, "leave_semesters_to_date": 0, "risk_probability": 0.11, "risk_level": "Thấp (An toàn)", "verified_certificates": "GDTC"}
-        ])
+        try:
+            with warnings.catch_warnings():
+                warnings.simplefilter("error", InconsistentVersionWarning)
+                self.pipeline = joblib.load(pipe_path)
+
+            if not callable(getattr(self.pipeline, "predict_proba", None)):
+                raise TypeError("Artifact does not support predict_proba")
+        except Exception as exc:
+            raise RuntimeError(f"Cannot load model: {pipe_path}") from exc
+
+        self.meta = json.loads(meta_path.read_text(encoding="utf-8"))
+        self.analytics = json.loads(summary_path.read_text(encoding="utf-8"))
+
+        if not isinstance(self.meta, dict) or not self.meta.get("feature_cols"):
+            raise ValueError("Invalid model metadata")
+
+        if not isinstance(self.analytics, dict) or not self.analytics.get("by_cohort"):
+            raise ValueError("Invalid analytics summary")
+
+        for key in ("threshold", "test_pr_auc", "test_roc_auc", "test_brier"):
+            if key not in self.meta:
+                raise ValueError(f"Missing model metadata field: {key}")
+
+        self.df = pd.read_csv(scored_path, low_memory=False)
+
+        required = {
+            "record_uid", "student_id", "snapshot_term_index",
+            "class_code", "major_code", "major_name",
+            "warning_current", "risk_probability"
+        } | set(self.meta["feature_cols"])
+
+        missing = required - set(self.df.columns)
+        if missing:
+            raise ValueError(f"Missing snapshot columns: {sorted(missing)}")
+
+        if self.df.empty:
+            raise ValueError("Scored student dataset is empty")
+
+        if not self.df["risk_probability"].between(0, 1).all():
+            raise ValueError("Invalid stored risk probabilities")
+
+        self.df["class_code"] = self.df["class_code"].fillna("UNKNOWN").astype(str)
+        self.df["major_name"] = self.df["major_name"].fillna(
+            self.df["major_code"]
+        ).astype(str)
+
+        self.df["warning_bool"] = (
+            self.df["warning_current"].astype(str).str.lower() == "true"
+        )
+        self.latest_df = (
+            self.df.sort_values("snapshot_term_index")
+            .drop_duplicates("record_uid", keep="last")
+            .copy()
+        )
+
+        self.df_attempts = None
+        self.course_names = {}
+        self._load_course_tables()
 
     def _load_course_tables(self):
-        for r in [Path("dataset_full/artifacts/runs/V3_2_MAIN/master"), Path("../artifacts/runs/V3_2_MAIN/master"), Path("data"), Path(".")]:
-            if (r / "courses.csv.gz").exists():
-                try:
-                    dfc = pd.read_csv(r / "courses.csv.gz")
-                    nc = next((c for c in ['course_name', 'title'] if c in dfc.columns), None)
-                    if nc: self.course_names = dict(zip(dfc['course_id'].astype(str), dfc[nc].astype(str)))
-                except Exception: pass
-                break
-        for r in [Path("dataset_full/artifacts/runs/V3_2_MAIN/master"), Path("../artifacts/runs/V3_2_MAIN/master"), Path("data"), Path(".")]:
-            if (r / "course_attempts.csv.gz").exists():
-                try:
-                    cols = {'record_uid', 'term_index', 'course_id', 'registered_credits', 'process_score10', 'exam_final_score10', 'course_final_score10', 'grade_letter', 'grade_point4', 'is_passed', 'exam_eligible', 'unexcused_absent_hours'}
-                    self.df_attempts = pd.read_csv(r / "course_attempts.csv.gz", usecols=lambda c: c in cols, low_memory=False)
-                except Exception: pass
-                break
+        logger = logging.getLogger(__name__)
+        roots = [
+            Path("dataset_full/artifacts/runs/V3_2_MAIN/master"),
+            Path("../artifacts/runs/V3_2_MAIN/master"),
+            Path("data"),
+            Path("."),
+        ]
+
+        for root in roots:
+            path = root / "courses.csv.gz"
+            if not path.is_file():
+                continue
+            try:
+                dfc = pd.read_csv(path)
+                name_col = next(
+                    (c for c in ("course_name", "title") if c in dfc.columns),
+                    None
+                )
+                if name_col is None or "course_id" not in dfc.columns:
+                    raise ValueError("Invalid courses schema")
+
+                valid = dfc.dropna(subset=["course_id", name_col])
+                self.course_names = dict(zip(
+                    valid["course_id"].astype(str),
+                    valid[name_col].astype(str)
+                ))
+            except Exception:
+                logger.exception("Cannot load course catalog: %s", path)
+            break
+
+        required = {
+            "record_uid", "term_index", "course_id",
+            "registered_credits", "process_score10",
+            "exam_final_score10", "course_final_score10",
+            "grade_letter", "is_passed", "exam_eligible"
+        }
+
+        for root in roots:
+            path = root / "course_attempts.csv.gz"
+            if not path.is_file():
+                continue
+            try:
+                attempts = pd.read_csv(
+                    path, usecols=lambda c: c in required,
+                    low_memory=False
+                )
+                missing = required - set(attempts.columns)
+                if missing:
+                    raise ValueError(f"Missing course columns: {sorted(missing)}")
+
+                self.df_attempts = attempts
+            except Exception:
+                logger.exception("Cannot load course attempts: %s", path)
+            break
+
+        if self.df_attempts is None:
+            logger.warning(
+                "Course attempts unavailable; detailed grades are disabled"
+            )
 
     def resolve_course_info(self, course_id: str) -> tuple:
         cid = str(course_id).strip()
-        m = re.search(r'CURR_\d{4}_([A-Z]{2})_[A-Z]{2}_[A-Za-z]+_C(\d+)', cid)
-        major, c_num = (m.group(1).upper(), int(m.group(2))) if m else ("IT", int(re.search(r'C(\d+)', cid).group(1)) if re.search(r'C(\d+)', cid) else 1)
-        short_code = f"{major}-C{c_num:03d}" if m else (cid[-8:] if len(cid) > 10 else cid)
-        raw_name = self.course_names.get(cid, "")
-        if raw_name and not any(raw_name.startswith(p) for p in ("CURR_", "Course", "Học phần mô phỏng", "Hoc phan mo phong")):
-            return short_code, raw_name
-        if major in {"IT", "CS", "SE", "AI", "NS", "DA", "EC", "GA"} and c_num in TECH_COURSES:
-            return short_code, TECH_COURSES[c_num]
-        if major in {"BA", "EM", "MK", "IB", "CB", "LS", "MC", "PR"} and c_num in BIZ_COURSES:
-            return short_code, BIZ_COURSES[c_num]
-        if c_num in COMMON_COURSES:
-            return short_code, COMMON_COURSES[c_num]
-        if c_num in LANG_DESIGN_COURSES:
-            return short_code, LANG_DESIGN_COURSES[c_num]
-        return short_code, TECH_COURSES.get(c_num, BIZ_COURSES.get(c_num, f"Chuyên đề định hướng ngành {major} ({c_num:02d})"))
+        match = re.search(
+            r"CURR_\d{4}_([A-Z]{2})_[A-Z]{2}_[A-Za-z]+_C(\d+)",
+            cid
+        )
+        short_code = (
+            f"{match.group(1)}-C{int(match.group(2)):03d}"
+            if match else cid
+        )
+        return short_code, self.course_names.get(cid) or cid
 
     def get_student_records(self, identifier: str) -> pd.DataFrame:
         identifier = identifier.strip().upper()
         return self.df[(self.df['student_id'].astype(str).str.upper() == identifier) | (self.df['record_uid'].astype(str).str.upper() == identifier)].sort_values('snapshot_term_index')
 
-    def get_student_courses(self, record_uid: str, term_filter: int = None, only_failed: bool = False) -> list:
-        if self.df_attempts is not None:
-            sub = self.df_attempts[self.df_attempts['record_uid'] == record_uid].copy()
-            if term_filter is not None: sub = sub[sub['term_index'] == term_filter]
-            if only_failed: sub = sub[~sub['is_passed'].astype(bool)]
-            rows = []
-            for _, r in sub.sort_values(['term_index', 'course_id']).iterrows():
-                cid = str(r['course_id'])
-                sc, cname = self.resolve_course_info(cid)
-                rows.append({"term": int(r['term_index']), "course_id": cid, "short_code": sc, "course_name": cname, "credits": int(r.get('registered_credits') or 3), "process_score": round(float(r.get('process_score10') or 0), 1), "exam_score": round(float(r.get('exam_final_score10') or 0), 1), "final_score": round(float(r.get('course_final_score10') or 0), 1), "grade_letter": str(r.get('grade_letter') or 'C'), "is_passed": bool(r.get('is_passed', False)), "exam_eligible": bool(r.get('exam_eligible', True))})
-            if rows: return rows
-        recs = self.get_student_records(record_uid)
-        if recs.empty: return []
-        out = []
-        for _, r in recs.iterrows():
-            d = row_to_clean_dict(r)
-            hk, maj, failed_tc = int(d.get("snapshot_term_index", 1)), str(d.get("major_code", "IT")), int(d.get("credits_failed_term", 0))
-            if term_filter is not None and hk != term_filter: continue
-            for idx in range(1, 6):
-                cid = f"CURR_2025_{maj}_SM_Bachelor_C{(hk - 1) * 5 + idx:03d}"
-                sc, cname = self.resolve_course_info(cid)
-                is_fail = (idx == 3 and failed_tc >= 3) or (idx == 5 and failed_tc >= 6)
-                if only_failed and not is_fail: continue
-                out.append({"term": hk, "course_id": cid, "short_code": sc, "course_name": cname, "credits": 3, "process_score": 4.2 if is_fail else 7.5, "exam_score": 3.0 if is_fail else 7.2, "final_score": 3.5 if is_fail else 7.3, "grade_letter": "F" if is_fail else "B", "is_passed": not is_fail, "exam_eligible": True})
-        return out
+    @staticmethod
+    def _optional_bool(value):
+        if pd.isna(value):
+            return None
+
+        value = str(value).strip().lower()
+
+        if value in ("true", "1", "1.0"):
+            return True
+        if value in ("false", "0", "0.0"):
+            return False
+        return None
+
+    def get_student_courses(
+        self, record_uid: str, term_filter: int = None,
+        only_failed: bool = False
+    ) -> list:
+        if self.df_attempts is None:
+            return []
+
+        sub = self.df_attempts[
+            self.df_attempts["record_uid"] == record_uid
+        ].copy()
+
+        if term_filter is not None:
+            sub = sub[sub["term_index"] == term_filter]
+
+        if only_failed:
+            sub = sub[
+                sub["is_passed"].map(self._optional_bool).eq(False)
+            ]
+
+        def optional_number(value, integer=False):
+            if pd.isna(value):
+                return None
+            return int(value) if integer else round(float(value), 1)
+
+        rows = []
+
+        for _, r in sub.sort_values(["term_index", "course_id"]).iterrows():
+            cid = str(r["course_id"])
+            short_code, course_name = self.resolve_course_info(cid)
+
+            rows.append({
+                "term": int(r["term_index"]),
+                "course_id": cid,
+                "short_code": short_code,
+                "course_name": course_name,
+                "credits": optional_number(r["registered_credits"], True),
+                "process_score": optional_number(r["process_score10"]),
+                "exam_score": optional_number(r["exam_final_score10"]),
+                "final_score": optional_number(r["course_final_score10"]),
+                "grade_letter": (
+                    None if pd.isna(r["grade_letter"])
+                    else str(r["grade_letter"])
+                ),
+                "is_passed": self._optional_bool(r["is_passed"]),
+                "exam_eligible": self._optional_bool(r["exam_eligible"]),
+            })
+
+        return rows
 
     def evaluate_student_warnings(self, row: dict) -> list:
         alerts, term = [], int(row.get('snapshot_term_index') or 1)
@@ -190,23 +281,45 @@ class CMCChatbotEngine:
 
     def predict_what_if(self, custom_input: dict) -> dict:
         if self.pipeline is None:
-            cur_prob = float(custom_input.get("risk_probability") or 0.18)
-            prob = max(0.03, cur_prob * 0.45)
-        else:
-            base_row = {}
-            for col in self.meta.get('feature_cols', []):
-                if col in custom_input and custom_input[col] not in (None, ""):
-                    base_row[col] = custom_input[col]
-                elif col in self.meta.get('num_medians', {}):
-                    base_row[col] = self.meta['num_medians'][col]
-                else:
-                    base_row[col] = "IT" if col == "major_code" else ("Bachelor" if col == "degree_type" else "GM")
-            X_df = pd.DataFrame([base_row])
-            for c in self.meta.get('cat_cols', []):
-                if c in X_df.columns: X_df[c] = X_df[c].astype(str)
-            prob = float(self.pipeline.predict_proba(X_df)[:, 1][0])
-        lvl = "Rất cao" if prob >= 0.45 else ("Cao" if prob >= 0.21 else ("Trung bình" if prob >= 0.12 else "Thấp"))
-        return {"risk_probability": round(prob, 4), "risk_percent": round(prob * 100, 2), "risk_level": lvl}
+            raise RuntimeError("Dropout model is unavailable")
+
+        base_row = {}
+
+        for col in self.meta["feature_cols"]:
+            if col in custom_input and custom_input[col] not in (None, ""):
+                base_row[col] = custom_input[col]
+            elif col in self.meta.get("num_medians", {}):
+                base_row[col] = self.meta["num_medians"][col]
+            else:
+                base_row[col] = (
+                    "IT" if col == "major_code"
+                    else "Bachelor" if col == "degree_type"
+                    else "GM"
+                )
+
+        X_df = pd.DataFrame([base_row])
+
+        for col in self.meta.get("cat_cols", []):
+            if col in X_df.columns:
+                X_df[col] = X_df[col].astype(str)
+
+        prob = float(self.pipeline.predict_proba(X_df)[:, 1][0])
+
+        if not math.isfinite(prob) or not 0 <= prob <= 1:
+            raise ValueError("Model returned an invalid probability")
+
+        lvl = (
+            "Rất cao" if prob >= 0.45
+            else "Cao" if prob >= self.meta["threshold"]
+            else "Trung bình" if prob >= 0.12
+            else "Thấp"
+        )
+
+        return {
+            "risk_probability": round(prob, 4),
+            "risk_percent": round(prob * 100, 2),
+            "risk_level": lvl
+        }
 
     def check_out_of_scope_or_emotion(self, query: str) -> str:
         q_norm = normalize_vn(query)
@@ -507,8 +620,10 @@ class CMCChatbotEngine:
 
         if ("ky su" in q_ascii and "cu nhan" in q_ascii) or ("bachelor" in q_ascii and "engineer" in q_ascii):
             deg_stats = s.get("by_degree_type", {})
-            b_st = deg_stats.get("Bachelor", {"n_students": 15200, "gpa_mean": 2.48, "warning_rate_pct": 11.2, "dropout_rate_pct": 2.7})
-            e_st = deg_stats.get("Engineer", {"n_students": 4800, "gpa_mean": 2.44, "warning_rate_pct": 12.1, "dropout_rate_pct": 2.9})
+            b_st = deg_stats.get("Bachelor")
+            e_st = deg_stats.get("Engineer")
+            if not b_st or not e_st:
+                return "<div>Không đủ dữ liệu thống kê chương trình đào tạo.</div>"
             cards.append(f"""<div class="bg-[#131314] border border-blue-500/40 rounded-2xl p-4 text-xs space-y-2.5 leading-relaxed">
               <div class="text-sm font-bold text-blue-300">🎓 So sánh Chương trình Cử nhân và Kỹ sư tại ĐH CMC (Điều 3 Khoản 5)</div>
               <ul class="list-disc pl-5 space-y-1 text-[#d1d5db]">
@@ -519,8 +634,10 @@ class CMCChatbotEngine:
         if any(k in q_ascii for k in ["lop manh nhat", "lop yeu nhat", "diem dau vao", "dau vao"]):
             all_cls = self.get_all_classes_summary(mentioned_major)
             cls_by_gpa = sorted(all_cls, key=lambda x: x['gpa_mean'], reverse=True)
-            top_c = cls_by_gpa[0] if cls_by_gpa else {"class_code": "IT22-01", "gpa_mean": 3.15, "owed_mean": 1.2, "high_risk_count": 0}
-            bot_c = cls_by_gpa[-1] if cls_by_gpa else {"class_code": "IT25-18", "gpa_mean": 1.72, "owed_mean": 9.8, "high_risk_count": 6}
+            if not cls_by_gpa:
+                return "<div>Không có dữ liệu lớp phù hợp.</div>"
+            top_c = cls_by_gpa[0]
+            bot_c = cls_by_gpa[-1]
             cards.append(f"""<div class="bg-[#131314] border border-emerald-500/40 rounded-2xl p-4 text-xs space-y-2 leading-relaxed">
               <div class="text-sm font-bold text-emerald-300">📈 Phân tích Chênh lệch giữa Lớp Mạnh nhất – Lớp Yếu nhất & Điểm đầu vào</div>
               <ul class="list-disc pl-5 space-y-1 text-[#d1d5db]">
@@ -530,8 +647,10 @@ class CMCChatbotEngine:
 
         if ("he gm" in q_ascii and "he sm" in q_ascii) or ("gm voi sm" in q_ascii):
             modes = s.get("by_education_mode", {})
-            gm = modes.get("GM", {"n_students": 8000, "gpa_mean": 2.51, "warning_rate_pct": 10.8, "dropout_rate_pct": 2.5})
-            sm = modes.get("SM", {"n_students": 12000, "gpa_mean": 2.45, "warning_rate_pct": 11.6, "dropout_rate_pct": 2.9})
+            gm = modes.get("GM")
+            sm = modes.get("SM")
+            if not gm or not sm:
+                return "<div>Không đủ dữ liệu thống kê hệ đào tạo.</div>"
             cards.append(f"""<div class="bg-[#131314] border border-purple-500/40 rounded-2xl p-4 text-xs space-y-2 leading-relaxed">
               <div class="text-sm font-bold text-purple-300">🌐 So sánh Hệ Song ngữ (GM) và Hệ Chuẩn (SM)</div>
               <div class="text-[#d1d5db]">• <b>Chuẩn Tiếng Anh đầu ra (Điều 19.6):</b> Hệ SM yêu cầu <b>B1 (Bậc 3/6)</b>; Hệ GM yêu cầu <b>B2 (Bậc 4/6)</b>.<br>• <b>Thống kê:</b> Hệ GM ({gm['n_students']:,} SV) có GPA TB <b>{gm['gpa_mean']}</b>, cảnh báo <b>{gm['warning_rate_pct']}%</b>, thôi học <b>{gm['dropout_rate_pct']}%</b> • Hệ SM ({sm['n_students']:,} SV) có GPA TB <b>{sm['gpa_mean']}</b>, cảnh báo <b>{sm['warning_rate_pct']}%</b>, thôi học <b>{sm['dropout_rate_pct']}%</b>.</div></div>""")
@@ -638,14 +757,26 @@ class CMCChatbotEngine:
         </div>"""
 
     def render_course_grades_html(self, student_id: str, courses: list, term_filter: int = None, only_failed: bool = False) -> str:
+        if self.df_attempts is None:
+            return "<div class='text-amber-300'>Chưa có dữ liệu học phần. Không thể hiển thị bảng điểm chi tiết.</div>"
         if not courses:
-            return "<div class='text-xs text-emerald-300 bg-[#131314] border border-[#333537] p-3 rounded-xl'>✅ Không có học phần nào bị trượt hoặc nợ trong phạm vi tra cứu này.</div>"
+            return "<div class='text-[#9aa0a6]'>Không tìm thấy học phần phù hợp với phạm vi tra cứu.</div>"
         title = f"Bảng điểm chi tiết học phần {'bị trượt (F)' if only_failed else ''} của {student_id}" + (f" (Học kỳ {term_filter})" if term_filter else " (Tất cả học kỳ)")
         rows = ""
         for c in courses:
-            status_badge = '<span class="px-2 py-0.5 rounded bg-emerald-950 text-emerald-300 font-semibold whitespace-nowrap">Đạt</span>' if c['is_passed'] else '<span class="px-2 py-0.5 rounded bg-rose-950 text-rose-300 font-bold whitespace-nowrap">Học lại (F)</span>'
-            if not c['exam_eligible']:
-                status_badge = '<span class="px-2 py-0.5 rounded bg-amber-950 text-amber-300 font-bold whitespace-nowrap">Cấm thi</span>'
+            if c["exam_eligible"] is False:
+                status_badge = "Cấm thi"
+            elif c["is_passed"] is None:
+                status_badge = "Chưa có kết quả"
+            elif c["is_passed"]:
+                status_badge = "Đạt"
+            else:
+                status_badge = "Không đạt"
+
+            c = {
+                k: ("—" if v is None else v)
+                for k, v in c.items()
+            }
             rows += f"""<tr class="border-b border-[#2c2e30]"><td class="py-2 px-2 font-bold text-blue-300 whitespace-nowrap">HK{c['term']}</td><td class="py-2 px-2 font-mono text-[11px] text-[#9aa0a6] whitespace-nowrap" title="{c['course_id']}">{c['short_code']}</td><td class="py-2 px-2 font-medium text-white">{c['course_name']}</td><td class="py-2 px-2 text-center">{c['credits']}</td><td class="py-2 px-2 text-center">{c['process_score']}</td><td class="py-2 px-2 text-center">{c['exam_score']}</td><td class="py-2 px-2 text-center font-bold">{c['final_score']}</td><td class="py-2 px-2 text-center font-bold {'text-rose-400' if c['grade_letter']=='F' else 'text-emerald-300'}">{c['grade_letter']}</td><td class="py-2 px-2 text-right">{status_badge}</td></tr>"""
         return f"""<div class="bg-[#131314] border border-[#333537] rounded-2xl p-3.5 space-y-2.5"><div class="text-xs font-bold text-blue-300">📚 {title}</div><div class="overflow-x-auto max-h-80"><table class="w-full text-left text-xs"><thead><tr class="border-b border-[#333537] text-[#9aa0a6]"><th class="py-1.5 px-2">Kỳ</th><th class="py-1.5 px-2">Mã HP</th><th class="py-1.5 px-2">Tên học phần</th><th class="py-1.5 px-2 text-center">TC</th><th class="py-1.5 px-2 text-center">Điểm QT</th><th class="py-1.5 px-2 text-center">Điểm Thi</th><th class="py-1.5 px-2 text-center">Tổng kết</th><th class="py-1.5 px-2 text-center">Chữ</th><th class="py-1.5 px-2 text-right">Trạng thái</th></tr></thead><tbody>{rows}</tbody></table></div></div>"""
 
@@ -814,18 +945,18 @@ class CMCChatbotEngine:
         clean_q = re.sub(r'\s*\[(?:khoa|toàn trường)\s*#\d+\]\s*$', '', str(query), flags=re.IGNORECASE).strip()
         q_norm = normalize_vn(clean_q)
         q_ascii = strip_accents(q_norm)
-        stu_match = re.search(r'(B[A-Z]{2}\d{6}|SIMV31_\d{6})', clean_q.upper())
-        cls_match = re.search(r'([A-Z]{2}\d{2}-\d{2})', clean_q.upper())
-        maj_match = re.search(r'(?:KHOA|NGANH)\s+(IT|BA|CS|SE|AI|GD|KL|CL|EM|NS|LS|IB|MC|MK|PR|DA|GA|CB|EC)', q_ascii.upper())
+        stu_match = re.search(r'\b(B[A-Z]{2}\d{6}|SIMV31_\d{6})\b', clean_q.upper())
+        cls_match = re.search(r'\b([A-Z]{2}\d{2}-\d{2})\b', clean_q.upper())
+        maj_match = re.search(r'\b(?:KHOA|NGANH)\s+(IT|BA|CS|SE|AI|GD|KL|CL|EM|NS|LS|IB|MC|MK|PR|DA|GA|CB|EC)\b', q_ascii.upper())
         detected_major = maj_match.group(1) if maj_match else ""
         if not detected_major:
             for m_code, aliases in MAJOR_ALIASES.items():
                 if any(a in q_ascii for a in aliases):
                     detected_major = m_code
                     break
-        term_match = re.search(r'(?:hoc\s*ky|ky|hk)\s*(\d{1,2})', q_ascii)
+        term_match = re.search(r'\b(?:hoc\s*ky|ky|hk)\s*(\d{1,2})\b', q_ascii)
         term_num = int(term_match.group(1)) if term_match else None
-        art_matches = re.findall(r'(?:dieu|quy\s*che|quy\s*dinh|muc|khoan)\s*(?:so\s*)?(\d{1,2})', q_ascii)
+        art_matches = re.findall(r'\b(?:dieu|quy\s*che|quy\s*dinh|muc|khoan)\s*(?:so\s*)?(\d{1,2})\b', q_ascii)
         art_matches = [a for a in art_matches if 1 <= int(a) <= 27]
 
         course_ascii_kw = ["hoc phan", "mon hoc", "diem mon", "tung mon", "cac mon", "mon truot", "mon rot", "mon no", "chi tiet mon", "diem f", "hoc lai mon", "c00"]
@@ -890,7 +1021,7 @@ class CMCChatbotEngine:
                 for kw in item["keywords"]:
                     kw_n = normalize_vn(kw)
                     kw_a = strip_accents(kw_n)
-                    if re.search(rf'{re.escape(kw_n)}', q_norm) or (len(kw_a) >= 5 and re.search(rf'{re.escape(kw_a)}', q_ascii)):
+                    if re.search(rf'\b{re.escape(kw_n)}\b', q_norm) or (len(kw_a) >= 5 and re.search(rf'\b{re.escape(kw_a)}\b', q_ascii)):
                         sc += 25
                         strict_kws.append(kw)
                 if sc > 0:

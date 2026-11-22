@@ -526,17 +526,24 @@
         </div>
       `).join('');
 
-      document.getElementById('stuCoursesTable').innerHTML = (data.courses || []).map(c => `
+      document.getElementById('stuCoursesTable').innerHTML =
+        !(data.courses || []).length
+        ? `<tr><td colspan="9" class="p-4 text-amber-300">${
+            data.courses_status === 'unavailable'
+              ? 'Chưa có dữ liệu bảng điểm học phần.'
+              : 'Không tìm thấy học phần phù hợp.'
+          }</td></tr>`
+        : data.courses.map(c => `
         <tr class="hover:bg-[#282a2c]/50">
           <td class="py-2 px-2 font-bold text-blue-300 whitespace-nowrap">HK${c.term}</td>
           <td class="py-2 px-2 font-mono text-xs text-[#9aa0a6] whitespace-nowrap" title="${c.course_id}">${c.short_code || c.course_id}</td>
           <td class="py-2 px-2 font-medium text-white">${c.course_name || c.course_id}</td>
-          <td class="py-2 px-2 text-center whitespace-nowrap">${c.credits}</td>
-          <td class="py-2 px-2 text-center">${c.process_score}</td>
-          <td class="py-2 px-2 text-center">${c.exam_score}</td>
-          <td class="py-2 px-2 text-center font-bold">${c.final_score}</td>
-          <td class="py-2 px-2 text-center font-bold ${c.grade_letter === 'F' ? 'text-rose-400' : 'text-emerald-300'}">${c.grade_letter}</td>
-          <td class="py-2 px-2 text-right whitespace-nowrap">${c.is_passed ? '<span class="px-2 py-0.5 rounded bg-emerald-950 text-emerald-300 font-semibold">Đạt</span>' : '<span class="px-2 py-0.5 rounded bg-rose-950 text-rose-300 font-bold">Học lại (F)</span>'}</td>
+          <td class="py-2 px-2 text-center whitespace-nowrap">${c.credits ?? '—'}</td>
+          <td class="py-2 px-2 text-center">${c.process_score ?? '—'}</td>
+          <td class="py-2 px-2 text-center">${c.exam_score ?? '—'}</td>
+          <td class="py-2 px-2 text-center font-bold">${c.final_score ?? '—'}</td>
+          <td class="py-2 px-2 text-center font-bold ${c.grade_letter === 'F' ? 'text-rose-400' : 'text-emerald-300'}">${c.grade_letter ?? '—'}</td>
+          <td class="py-2 px-2 text-right whitespace-nowrap">${c.exam_eligible === false ? 'Cấm thi' : c.is_passed == null ? 'Chưa có kết quả' : c.is_passed ? '<span class="px-2 py-0.5 rounded bg-emerald-950 text-emerald-300 font-semibold">Đạt</span>' : '<span class="px-2 py-0.5 rounded bg-rose-950 text-rose-300 font-bold">Học lại (F)</span>'}</td>
         </tr>
       `).join('');
     }

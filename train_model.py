@@ -14,23 +14,28 @@ from sklearn.metrics import average_precision_score, roc_auc_score, brier_score_
 DATASET_ROOT = Path("dataset_full") if (Path("dataset_full") / "artifacts").exists() else Path("..")
 MAIN_RUN = DATASET_ROOT / "artifacts" / "runs" / "V3_2_MAIN"
 OUTPUT_DIR = Path("artifacts_model")
-OUTPUT_DIR.mkdir(exist_ok=True)
 
 def find_file(rel_path: str, fallback_name: str = "") -> Path:
+    name = fallback_name or Path(rel_path).name
+
     candidates = [
-        DATASET_ROOT / rel_path,
         MAIN_RUN / rel_path,
-        Path("data") / (fallback_name or Path(rel_path).name),
-        Path(rel_path)
+        DATASET_ROOT / rel_path,
+        Path("data") / name,
+        Path(rel_path),
     ]
-    for c in candidates:
-        if c.exists() and c.is_file():
-            return c
-    if DATASET_ROOT.exists():
-        matches = list(DATASET_ROOT.rglob(fallback_name or Path(rel_path).name))
-        if matches:
-            return matches[0]
-    return Path("")
+
+    for candidate in candidates:
+        if candidate.is_file():
+            if candidate.stat().st_size == 0:
+                raise ValueError(f"Empty input file: {candidate}")
+            return candidate
+
+    checked = ", ".join(str(path) for path in candidates)
+    raise FileNotFoundError(
+        f"Required dataset file not found: {rel_path}. Checked: {checked}"
+    )
+
 
 #tong hop thong ke toan truong va khoa luu vao analytics_summary.json
 def build_analytics_summary(df_all: pd.DataFrame, df_ca: pd.DataFrame = None) -> dict:
@@ -165,26 +170,14 @@ def build_analytics_summary(df_all: pd.DataFrame, df_ca: pd.DataFrame = None) ->
     return summary
 
 def main():
-    ps_path = find_file("features/prediction_snapshots.csv.gz", "prediction_snapshots.csv.gz")
-    if not ps_path.exists():
-        #neu chay tren may chi co artifacts_model (khong co dataset_full)
-        scored_path = OUTPUT_DIR / "student_snapshots_scored.csv.gz"
-        if scored_path.exists():
-            print("Đang tạo analytics_summary.json từ student_snapshots_scored.csv.gz...")
-            df_scored = pd.read_csv(scored_path, low_memory=False)
-            summary = build_analytics_summary(df_scored, None)
-            with open(OUTPUT_DIR / "analytics_summary.json", "w", encoding="utf-8") as f:
-                json.dump(summary, f, ensure_ascii=False, indent=2)
-            print("Đã cập nhật xong artifacts_model/analytics_summary.json!")
-            return
-        raise FileNotFoundError("Không tìm thấy dữ liệu nguồn.")
+    ps_path = find_file("features/prediction_snapshots.csv.gz")
+    lf_path = find_file("labels/snapshot_labels_full_simulation.csv.gz")
+    fr_path = find_file("docs/feature_registry.csv")
+    stu_path = find_file("master/students.csv.gz")
+    ca_path = find_file("master/course_attempts.csv.gz")
+    req_path = find_file("master/academic_requirement_events.csv.gz")
 
-    print("Đang nạp dữ liệu từ dataset_full...")
-    lf_path = find_file("labels/snapshot_labels_full_simulation.csv.gz", "snapshot_labels_full_simulation.csv.gz")
-    fr_path = find_file("docs/feature_registry.csv", "feature_registry.csv")
-    stu_path = find_file("master/students.csv.gz", "students.csv.gz")
-    ca_path = find_file("master/course_attempts.csv.gz", "course_attempts.csv.gz")
-    req_path = find_file("master/academic_requirement_events.csv.gz", "academic_requirement_events.csv.gz")
+    print("All required training input files are available.")
 
     df_X = pd.read_csv(ps_path, low_memory=False)
     df_y = pd.read_csv(lf_path, low_memory=False)
@@ -285,6 +278,7 @@ def main():
     df_full_index = pd.merge(df.drop(columns=drop_existing, errors='ignore'), df_stu_sub, on='record_uid', how='left')
     df_full_index['verified_certificates'] = df_full_index['record_uid'].map(lambda u: req_map.get(u, "Chưa hoàn thành"))
 
+    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     joblib.dump(ensemble_pipeline, OUTPUT_DIR / "dropout_pipeline.joblib")
     with open(OUTPUT_DIR / "model_metadata.json", "w", encoding="utf-8") as f:
         json.dump(metrics, f, ensure_ascii=False, indent=2)
