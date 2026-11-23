@@ -155,10 +155,20 @@ def route(engine, retrieval, principal, message, context):
     )
     # Hỏi cách tính GPA theo quy chế là câu lý thuyết, không phải yêu cầu
     # đọc GPA cá nhân chỉ vì trong câu chứa 'GPA tích lũy'.
+    # 'Cho em biết số lần cảnh báo ...' là yêu cầu giải thích ngưỡng theo
+    # quy chế, không phải xem lịch sử cảnh báo của tài khoản đang đăng nhập.
+    # Yêu cầu lịch sử cá nhân rõ ràng vẫn đi qua phân quyền/hồ sơ như cũ.
+    warning_policy_query = bool(
+        re.search(r'\b(?:so|may|bao nhieu|qua|tren)\s+lan\s+(?:bi\s+)?canh bao\b',pq)
+        and any(x in pq for x in ('buoc thoi hoc','duoi hoc','bi thoi hoc','bao nhieu','quy dinh','quy che','gioi han','so lan'))
+        and not any(x in pq for x in ('cua em','cua toi','cua minh','em da bi','toi da bi','em hien co','lich su canh bao','ho so cua'))
+    )
+    if warning_policy_query:
+        pq += ' canh bao hoc tap buoc thoi hoc'
     policy_gpa_explanation = ('gpa tich luy' in pq and
         any(x in pq for x in ('cong thuc gpa', 'tinh tu', 'duoc tinh', 'tinh nhu the nao')) and
         not any(x in pq for x in ('gpa cua em', 'gpa cua toi', 'gpa cua minh', 'ho so cua')))
-    policy_only=not ids and not target_match and not gpa_improve_scenario and (policy_improve or policy_gpa_explanation or any(x in pq for x in ('bao luu','nghi hoc tam thoi','hoc phan tien quyet','chuyen nganh','chuyen truong','phuc tra','thoi gian hoc toi da','dang ky tin chi','cam thi','dieu kien du thi')) or (not personal and bool(public_focus(message)) and not any((risk,admission,course)) and not any(x in q for x in ('kich ban','gpa hoc ky','gpa tich luy','gpa ky sau','gpa ky toi','hoc phi con no','tin chi da dat','tin chi no dong','so lan canh bao hoc tap','canh bao lien tiep','xem ho so','bang diem'))))
+    policy_only=not ids and not target_match and not gpa_improve_scenario and (policy_improve or policy_gpa_explanation or warning_policy_query or any(x in pq for x in ('bao luu','nghi hoc tam thoi','hoc phan tien quyet','chuyen nganh','chuyen truong','phuc tra','thoi gian hoc toi da','dang ky tin chi','cam thi','dieu kien du thi')) or (not personal and bool(public_focus(message)) and not any((risk,admission,course)) and not any(x in q for x in ('kich ban','gpa hoc ky','gpa tich luy','gpa ky sau','gpa ky toi','hoc phi con no','tin chi da dat','tin chi no dong','so lan canh bao hoc tap','canh bao lien tiep','xem ho so','bang diem'))))
     if ('tot nghiep' in q or requested_registration) and personal and not arts:
         policy_only=False
     if re.search(r'(?:vang|nghi)\s*\d+(?:[.,]\d+)?\s*%',q) and not calculation and not arts:
@@ -177,7 +187,11 @@ def route(engine, retrieval, principal, message, context):
                     message+=' '+ ' và '.join('Khoản '+k for k in dict.fromkeys(k for _,k in references))
             result=retrieval.answer(message,cloud=False)
             result['reply']=('<p>Điều được nêu không phải căn cứ của phép tính; xem căn cứ đúng bên dưới.</p>' if wrong else '')+calculation+result['reply']
-        else: result=retrieval.answer(message,cloud=True)
+        else:
+            # Intent đã được xác nhận theo ngưỡng quy chế, nên truy xuất theo
+            # chủ đề chuẩn hóa thay vì chuyển nhầm thành truy vấn hồ sơ cá nhân.
+            query = message + ' cảnh báo học tập buộc thôi học' if warning_policy_query else message
+            result=retrieval.answer(query,cloud=True)
         result['intent']='regulation'
         found={c['article'] for c in result['regulations']}
         if len(found)==1 and not (set(arts)-found) and all(any(k in span(c['clause']) for c in result['regulations']) for k in clauses): context['article']=next(iter(found))

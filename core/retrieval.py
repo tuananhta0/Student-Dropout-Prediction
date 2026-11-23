@@ -38,6 +38,7 @@ PARAPHRASES = {
     'chuyen sang truong': 'chuyen truong', 'chuyen sang dai hoc': 'chuyen truong',
     'chuyen den truong': 'chuyen truong', 'chuyen den dai hoc': 'chuyen truong',
     'chuyen qua truong': 'chuyen truong', 'doi truong': 'chuyen truong',
+    'doi nganh': 'chuyen nganh', 'doi chuyen nganh': 'chuyen nganh',
     'doi sang truong': 'chuyen truong',
     'dang ky hoc phan': 'dang ky tin chi', 'tiet hoc': 'moi tiet',
     'bi om': 'nghi hoc tam thoi bao luu', 'nghi vi benh': 'nghi hoc tam thoi bao luu',
@@ -56,6 +57,28 @@ def normalize_query(question):
     # nhầm 'nghỉ thi', 'nghỉ không phép' hay hỏi giờ vắng mặt trong học phần.
     if re.search(r'\b(?:chuyen|doi)\s+(?:den|qua|sang)?\s*(?:mot\s+)?(?:truong|dai hoc)\s+(?:dai hoc\s+)?khac\b', query):
         query += ' chuyen truong'
+    # Hỏi giờ tín chỉ không phải hỏi đơn giá học phí. Điều 3.1 định nghĩa
+    # khối lượng học tập theo giờ tín chỉ; Điều 5 quy định độ dài mỗi tiết.
+    if (re.search(r'\b(?:mot|1|moi)\s+tin\s+chi\b',query)
+            and re.search(r'\b(?:hoc\s+)?(?:bao nhieu|may|so|tinh)\s+(?:gio|tiet|phut|tieng)\b',query)
+            and 'hoc phi' not in query):
+        query += ' gio tin chi ly thuyet'
+    if (re.search(r'\b(?:mot|1|moi)\s+tiet(?:\s+hoc)?\b',query)
+            and any(x in query for x in ('bao lau','bao nhieu phut','keo dai','thoi luong'))):
+        query += ' moi tiet'
+    if 'hoc phan' in query and 'diem' in query and any(x in query for x in ('lam tron','ra chu','diem chu')):
+        query += ' diem chu'
+    # Câu chuyển ngành chỉ dùng mã ngành, thường không nhắc từ 'ngành'.
+    # Chỉ nhận khi có động từ chuyển/đổi cùng hướng chuyển giữa hai mã viết hoa.
+    original_codes = re.findall(r'\b[A-Z]{2,3}\b', question)
+    if (len(set(original_codes)) >= 2 and re.search(r'\b(?:doi|chuyen)\b',query)
+            and re.search(r'\b(?:sang|qua|den)\b',query)):
+        query += ' chuyen nganh'
+    if (re.search(r'\b(?:tam dung|dung|tam ngung|ngung)\s+(?:viec\s+)?hoc\b', query)
+            and any(x in query for x in ('tai nan','dieu tri','benh','om','phau thuat','nam vien'))):
+        query += ' nghi hoc tam thoi bao luu'
+    if re.search(r'\bquy doi\s+(?:ve\s+|sang\s+)?(?:thang\s+)?(?:diem\s+)?4\b', query):
+        query += ' quy doi thang 4'
     if 'gpa tich luy' in query and any(x in query for x in ('duoc tinh', 'cong thuc', 'tinh tu', 'tinh nhu the nao')):
         query += ' cong thuc gpa'
     if 'bao nhieu nam' in query and any(x in query for x in ('hoc','dao tao','ra truong')): query+=' thoi gian hoc toi da'
@@ -66,7 +89,7 @@ def normalize_query(question):
         re.search(r'\b(?:xin|muon|co the|duoc)\s+nghi\s+(?:hoc\s+)?\d+\s*(?:hoc\s*)?ky\b',query)
         or re.search(r'\bnghi\s+(?:hoc\s+)?\d+\s*(?:hoc\s*)?ky\s+(?:vi|do)\b',query)
         or re.search(r'\b(?:xin|muon|co the|duoc)\s+nghi\s+\d+\s*(?:hoc\s*)?ky\b',query)
-        or ('nghi hoc' in query and any(x in query for x in ('kho khan tai chinh','bi om','vi om','vi benh','do benh','dang benh','bi benh','benh nang','dieu tri','ly do ca nhan','mot hoc ky','moi hoc ky')))
+        or ('nghi hoc' in query and any(x in query for x in ('kho khan tai chinh','bi om','vi om','vi benh','do benh','dang benh','bi benh','benh nang','dieu tri','tai nan','phau thuat','nam vien','ly do ca nhan','mot hoc ky','moi hoc ky')))
         or (re.search(r'\b(?:xin|muon|dinh|can)\s+nghi\s+(?:hoc\s+)?(?:mot|hai|ba|bon|1|2|3|4)\s*(?:hoc\s*)?ky\b',query)
             and not any(x in query for x in ('nghi khong phep','nghi thi')))
     )
@@ -97,15 +120,15 @@ def public_focus(question):
 # tín chỉ, học phí không tự động khóa vào một Điều duy nhất.
 POLICY_TOPICS = {
     1: ('quy che ap dung','pham vi doi tuong'), 2: ('muc tieu dao tao',),
-    3: ('thoi gian hoc toi da','hoc phan tien quyet'), 4: ('hoc phan bat buoc',),
+    3: ('thoi gian hoc toi da','hoc phan tien quyet','gio tin chi ly thuyet'), 4: ('hoc phan bat buoc',),
     5: ('moi tiet','gio hoc ly thuyet'), 6: ('trach nhiem sinh vien',),
     7: ('co van hoc tap','giao vien chu nhiem'), 8: ('ke hoach dao tao',),
     9: ('lop nhap hoc',), 10: ('quy mo lop',), 11: ('hoc truc tuyen',),
     12: ('rut hoc phan','rut mon','dang ky tin chi','hoc phi rut mon','lam do an','lam khoa luan'),
     13: ('diem liet','thi cuoi ky','diem thanh phan','diem chu'),
     14: ('thi lai','thi bo sung','dieu kien du thi'), 15: ('cai thien diem','hoc lai','hoc cai thien'),
-    16: ('phuc tra','phuc khao'), 17: ('cong thuc gpa','quy doi thang 4','xep loai hoc luc'),
-    18: ('canh bao hoc tap','buoc thoi hoc','canh bao lien tiep'),
+    16: ('phuc tra','phuc khao'), 17: ('cong thuc gpa','quy doi thang 4','quy doi diem','diem theo thang 4','xep loai hoc luc'),
+    18: ('canh bao hoc tap','buoc thoi hoc','canh bao lien tiep','so lan canh bao hoc tap'),
     19: ('tieng anh','cong nhan tin chi'), 20: ('dieu kien tot nghiep','ha hang tot nghiep'),
     21: ('bao luu','nghi hoc tam thoi','tu nguyen thoi hoc','nghia vu quan su'),
     22: ('chuyen truong','chuyen nganh'), 23: ('hai chuong trinh',),
@@ -134,13 +157,18 @@ def is_tuition_exemption_query(question):
         return False
     if re.search(r'\b(?:mien\s*[,/&\-]?\s*giam|mien|giam|ho tro)\s+(?:dong\s+|tien\s+)?hoc\s+phi\b', q):
         return True
-    return 'hoc phi' in q and any(x in q for x in ('mien giam', 'duoc mien', 'duoc giam'))
+    return 'hoc phi' in q and (
+        any(x in q for x in ('mien giam', 'duoc mien', 'duoc giam', 'uu dai hoc phi'))
+        or re.search(r'\bhoc\s*phi\b.{0,45}\b(?:mien|giam|ho tro)\b',q) is not None
+    )
 
 
 def is_tuition_amount_query(question):
     q = strip_accents(question)
     if is_tuition_exemption_query(question):
         return False
+    if re.search(r'\b(?:muc|so)\s+tien\s+(?:mot|1|moi)\s+tin\s+chi\b', q):
+        return True
     if any(x in q for x in ('con no', 'no hoc phi', 'cong no', 'tong no', 'qua han', 'hoan hoc phi', 'hoan tra', 'rut hoc phan', 'rut mon', 'thanh toan hoc phi')):
         return False
     if any(x in q for x in (
@@ -154,8 +182,10 @@ def is_tuition_amount_query(question):
         q,
     ):
         return True
+    # Không suy đoán học phí chỉ từ 'một tín chỉ' + 'bao nhiêu': câu đó
+    # có thể đang hỏi giờ/tiết học. Cần tín hiệu tiền tệ rõ ràng.
     if re.search(r'\b(?:1|mot|moi)\s*(?:tin chi|tc)\b', q) and re.search(
-        r'\b(?:bao nhieu(?:\s+tien)?|bao tien|may trieu|gia|dong bao nhieu|het bao nhieu|so tien)\b',
+        r'\b(?:bao nhieu tien|bao tien|may trieu|gia|dong bao nhieu|het bao nhieu|so tien|hoc phi)\b',
         q,
     ):
         return True
@@ -370,6 +400,10 @@ class RegulationSearch:
         query = normalize_query(question)
         focus = public_focus(question)
         strong = topic_articles(question)
+        # Độ dài tiết học là Điều 5, không cần hai từ hiếm trùng với
+        # đoạn tóm lược (câu 'kéo dài bao lâu' thường không có trong PDF).
+        if 5 in strong and re.search(r'\bmoi\s+tiet\b',query):
+            return [c for c in self.chunks if c['article']==5][:limit]
         q = set(tokens(query))
         original = set(re.findall(r'[^\W_]+', unicodedata.normalize('NFC', question.lower())))
         accented = {w for w in original if w != strip_accents(w) and strip_accents(w) in q}
