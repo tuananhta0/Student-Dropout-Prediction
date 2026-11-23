@@ -109,3 +109,84 @@ class DeliveryRegressionTests(unittest.TestCase):
             p.write_text('a,b\n1,3\n');self.assertEqual(read_report_origin(p)['status'],'changed_after_recording')
             old=Path(tmp)/'old.json';old.write_text(json.dumps({'metric':1}));self.assertEqual(read_report_origin(old)['status'],'unknown')
             self.assertIn('created_utc',provenance(root=tmp))
+    def test_r01_tuition_exemption_excludes_article_25(self):
+        for q in (
+            'Sinh viên có được miễn giảm học phí không?',
+            'Chính sách miễn, giảm học phí của trường như thế nào?',
+            'Điều kiện giảm học phí cho sinh viên khó khăn?',
+            'Em có được miễn đóng học phí không?',
+        ):
+            with self.subTest(q=q):
+                out = self.ask(q)
+                self.assertNotIn(25, {c['article'] for c in out['regulations']})
+                self.assertFalse(out['regulations'])
+
+    def test_r02_tuition_fee_amount_refusal_and_guidance(self):
+        for q in (
+            'Học phí một tín chỉ bao nhiêu tiền?',
+            'Mức học phí ngành IT một năm là bao nhiêu?',
+            'Đơn giá tín chỉ hiện tại là bao nhiêu?',
+            '1 tín chỉ hết bao nhiêu tiền?',
+            'Học phí mỗi kỳ là bao nhiêu?',
+        ):
+            with self.subTest(q=q):
+                out = self.ask(q)
+                self.assertFalse(out['regulations'])
+                self.assertIn('thông báo học phí', out['reply'].lower())
+        self.engine.df = self.engine.df.assign(tuition_debt_end_vnd=0)
+        self.assertEqual(self.ask('Học phí còn nợ của em là bao nhiêu?')['intent'], 'personal')
+        self.assertIn(12, {c['article'] for c in self.ask('Rút học phần có được hoàn học phí không?')['regulations']})
+
+    def test_q01_target_gpa_phrasings(self):
+        for q in (
+            'Em muốn kéo GPA lên 3.1 nếu học 22 tín chỉ',
+            'Nâng điểm trung bình tích lũy lên 3,1 với 22 tín chỉ thì kỳ sau cần bao nhiêu?',
+            'Cải thiện GPA lên 3.1 nếu học 22 TC',
+            'GPA mục tiêu của em là 3.1, học 22 tín chỉ',
+            'Em muốn đạt 3.1 GPA nếu học 22 tín chỉ',
+            'Em muốn nâng GPA lên tối thiểu 3.1 với 22 tín chỉ',
+            'Học kỳ 2 em đạt GPA 2.5, kỳ sau muốn lên 3.1 với 22 tín chỉ thì cần bao nhiêu?',
+        ):
+            with self.subTest(q=q):
+                out = self.ask(q)
+                self.assertEqual(out['intent'], 'gpa')
+                self.assertIn('3.77/4', out['reply'])
+        rank_out = self.ask('GPA 3.2 xếp loại gì?')
+        self.assertEqual(rank_out['intent'], 'regulation')
+        self.assertIn('Giỏi', rank_out['reply'])
+
+    def test_q02_improve_policy_vs_gpa_scenario(self):
+        for q in (
+            'Quy định học cải thiện như thế nào?',
+            'Em có được đăng ký học cải thiện không?',
+            'Điểm D học cải thiện thì lấy điểm cao nhất hay điểm lần sau?',
+            'Học cải thiện điểm có giới hạn số lần không?',
+            'Học cải thiện có tính vào GPA không?',
+        ):
+            with self.subTest(q=q):
+                out = self.ask(q)
+                self.assertEqual(out['intent'], 'regulation')
+                self.assertIn(15, {c['article'] for c in out['regulations']})
+        for q in (
+            'Kịch bản cải thiện GPA kỳ sau của em',
+            'Cải thiện GPA kỳ tới thế nào?',
+            'Em muốn cải thiện GPA lên 3.1 nếu học 22 tín chỉ',
+        ):
+            with self.subTest(q=q):
+                out = self.ask(q)
+                self.assertEqual(out['intent'], 'gpa')
+
+    def test_r03_military_service_leave(self):
+        for q in (
+            'Nghỉ học để thực hiện nghĩa vụ quân sự có được bảo lưu không?',
+            'Em phải đi nghĩa vụ quân sự thì nghỉ học thế nào?',
+            'Đi nhập ngũ có được tạm dừng học không?',
+            'Đi bộ đội có được bảo lưu kết quả học tập không?',
+        ):
+            with self.subTest(q=q):
+                out = self.ask(q)
+                self.assertEqual(out['intent'], 'regulation')
+                self.assertIn(21, {c['article'] for c in out['regulations']})
+        focus = public_focus('Em phải đi nghĩa vụ quân sự')
+        self.assertIn('nghia vu quan su', focus)
+        self.assertIn('nghi hoc tam thoi', focus)

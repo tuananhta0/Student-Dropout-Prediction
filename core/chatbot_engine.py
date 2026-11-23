@@ -443,9 +443,8 @@ class CMCChatbotEngine:
                 else:
                     matched_lines.append(f"• <b>{label} (HK{int(latest['snapshot_term_index'])}):</b> <b>{cur_str}</b>")
 
-        if any(k in q_ascii for k in ['kich ban hoc lai','kich ban cai thien','gpa hoc lai']):
-            # Cú pháp xác định môn học và điểm chữ, không tự giả định lựa chọn của sinh viên.
-            match = re.search(r'(?:hoc lai|cai thien)\s+(\S+)\s+(?:dat|len)\s+(A\+|A|B\+|B|C\+|C|D\+|D|F)(?:\s|$)', q_ascii, flags=re.IGNORECASE)
+        match = re.search(r'(?:hoc lai|cai thien)\s+(\S+)\s+(?:dat|len)\s+(A\+|A|B\+|B|C\+|C|D\+|D|F)(?:\s|$)', q_ascii, flags=re.IGNORECASE)
+        if match or any(k in q_ascii for k in ['kich ban hoc lai','gpa hoc lai']) or ('kich ban cai thien' in q_ascii and 'gpa' not in q_ascii):
             if match:
                 try:
                     result = self.calculate_retake(latest['record_uid'], {match.group(1):match.group(2).upper()})
@@ -498,9 +497,9 @@ class CMCChatbotEngine:
 
     def answer_risk_and_whatif_query(self, query: str, records: pd.DataFrame) -> str:
         q = strip_accents(query)
-        if any(k in q for k in ["kich ban hoc lai","kich ban cai thien","gpa hoc lai"]):
+        if any(k in q for k in ["kich ban hoc lai","gpa hoc lai"]) or ("kich ban cai thien" in q and "gpa" not in q):
             return ""
-        if not any(k in q for k in ["du doan","du bao","ky sau","ki sau","ky toi","tuong lai","nguy co","xac suat","what-if","what if","gia lap","kich ban","cong thuc","muc tieu gpa","can dat bao nhieu","cai thien"]):
+        if not any(k in q for k in ["du doan","du bao","ky sau","ki sau","ky toi","tuong lai","nguy co","xac suat","what-if","what if","gia lap","kich ban","cong thuc","muc tieu gpa","can dat bao nhieu","cai thien gpa"]):
             return ""
         latest = row_to_clean_dict(records.iloc[-1])
         if latest.get("state_as_of") not in (None,"ENROLLED"):

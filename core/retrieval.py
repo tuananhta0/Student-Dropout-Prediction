@@ -40,7 +40,7 @@ PARAPHRASES = {
     'phuc khao': 'phuc tra', 'song nganh': 'hai chuong trinh',
     'mon bat buoc':'hoc phan bat buoc', 'nganh thu hai':'hai chuong trinh', 'nghi khong phep':'vang khong phep', 'luu bao lau':'luu tru', 'thoi gian toi da': 'thoi gian hoc toi da', 'rot mon': 'hoc lai', 'truot mot mon muon nang diem': 'hoc lai cai thien diem', 'luan van': 'khoa luan', 'nghi hoc do benh':'nghi hoc tam thoi bao luu', 'nghi hoc vi benh':'nghi hoc tam thoi bao luu', 'nghi mot nam':'nghi hoc tam thoi', 'cham nguoi than':'ly do ca nhan nghi hoc tam thoi', 'vang mat':'vang', 'tu xin thoi hoc':'tu nguyen thoi hoc',
 }
-TOPICS = ('phuc tra ket qua thi|thoi gian hoc toi da|canh bao hoc tap|buoc thoi hoc|chuyen truong|chuyen nganh|bao luu|nghi hoc tam thoi|hoc phan tien quyet|hoc phan bat buoc|hoc phan tu chon|dang ky tin chi|rut hoc phan|diem liet|thi lai|hoc lai|cai thien diem|gpa|tot nghiep|tieng anh|hoc truc tuyen|ke hoach dao tao|quy mo lop|co van hoc tap|trach nhiem sinh vien|muc tieu dao tao|lop nhap hoc|trao doi sinh vien|luu tru khoa luan|hieu luc thi hanh|cam thi|ha hang tot nghiep|hoc phi rut mon|hoc phi|khoa luan|moi tiet|quy che ap dung|hai chuong trinh|tin chi|diem thi|tu nguyen thoi hoc|ly do ca nhan|chung nhan|thoi hoc|vang khong phep|dieu kien du thi|thi cuoi ky|cong nhan tin chi|quyen loi sau thoi hoc').split('|')
+TOPICS = ('phuc tra ket qua thi|thoi gian hoc toi da|canh bao hoc tap|buoc thoi hoc|chuyen truong|chuyen nganh|bao luu|nghi hoc tam thoi|hoc phan tien quyet|hoc phan bat buoc|hoc phan tu chon|dang ky tin chi|rut hoc phan|diem liet|thi lai|hoc lai|cai thien diem|gpa|tot nghiep|tieng anh|hoc truc tuyen|ke hoach dao tao|quy mo lop|co van hoc tap|trach nhiem sinh vien|muc tieu dao tao|lop nhap hoc|trao doi sinh vien|luu tru khoa luan|hieu luc thi hanh|cam thi|ha hang tot nghiep|hoc phi rut mon|hoc phi|khoa luan|moi tiet|quy che ap dung|hai chuong trinh|tin chi|diem thi|tu nguyen thoi hoc|ly do ca nhan|chung nhan|thoi hoc|vang khong phep|dieu kien du thi|thi cuoi ky|cong nhan tin chi|quyen loi sau thoi hoc|hoc cai thien|nghia vu quan su').split('|')
 
 
 def normalize_query(question):
@@ -49,6 +49,11 @@ def normalize_query(question):
         query=query.replace(old,new)
     if 'bao nhieu nam' in query and any(x in query for x in ('hoc','dao tao','ra truong')): query+=' thoi gian hoc toi da'
     if re.search(r'(?:vang|nghi)\s*\d+(?:[.,]\d+)?\s*%',query): query+=' cam thi'
+    if (
+        any(x in query for x in ('nghia vu quan su', 'di nghia vu', 'nhap ngu', 'di bo doi', 'luc luong vu trang'))
+        or re.search(r'\bnvqs\b', query)
+    ):
+        query += ' nghia vu quan su nghi hoc tam thoi bao luu luc luong vu trang'
     return query
 
 
@@ -75,11 +80,11 @@ POLICY_TOPICS = {
     9: ('lop nhap hoc',), 10: ('quy mo lop',), 11: ('hoc truc tuyen',),
     12: ('rut hoc phan','rut mon','dang ky tin chi','hoc phi rut mon','lam do an','lam khoa luan'),
     13: ('diem liet','thi cuoi ky','diem thanh phan','diem chu'),
-    14: ('thi lai','thi bo sung','dieu kien du thi'), 15: ('cai thien diem','hoc lai'),
+    14: ('thi lai','thi bo sung','dieu kien du thi'), 15: ('cai thien diem','hoc lai','hoc cai thien'),
     16: ('phuc tra','phuc khao'), 17: ('cong thuc gpa','quy doi thang 4','xep loai hoc luc'),
     18: ('canh bao hoc tap','buoc thoi hoc','canh bao lien tiep'),
     19: ('tieng anh','cong nhan tin chi'), 20: ('dieu kien tot nghiep','ha hang tot nghiep'),
-    21: ('bao luu','nghi hoc tam thoi','tu nguyen thoi hoc'),
+    21: ('bao luu','nghi hoc tam thoi','tu nguyen thoi hoc','nghia vu quan su'),
     22: ('chuyen truong','chuyen nganh'), 23: ('hai chuong trinh',),
     24: ('trao doi sinh vien',), 25: ('cam thi','vang khong phep','thi ho'),
     26: ('luu tru khoa luan','luu tru','khoa luan phai duoc luu'), 27: ('hieu luc thi hanh',),
@@ -94,12 +99,48 @@ def topic_articles(question):
     return out
 
 
+def is_tuition_exemption_query(question):
+    q = strip_accents(question)
+    if any(x in q for x in ('rut hoc phan', 'rut mon', 'hoan hoc phi', 'hoan tra')):
+        return False
+    if re.search(r'\b(?:mien\s*[,/&\-]?\s*giam|mien|giam|ho tro)\s+(?:dong\s+|tien\s+)?hoc\s+phi\b', q):
+        return True
+    return 'hoc phi' in q and any(x in q for x in ('mien giam', 'duoc mien', 'duoc giam'))
+
+
+def is_tuition_amount_query(question):
+    q = strip_accents(question)
+    if is_tuition_exemption_query(question):
+        return False
+    if any(x in q for x in ('con no', 'no hoc phi', 'cong no', 'tong no', 'qua han', 'hoan hoc phi', 'hoan tra', 'rut hoc phan', 'rut mon', 'thanh toan hoc phi')):
+        return False
+    if any(x in q for x in (
+        'hoc phi bao nhieu', 'muc hoc phi', 'muc thu hoc phi', 'hoc phi mot tin', 'hoc phi 1 tin',
+        'hoc phi bao nhieu mot thang', 'hoc phi moi tin', 'hoc phi tung tin', 'hoc phi moi hoc phan',
+        'don gia tin chi', 'don gia hoc phi', 'gia mot tin chi', 'gia 1 tin chi', 'gia hoc phi', 'bieu phi'
+    )):
+        return True
+    if 'hoc phi' in q and re.search(
+        r'\b(?:bao nhieu(?:\s+tien)?|may\s+trieu|muc\s+thu|don\s+gia|bao\s+tien|het\s+bao\s+nhieu|dong\s+bao\s+nhieu|so\s+tien|muc\s+tien|1\s*tin|mot\s+tin|moi\s+tin|moi\s+ky|mot\s+ky|1\s*ky|moi\s+nam|mot\s+nam|1\s*nam|mot\s+thang|moi\s+thang)\b',
+        q,
+    ):
+        return True
+    if re.search(r'\b(?:1|mot|moi)\s*(?:tin chi|tc)\b', q) and re.search(
+        r'\b(?:bao nhieu(?:\s+tien)?|bao tien|may trieu|gia|dong bao nhieu|het bao nhieu|so tien)\b',
+        q,
+    ):
+        return True
+    return False
+
+
 def unsupported(question):
     q=strip_accents(question)
+    if is_tuition_exemption_query(question) or is_tuition_amount_query(question):
+        return True
     # Lịch/ngày giờ/giá cụ thể thuộc thông báo vận hành, không phải quy chế.
     if re.search(r'\b(?:lich|ngay|thoi han|han chot)\s+(?:nghi le|nghi tet|nop hoc phi|dong hoc phi|thi cu the|thi lai cu the)',q): return True
     if re.search(r'\b(?:thu vien|can tin|nha xe)\b',q) or 'nghi le' in q or 'nghi tet' in q: return True
-    return any(x in q for x in ('the ngan hang','chuyen khoan','vi dien tu','so tai khoan','thanh toan bang','mat khau','api key','thoi tiet','mat trang','nau an','gia vang','vay tien','gui xe','hoc phi bao nhieu','muc hoc phi','hoc phi mot tin','hoc phi bao nhieu mot thang','hoc phi moi tin','hoc phi tung tin','hoc phi moi hoc phan','cau lac bo','bong da','ky tuc xa','dia chi truong','so dien thoai','diem chuan nam','lich thi cu the'))
+    return any(x in q for x in ('the ngan hang','chuyen khoan','vi dien tu','so tai khoan','thanh toan bang','mat khau','api key','thoi tiet','mat trang','nau an','gia vang','vay tien','gui xe','cau lac bo','bong da','ky tuc xa','dia chi truong','so dien thoai','diem chuan nam','lich thi cu the'))
 
 
 # Ngân sách theo tiến trình; reset khi khởi động lại. Đếm cả embedding và retry.
@@ -372,6 +413,10 @@ class RegulationSearch:
         if missing_clauses: diagnostics+='<p>Không tìm thấy Khoản '+', '.join(map(str,missing_clauses))+' của Điều '+str(requested[0])+' trong kho đang sử dụng.</p>'
         if len(requested)>1 and clauses: diagnostics+='<p>Hãy nêu từng Điều và Khoản riêng để tránh ghép nhầm.</p>'
         if not chunks:
+            if not requested and is_tuition_amount_query(question):
+                return {'reply':diagnostics+'<p>Quy chế đào tạo (QĐ 22/2023) không quy định mức tiền học phí cụ thể. Vui lòng tra cứu Thông báo học phí của nhà trường tương ứng khóa học, ngành và chương trình đào tạo.</p>','regulations':[], 'method':'none',**trace}
+            if not requested and is_tuition_exemption_query(question):
+                return {'reply':diagnostics+'<p>Quy chế đào tạo (QĐ 22/2023) không quy định chính sách miễn, giảm học phí cụ thể. Vui lòng tra cứu thông báo học phí và quy định hỗ trợ sinh viên của nhà trường.</p>','regulations':[], 'method':'none',**trace}
             return {'reply':diagnostics+'<p>Chưa tìm thấy căn cứ trong quy chế. Hãy nêu Điều, Khoản hoặc chủ đề cụ thể.</p>','regulations':[], 'method':'none',**trace}
         evidence = [{'id':c['id'],'article':c['article'],'clause':c['clause'],'pages':c['pages'],'document':PDF,'title':c['title'],'text':c['text']} for c in chunks]
         for c in evidence:
