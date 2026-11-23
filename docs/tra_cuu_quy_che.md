@@ -63,3 +63,9 @@ SDK timeout 20 giây (20000 ms), deadline tổng thể 25 giây. `HTTP_400_DEADL
 - Giả định số lần cảnh báo dùng đúng ngưỡng Điều 18.2. Với nợ có chứng chỉ, chỉ trừ phần chứng chỉ có số lượng rõ hoặc yêu cầu tách ra; kết luận chỉ cho tiêu chí đang xét. Các câu thiếu điểm thành phần/tổng điểm vẫn kèm Điều 13.
 
 Nguồn phiên bản báo cáo được ghi tại thời điểm chạy (commit, tree, dirty, dấu vân tay diff tracked, thời gian UTC, hash corpus và bộ câu hỏi; model cloud khi bật). CSV có sidecar `.provenance.json`; nếu người chấm sửa CSV, manifest ghi `changed_after_recording`, và báo cáo chấm lưu hash CSV đã chấm. Không tự nhận người chấm độc lập khi chưa xác nhận.
+
+## Câu hỏi học vụ nhiều ý và GPA giả định
+
+Nếu người dùng hỏi đơn giá học phí kết hợp với nghỉ học, chatbot chỉ trả nội dung nghỉ học có căn cứ Điều 21 và hướng dẫn tra thông báo học phí, không suy đoán con số. Hỏi nghỉ 3 hoặc 4 học kỳ do lý do cá nhân có phép tính giới hạn 3 học kỳ bằng Python theo Điều 21.1d; không áp ngưỡng này cho nghỉ do bệnh. Hỏi thi lại để cải thiện điểm môn đã đạt (C/B) trả quy định học lại cải thiện Điều 15 thay vì Điều 14 về thi lại thông thường.
+
+Câu hỏi giả định `GPA học kỳ thứ hai 0,99 có bị cảnh báo?` được Rule Engine Python so với ngưỡng GPA Điều 18.1a, không lấy GPA từ hồ sơ sinh viên hoặc gọi Gemini. Kết luận chỉ cho một tiêu chí, không là quyết định cảnh báo chính thức. Những câu hỏi thiếu thông tin kỳ/GPA phải yêu cầu bổ sung, không tự đoán.

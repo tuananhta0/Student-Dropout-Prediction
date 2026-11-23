@@ -71,6 +71,8 @@ Mở **http://127.0.0.1:8000**. Mặc định trình diễn mốc mô phỏng **
 
 **Kiểm thử hồi quy đầy đủ (tùy chọn):** `python -B -X utf8 -m unittest discover -s tests -v` và `python -B -X utf8 -m scripts.benchmark_rag --all --e2e`. Node.js chỉ cần cho kiểm thử JavaScript, không cần để chạy giao diện đã biên dịch.
 
+**Kiểm tra ZIP runtime trước khi công bố:** `python -B -m scripts.review_public_runtime data/cmc-research-v1.zip`. Công cụ kiểm checksum, manifest và mẫu bí mật mà không nạp model; vẫn cần người tạo dữ liệu xác nhận không có dữ liệu thật. Xem [checklist bàn giao](docs/kiem_tra_ban_giao.md).
+
 ## 🔑 Tài khoản demo
 
 | Vai trò | Tài khoản | Phạm vi |

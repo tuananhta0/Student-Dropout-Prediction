@@ -88,3 +88,9 @@ python -B -X utf8 -m scripts.benchmark_rag --cloud --output data/kiem_tra_rag/ba
 - Chủ khóa Gemini phải thu hồi khóa đã từng lộ trên Google AI Studio, tạo khóa mới, giới hạn quota và kiểm tra lượt sử dụng; không đưa khóa vào Git, PR, ZIP, Markdown hoặc ảnh chụp màn hình. Mỗi thành viên nhập khóa của mình qua `Read-Host -AsSecureString` trên máy cá nhân; chỉ bật cloud khi cần đo thật.
 - Với gói public: kiểm tra tên file và manifest của Release, đối chiếu SHA256 cố định, rà soát dữ liệu PII/secrets trong **nội dung file ZIP** trước khi công bố lại. Không coi quét mã nguồn trên GitHub là kiểm toán dữ liệu đã đóng gói; không mở file `.joblib` từ nguồn không tin cậy.
 - Ghi máy thử, Python 3.11, commit, SHA256 asset, kết quả unit/smoke, kiểm tra 3 vai trò và vài câu RAG trên **máy thành viên khác**. Đây là bước nghiệm thu vật lý phải do thành viên thực hiện, không thể được thay thế bằng CI hoặc fixture.
+
+## Kiểm tra nội dung bản phát hành public và hồi quy chatbot cuối
+
+Trên máy đang giữ ZIP tải từ GitHub Release, chạy công cụ đọc-chỉ `python -B -m scripts.review_public_runtime data/cmc-research-v1.zip` (mặc định dùng SHA256 đã xác minh tại thời điểm công bố). Công cụ không thực thi joblib, kiểm tra checksum ZIP, checksum từng file và manifest, đường dẫn bất thường, mẫu bí mật phổ biến; kết quả ghi dưới `data/kiem_tra_ban_giao/`. Việc đối chiếu nguồn tin cậy và xác nhận dữ liệu thật/giả **vẫn cần người phụ trách dữ liệu**. Không công bố nội dung các bản ghi nghi ngờ.
+
+Bộ regression sau sửa câu hỏi nghỉ cá nhân/ốm, học cải thiện, GPA học kỳ giả định và câu ghép học phí nằm trong `tests/test_delivery_regressions.py` và `scripts.benchmark_rag`. Điểm hồi quy không thay kết luận đánh giá ngữ nghĩa độc lập. Phiên bản báo cáo mới phải ghi commit sau khi chốt patch, còn `100eef9` là baseline lịch sử trước vòng sửa này.

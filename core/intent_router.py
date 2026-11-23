@@ -69,8 +69,12 @@ def route(engine, retrieval, principal, message, context):
     retake_cmd = bool(re.search(r'(?:hoc lai|cai thien)\s+\S+\s+(?:dat|len)\s+(?:a\+|a|b\+|b|c\+|c|d\+|d|f)(?:\s|$)', q))
     has_scenario_cue = any(x in q for x in ('kich ban', 'du doan', 'gia lap', 'what-if', 'what if', 'ky sau', 'ki sau', 'ky toi', 'ki toi'))
     improve_policy_cues = ('quy che', 'quy dinh', 'dieu kien', 'lay diem', 'tinh diem', 'tinh vao gpa', 'diem cao nhat', 'lan sau', 'duoc phep', 'co duoc', 'gioi han', 'bao nhieu lan', 'diem d', 'diem c', 'khac nhau', 'nhu the nao', 'the nao')
+    passed_retake_policy = bool(
+        'thi lai' in q and 'cai thien' in q
+        and re.search(r'\bdiem\s*[abcd]\+?(?=\s|[.,!?;]|$)',q)
+    )
     asking_improve_policy = (
-        any(x in q for x in ('hoc cai thien', 'cai thien diem'))
+        (any(x in q for x in ('hoc cai thien', 'cai thien diem')) or passed_retake_policy)
         and not target_match
         and not retake_cmd
         and not any(x in q for x in ('kich ban', 'du doan', 'gia lap', 'what-if', 'what if'))
@@ -146,7 +150,9 @@ def route(engine, retrieval, principal, message, context):
     if unsupported(message) and not calculation and not arts:
         result=retrieval.answer(message,cloud=False); result['intent']='regulation';return result
     pq=normalize_query(message)
-    policy_improve = not ids and not gpa_improve_scenario and any(x in pq for x in ('hoc cai thien', 'cai thien diem'))
+    policy_improve = not ids and not gpa_improve_scenario and (
+        any(x in pq for x in ('hoc cai thien', 'cai thien diem')) or passed_retake_policy
+    )
     policy_only=not ids and not target_match and not gpa_improve_scenario and (policy_improve or any(x in pq for x in ('bao luu','nghi hoc tam thoi','hoc phan tien quyet','chuyen nganh','chuyen truong','phuc tra','thoi gian hoc toi da','dang ky tin chi','cam thi','dieu kien du thi')) or (not personal and bool(public_focus(message)) and not any((risk,admission,course)) and not any(x in q for x in ('kich ban','gpa hoc ky','gpa tich luy','gpa ky sau','gpa ky toi','hoc phi con no','tin chi da dat','tin chi no dong','so lan canh bao hoc tap','canh bao lien tiep','xem ho so','bang diem'))))
     if ('tot nghiep' in q or requested_registration) and personal and not arts:
         policy_only=False

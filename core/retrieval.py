@@ -49,6 +49,16 @@ def normalize_query(question):
         query=query.replace(old,new)
     if 'bao nhieu nam' in query and any(x in query for x in ('hoc','dao tao','ra truong')): query+=' thoi gian hoc toi da'
     if re.search(r'(?:vang|nghi)\s*\d+(?:[.,]\d+)?\s*%',query): query+=' cam thi'
+    # Các câu xin nghỉ có thời hạn/lý do thường không nói nguyên cụm "bảo lưu".
+    # Không áp dụng với vắng giờ học, nghỉ không phép hoặc nghỉ thi.
+    study_leave = (
+        re.search(r'\b(?:xin|muon|co the|duoc)\s+nghi\s+(?:hoc\s+)?\d+\s*(?:hoc\s*)?ky\b',query)
+        or re.search(r'\bnghi\s+(?:hoc\s+)?\d+\s*(?:hoc\s*)?ky\s+(?:vi|do)\b',query)
+        or re.search(r'\b(?:xin|muon|co the|duoc)\s+nghi\s+\d+\s*(?:hoc\s*)?ky\b',query)
+        or ('nghi hoc' in query and any(x in query for x in ('kho khan tai chinh','bi om','vi om','vi benh','do benh','ly do ca nhan','mot hoc ky','moi hoc ky')))
+    )
+    if study_leave and not any(x in query for x in ('nghi khong phep','nghi thi','nghi le','nghi tet')):
+        query += ' nghi hoc tam thoi bao luu'
     if (
         any(x in query for x in ('nghia vu quan su', 'di nghia vu', 'nhap ngu', 'di bo doi', 'luc luong vu trang'))
         or re.search(r'\bnvqs\b', query)
@@ -96,6 +106,12 @@ def topic_articles(question):
     out={a for a,terms in POLICY_TOPICS.items() if any(re.search(r'\b'+re.escape(t)+r'\b',q) for t in terms)}
     if 4 in out and not any(t in q for t in ('khong dat','truot','rot','phai lam gi')):
         out.discard(4);out.add(3)
+    # Đã đạt điểm chữ thì hỏi "thi lại để cải thiện" là quy định học lại
+    # cải thiện (Điều 15), không phải thi lại điểm F (Điều 14).
+    if ('thi lai' in q and 'cai thien' in q
+            and re.search(r'\bdiem\s*[abcd]\+?(?=\s|[.,!?;]|$)',q)):
+        out.discard(14)
+        out.add(15)
     return out
 
 

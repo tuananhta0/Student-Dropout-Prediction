@@ -63,7 +63,14 @@ REGRESSION=[
  ('Lịch nghỉ lễ của sinh viên?',None),('Thời hạn nộp học phí kỳ tới?',None),
  ('Thư viện trường mở cửa mấy giờ?',None),('Em có 3 lần cảnh báo liên tiếp có bị thôi học không?',18),
  ('Điều kiện học lớp cải thiện khi đạt C?',15),('Học phí cao quá em muốn nghỉ học một năm được không?',21),
- ('Em nợ 25 tín chỉ chứng chỉ thì sao?',18),('Em thi cuối kỳ 4 điểm có qua môn không?',13)
+ ('Em nợ 25 tín chỉ chứng chỉ thì sao?',18),('Em thi cuối kỳ 4 điểm có qua môn không?',13),
+ ('Mức học phí một tín chỉ bao nhiêu? Có được nghỉ học do khó khăn tài chính?',21),
+ ('Em có thể nghỉ 3 kỳ vì lý do cá nhân không?',21),
+ ('Em xin nghỉ 1 học kỳ vì ốm có phải nộp đơn không?',21),
+ ('Em đạt điểm C nhưng muốn thi lại để cải thiện thì sao?',15),
+ ('Em đạt điểm B nhưng muốn thi lại để cải thiện thì sao?',15),
+ ('GPA học kỳ thứ hai 0.99 có bị cảnh báo?',18),
+ ('Em xin nghỉ 4 kỳ vì lý do cá nhân được không?',21)
 ]
 
 def quality_pass(report, top1=.95):

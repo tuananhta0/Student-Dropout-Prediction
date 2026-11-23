@@ -16,3 +16,18 @@
 **Kiểm tra tự động:** `tests/test_delivery_regressions.py` kiểm thử các cách diễn đạt chính qua router và API; `scripts.benchmark_rag --all --e2e` kiểm chứng Điều mong đợi được hiển thị. Các phép thử này không đánh giá độ đúng mọi câu sinh của LLM.
 
 **Đánh giá độc lập còn cần thực hiện:** một thành viên không sửa retrieval chuẩn bị trước tập câu mới, chạy `scripts.benchmark_rag --cases ...` và (nếu có khóa mới) `--cloud`, đọc câu trả lời và nguồn PDF, ghi mức đúng/đủ vào CSV rồi chạy `scripts.review_rag`. Không tự nhận PASS cho bài kiểm tra này trước khi người đó xác nhận.
+
+## Đối chiếu ca truy vấn bổ sung với quy chế gốc (bản sửa tiếp theo)
+
+Đã đối chiếu phạm vi với Điều 14, 15, 18, 21 và 25 trong PDF quy chế 27 trang; đây là rà soát của người sửa mã, **không phải chấm mù độc lập**.
+
+| Câu hỏi | Nguồn quy chế | Kết luận được phép đưa ra |
+|---|---|---|
+| Mức học phí một tín chỉ bao nhiêu? Có được nghỉ học do khó khăn tài chính? | Điều 21.1d (trang PDF 23) | Trả căn cứ nghỉ cá nhân; không dự đoán mức tiền học phí, không coi khó khăn tài chính là căn cứ tự động được chấp thuận |
+| Em có thể nghỉ 3 kỳ vì lý do cá nhân? | Điều 21.1d (trang PDF 23) | 3 kỳ không vượt giới hạn; còn phải học ít nhất một kỳ, không thuộc diện buộc thôi học/kỷ luật, nộp đơn và minh chứng |
+| Em xin nghỉ 4 kỳ vì lý do cá nhân? | Điều 21.1d (trang PDF 23) | 4 kỳ vượt giới hạn tối đa 3 học kỳ; không kéo Điều 25 về vi phạm thi vào trả lời |
+| Em xin nghỉ 1 học kỳ vì ốm? | Điều 21.1c (trang PDF 23) | Nêu chứng nhận y tế/điều trị dài ngày; không tự áp giới hạn 3 kỳ dành cho lý do cá nhân |
+| Điểm C hoặc B muốn thi lại để cải thiện? | Điều 15.2 (trang PDF 17) và Điều 14.3 (trang PDF 16) | Phân biệt học lại để cải thiện môn đã đạt (lấy điểm cao nhất) với thi lại theo quy định riêng; không dùng Điều 14 thay cho Điều 15 |
+| GPA học kỳ thứ hai 0,99 có bị cảnh báo? | Điều 18.1a (trang PDF 20) | Rule Engine kiểm tra GPA học kỳ sau đầu < 1,0; kết luận chỉ về tiêu chí GPA, không quyết định buộc thôi học hay suy diễn từ GPA hồ sơ |
+
+Các test liên quan nằm trong `tests/test_delivery_regressions.py`, bộ `scripts.benchmark_rag --all --e2e` được mở rộng thêm 7 câu. Các test mới là **hồi quy do người phát triển soạn**, không thay cho người thứ ba đánh giá độ đúng ngữ nghĩa/Gemini trên câu hỏi giữ kín.
