@@ -62,6 +62,7 @@ REGRESSION=[
  ('Tự xin thôi học',21),('Quyền lợi sau thôi học',20),
  ('Lịch nghỉ lễ của sinh viên?',None),('Thời hạn nộp học phí kỳ tới?',None),
  ('Thư viện trường mở cửa mấy giờ?',None),('Em có 3 lần cảnh báo liên tiếp có bị thôi học không?',18),
+ ('Điều kiện học lớp cải thiện khi đạt C?',15),('Học phí cao quá em muốn nghỉ học một năm được không?',21),
  ('Em nợ 25 tín chỉ chứng chỉ thì sao?',18),('Em thi cuối kỳ 4 điểm có qua môn không?',13)
 ]
 

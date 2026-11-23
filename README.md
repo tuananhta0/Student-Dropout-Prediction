@@ -14,14 +14,14 @@ Chatbot tra cứu quy chế theo Điều/Khoản/Trang PDF bằng BM25, hỗ tr�
 
 ## 🚀 Cài đặt và chạy (Windows PowerShell, Python 3.11)
 
-**Cài mới từ GitHub:** Clone nhánh `Dung` và tải [gói runtime chính thức `cmc-research-v1.zip`](https://github.com/tuananhta0/Student-Dropout-Prediction/releases/tag/runtime-v1-7178718) trong GitHub Release. Gói gồm dataset MAIN mô phỏng và model đã huấn luyện; **không cần huấn luyện lại**. Thư mục `artifacts_model/` trong Git chỉ là baseline lịch sử, **không phải model nghiệm thu**.
+**Cài mới từ GitHub:** Clone nhánh `main` (nhánh công bố; `Dung` dành cho phát triển) và tải [gói runtime chính thức `cmc-research-v1.zip`](https://github.com/tuananhta0/Student-Dropout-Prediction/releases/tag/runtime-v1-7178718) trong GitHub Release. Gói gồm dataset MAIN mô phỏng và model đã huấn luyện; **không cần huấn luyện lại**. Thư mục `artifacts_model/` trong Git chỉ là baseline lịch sử, **không phải model nghiệm thu**.
 
 ### 1. Clone mã nguồn và cài dependencies
 
 Yêu cầu: Windows PowerShell, Git, Python **3.11** có lệnh `py -3.11`.
 
 ```powershell
-git clone --branch Dung --single-branch https://github.com/tuananhta0/Student-Dropout-Prediction.git
+git clone --branch main --single-branch https://github.com/tuananhta0/Student-Dropout-Prediction.git
 cd Student-Dropout-Prediction
 py -3.11 -m venv .venv
 .\.venv\Scripts\Activate.ps1
@@ -111,10 +111,15 @@ Student-Dropout-Prediction/
 
 ## 🧪 Kiểm thử
 
+Sau khi cài GitHub Release, `scripts.audit_dataset` và `scripts.review_policy` cần trỏ vào thư mục **dataset** bên trong release (khác đường dẫn mặc định `dataset_full/`). Chỉ đặt biến này khi chạy kiểm toán; không cần cho ứng dụng:
+
 ```powershell
+if (-not (Test-Path 'data/releases/cmc-research-v1/dataset/artifacts/runs/V3_2_MAIN/manifests/generation_manifest.json')) { throw 'Chua cai runtime release' }
+$env:CMC_DATASET_ROOT = (Resolve-Path 'data/releases/cmc-research-v1/dataset').Path
 python -B -X utf8 -m scripts.audit_dataset
-python -B -X utf8 -m scripts.benchmark_rag
 python -B -X utf8 -m scripts.review_policy
+Remove-Item Env:CMC_DATASET_ROOT -ErrorAction SilentlyContinue
+python -B -X utf8 -m scripts.benchmark_rag
 python -B -X utf8 -m unittest discover -s tests -v
 python -B -X utf8 -m tests.smoke_runtime
 python -B -X utf8 -m tests.smoke_academic_rules
@@ -128,4 +133,4 @@ Xem [hướng dẫn hiệu chỉnh, thực nghiệm và chọn phiên bản mô 
 
 Nghiệm thu cuối: xem [bàn giao](docs/ban_giao.md), [tra cứu và đánh giá RAG](docs/tra_cuu_quy_che.md) và [giới hạn thực nghiệm ML](docs/ket_qua_nghien_cuu.md). Giao diện chạy CSS/JS cục bộ, mật khẩu demo trùng mã tài khoản. Thống kê chỉ gồm hồ sơ đã có kết quả học kỳ; nguy cơ ML dự báo hai học kỳ tiếp theo từ snapshot.
 
-Kiểm thử hồi quy bổ sung: `python -B -m scripts.benchmark_rag --all --e2e` (68 câu, fixture, không cần cloud) và `node --test tests/portal_async.test.cjs` (Node 22, chỉ cần cho kiểm thử giao diện, không cần khi chạy ứng dụng). Báo cáo mới ghi nguồn commit/dirty và checksum đầu vào; chạy lại sau commit sạch trước khi tạo gói nghiên cứu mới. Xem [bàn giao](docs/ban_giao.md).
+Kiểm thử hồi quy bổ sung: `python -B -m scripts.benchmark_rag --all --e2e` (70 câu, fixture, không cần cloud) và `node --test tests/portal_async.test.cjs` (Node 22, chỉ cần cho kiểm thử giao diện, không cần khi chạy ứng dụng). Báo cáo mới ghi nguồn commit/dirty và checksum đầu vào; chạy lại sau commit sạch trước khi tạo gói nghiên cứu mới. Xem [bàn giao](docs/ban_giao.md).

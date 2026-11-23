@@ -38,7 +38,7 @@ PARAPHRASES = {
     'chuyen sang truong': 'chuyen truong', 'chuyen sang dai hoc': 'chuyen truong',
     'bi om': 'nghi hoc tam thoi bao luu', 'nghi vi benh': 'nghi hoc tam thoi bao luu',
     'phuc khao': 'phuc tra', 'song nganh': 'hai chuong trinh',
-    'mon bat buoc':'hoc phan bat buoc', 'nganh thu hai':'hai chuong trinh', 'nghi khong phep':'vang khong phep', 'luu bao lau':'luu tru', 'thoi gian toi da': 'thoi gian hoc toi da', 'rot mon': 'hoc lai', 'truot mot mon muon nang diem': 'hoc lai cai thien diem', 'luan van': 'khoa luan', 'nghi hoc do benh':'nghi hoc tam thoi bao luu', 'nghi hoc vi benh':'nghi hoc tam thoi bao luu', 'nghi mot nam':'nghi hoc tam thoi', 'cham nguoi than':'ly do ca nhan nghi hoc tam thoi', 'vang mat':'vang', 'tu xin thoi hoc':'tu nguyen thoi hoc',
+    'mon bat buoc':'hoc phan bat buoc', 'nganh thu hai':'hai chuong trinh', 'nghi khong phep':'vang khong phep', 'luu bao lau':'luu tru', 'thoi gian toi da': 'thoi gian hoc toi da', 'rot mon': 'hoc lai', 'truot mot mon muon nang diem': 'hoc lai cai thien diem', 'luan van': 'khoa luan', 'nghi hoc do benh':'nghi hoc tam thoi bao luu', 'nghi hoc vi benh':'nghi hoc tam thoi bao luu', 'nghi hoc mot nam':'nghi hoc tam thoi bao luu', 'nghi mot nam':'nghi hoc tam thoi', 'cham nguoi than':'ly do ca nhan nghi hoc tam thoi', 'hoc lop cai thien':'hoc cai thien', 'lop cai thien':'hoc cai thien', 'vang mat':'vang', 'tu xin thoi hoc':'tu nguyen thoi hoc',
 }
 TOPICS = ('phuc tra ket qua thi|thoi gian hoc toi da|canh bao hoc tap|buoc thoi hoc|chuyen truong|chuyen nganh|bao luu|nghi hoc tam thoi|hoc phan tien quyet|hoc phan bat buoc|hoc phan tu chon|dang ky tin chi|rut hoc phan|diem liet|thi lai|hoc lai|cai thien diem|gpa|tot nghiep|tieng anh|hoc truc tuyen|ke hoach dao tao|quy mo lop|co van hoc tap|trach nhiem sinh vien|muc tieu dao tao|lop nhap hoc|trao doi sinh vien|luu tru khoa luan|hieu luc thi hanh|cam thi|ha hang tot nghiep|hoc phi rut mon|hoc phi|khoa luan|moi tiet|quy che ap dung|hai chuong trinh|tin chi|diem thi|tu nguyen thoi hoc|ly do ca nhan|chung nhan|thoi hoc|vang khong phep|dieu kien du thi|thi cuoi ky|cong nhan tin chi|quyen loi sau thoi hoc|hoc cai thien|nghia vu quan su').split('|')
 
@@ -395,6 +395,17 @@ class RegulationSearch:
 
     def _answer(self, question, cloud=False):
         trace={'embedding_used':False,'generation_status':'NOT_REQUESTED'}
+        # Học phí là hoàn cảnh, không mặc nhiên là câu hỏi về đơn giá: ưu tiên
+        # phần hỏi nghỉ học/bảo lưu có căn cứ ở Điều 21. Không suy diễn học phí.
+        if (not numbers(question)[0] and 'hoc phi' in strip_accents(question)
+                and 21 in topic_articles(question)
+                and unsupported(question)):
+            policy = self._answer('Điều kiện nghỉ học tạm thời bảo lưu', False)
+            if policy['regulations']:
+                policy['reply'] = ('<p>Quy chế này không cung cấp mức tiền hoặc chính sách học phí cụ thể; '
+                                   'hãy đối chiếu thông báo của trường. Về nghỉ học tạm thời/bảo lưu, '
+                                   'cần đáp ứng các điều kiện tại Điều 21:</p>' + policy['reply'])
+                return policy
         # Với câu ghép có một chủ đề ngoài phạm vi: chỉ trả nguồn của phần có
         # căn cứ, không gửi câu thô hay tự suy đoán phần thiếu.
         if not numbers(question)[0] and unsupported(question):

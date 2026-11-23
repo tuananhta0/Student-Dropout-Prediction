@@ -1,9 +1,10 @@
 name: Kiểm thử học vụ
 on:
   push:
-    branches: [Dung]
+    branches: [main, Dung]
   pull_request:
-    branches: [Dung]
+    branches: [main, Dung]
+  workflow_dispatch:
 permissions:
   contents: read
 jobs:

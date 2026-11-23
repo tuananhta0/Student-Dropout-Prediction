@@ -176,6 +176,42 @@ class DeliveryRegressionTests(unittest.TestCase):
                 out = self.ask(q)
                 self.assertEqual(out['intent'], 'gpa')
 
+    def test_policy_improvement_class_phrase(self):
+        for q in (
+            'Điều kiện học lớp cải thiện khi đạt C?',
+            'Em có được học lớp cải thiện điểm C không?',
+            'Học lớp cải thiện với điểm D thì lấy điểm nào?',
+        ):
+            with self.subTest(q=q):
+                out = self.ask(q)
+                self.assertEqual(out['intent'], 'regulation')
+                self.assertIn(15, {c['article'] for c in out['regulations']})
+                self.assertIn('Điều 15', out['reply'])
+        with endpoint() as ask:
+            out = ask('Điều kiện học lớp cải thiện khi đạt C?')
+            self.assertIn(15, {c['article'] for c in out['regulations']})
+
+    def test_partial_tuition_and_study_leave(self):
+        for q in (
+            'Học phí cao quá em muốn nghỉ học một năm được không?',
+            'Học phí cao quá nên em muốn nghỉ học một năm được không?',
+            'Mức học phí cao nên em cần xin nghỉ học tạm thời một năm?',
+            'Học phí một tín chỉ bao nhiêu, em có được nghỉ học một năm không?',
+            'Học phí một tín chỉ bao nhiêu và bảo lưu thế nào?',
+        ):
+            with self.subTest(q=q):
+                out = self.ask(q)
+                self.assertEqual(out['intent'], 'regulation')
+                self.assertIn(21, {c['article'] for c in out['regulations']})
+                self.assertIn('Điều 21', out['reply'])
+                self.assertNotIn('mức thu:', out['reply'].lower())
+        # Hỏi đơn giá riêng phải từ chối, không kéo Điều 21 vào sai ngữ cảnh.
+        out = self.ask('Học phí mỗi tín chỉ là bao nhiêu?')
+        self.assertFalse(out['regulations'])
+        with endpoint() as ask:
+            out = ask('Học phí cao quá em muốn nghỉ học một năm được không?')
+            self.assertIn(21, {c['article'] for c in out['regulations']})
+
     def test_r03_military_service_leave(self):
         for q in (
             'Nghỉ học để thực hiện nghĩa vụ quân sự có được bảo lưu không?',

@@ -41,6 +41,9 @@ def extract_target_gpa(q):
 
 def route(engine, retrieval, principal, message, context):
     q=re.sub(r"\s+", " ", strip_accents(message))
+    # "Học lớp cải thiện" và "học cải thiện" là cùng ý định tra cứu Điều 15.
+    q=re.sub(r'\bhoc\s+lop\s+cai\s+thien\b', 'hoc cai thien', q)
+    q=re.sub(r'\blop\s+cai\s+thien\b', 'hoc cai thien', q)
     simple=re.sub(r'[^a-z0-9 ]','',q).strip()
     if simple in ('xin chao','chao','hello','hi','chao ban','cam on','cam on ban','thanks','huong dan','ban lam duoc gi'):
         context.pop('article',None)
