@@ -136,3 +136,7 @@ Xem [hướng dẫn hiệu chỉnh, thực nghiệm và chọn phiên bản mô 
 Nghiệm thu cuối: xem [bàn giao](docs/ban_giao.md), [tra cứu và đánh giá RAG](docs/tra_cuu_quy_che.md) và [giới hạn thực nghiệm ML](docs/ket_qua_nghien_cuu.md). Giao diện chạy CSS/JS cục bộ, mật khẩu demo trùng mã tài khoản. Thống kê chỉ gồm hồ sơ đã có kết quả học kỳ; nguy cơ ML dự báo hai học kỳ tiếp theo từ snapshot.
 
 Kiểm thử hồi quy bổ sung: `python -B -m scripts.benchmark_rag --all --e2e` (70 câu, fixture, không cần cloud) và `node --test tests/portal_async.test.cjs` (Node 22, chỉ cần cho kiểm thử giao diện, không cần khi chạy ứng dụng). Báo cáo mới ghi nguồn commit/dirty và checksum đầu vào; chạy lại sau commit sạch trước khi tạo gói nghiên cứu mới. Xem [bàn giao](docs/ban_giao.md).
+
+### Nghiệm thu sau patch ABCD trên `Dung`
+
+Xem `docs/nghiem_thu_ABCD_Dung.md` để chạy regression RAG 40 câu, Gemini cloud bằng **một key dùng chung nội bộ**, phân tầng Machine Learning/Censoring/STRESS, audit runtime ZIP, HTTP thực, kiểm thử giao diện ba vai trò và fresh-clone. Không merge hoặc ghi vào `main` trong giai đoạn này. `tests/data/bo_cau_ra_soat_40_de_xuat.json` không phải tập mù độc lập.

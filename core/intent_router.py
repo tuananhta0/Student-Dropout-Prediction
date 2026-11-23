@@ -153,7 +153,12 @@ def route(engine, retrieval, principal, message, context):
     policy_improve = not ids and not gpa_improve_scenario and (
         any(x in pq for x in ('hoc cai thien', 'cai thien diem')) or passed_retake_policy
     )
-    policy_only=not ids and not target_match and not gpa_improve_scenario and (policy_improve or any(x in pq for x in ('bao luu','nghi hoc tam thoi','hoc phan tien quyet','chuyen nganh','chuyen truong','phuc tra','thoi gian hoc toi da','dang ky tin chi','cam thi','dieu kien du thi')) or (not personal and bool(public_focus(message)) and not any((risk,admission,course)) and not any(x in q for x in ('kich ban','gpa hoc ky','gpa tich luy','gpa ky sau','gpa ky toi','hoc phi con no','tin chi da dat','tin chi no dong','so lan canh bao hoc tap','canh bao lien tiep','xem ho so','bang diem'))))
+    # Hỏi cách tính GPA theo quy chế là câu lý thuyết, không phải yêu cầu
+    # đọc GPA cá nhân chỉ vì trong câu chứa 'GPA tích lũy'.
+    policy_gpa_explanation = ('gpa tich luy' in pq and
+        any(x in pq for x in ('cong thuc gpa', 'tinh tu', 'duoc tinh', 'tinh nhu the nao')) and
+        not any(x in pq for x in ('gpa cua em', 'gpa cua toi', 'gpa cua minh', 'ho so cua')))
+    policy_only=not ids and not target_match and not gpa_improve_scenario and (policy_improve or policy_gpa_explanation or any(x in pq for x in ('bao luu','nghi hoc tam thoi','hoc phan tien quyet','chuyen nganh','chuyen truong','phuc tra','thoi gian hoc toi da','dang ky tin chi','cam thi','dieu kien du thi')) or (not personal and bool(public_focus(message)) and not any((risk,admission,course)) and not any(x in q for x in ('kich ban','gpa hoc ky','gpa tich luy','gpa ky sau','gpa ky toi','hoc phi con no','tin chi da dat','tin chi no dong','so lan canh bao hoc tap','canh bao lien tiep','xem ho so','bang diem'))))
     if ('tot nghiep' in q or requested_registration) and personal and not arts:
         policy_only=False
     if re.search(r'(?:vang|nghi)\s*\d+(?:[.,]\d+)?\s*%',q) and not calculation and not arts:

@@ -15,7 +15,7 @@
 
 **Kiểm tra tự động:** `tests/test_delivery_regressions.py` kiểm thử các cách diễn đạt chính qua router và API; `scripts.benchmark_rag --all --e2e` kiểm chứng Điều mong đợi được hiển thị. Các phép thử này không đánh giá độ đúng mọi câu sinh của LLM.
 
-**Đánh giá độc lập còn cần thực hiện:** một thành viên không sửa retrieval chuẩn bị trước tập câu mới, chạy `scripts.benchmark_rag --cases ...` và (nếu có khóa mới) `--cloud`, đọc câu trả lời và nguồn PDF, ghi mức đúng/đủ vào CSV rồi chạy `scripts.review_rag`. Không tự nhận PASS cho bài kiểm tra này trước khi người đó xác nhận.
+**Đánh giá độc lập còn cần thực hiện:** một thành viên không sửa retrieval chuẩn bị trước tập câu mới, chạy `scripts.benchmark_rag --cases ...` và (nếu nhóm bật key chung) `--cloud`, đọc câu trả lời và nguồn PDF, ghi mức đúng/đủ vào CSV rồi chạy `scripts.review_rag`. Không tự nhận PASS cho bài kiểm tra này trước khi người đó xác nhận.
 
 ## Đối chiếu ca truy vấn bổ sung với quy chế gốc (bản sửa tiếp theo)
 

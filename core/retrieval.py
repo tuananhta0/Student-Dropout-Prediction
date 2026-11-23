@@ -36,6 +36,10 @@ PARAPHRASES = {
     'nhac nho lien tiep': 'canh bao hoc tap lien tiep', 'duoi hoc': 'buoc thoi hoc',
     'hoc het bao nhieu nam thi phai ra truong': 'thoi gian hoc toi da', 'hoc het bao lau': 'thoi gian hoc toi da',
     'chuyen sang truong': 'chuyen truong', 'chuyen sang dai hoc': 'chuyen truong',
+    'chuyen den truong': 'chuyen truong', 'chuyen den dai hoc': 'chuyen truong',
+    'chuyen qua truong': 'chuyen truong', 'doi truong': 'chuyen truong',
+    'doi sang truong': 'chuyen truong',
+    'dang ky hoc phan': 'dang ky tin chi', 'tiet hoc': 'moi tiet',
     'bi om': 'nghi hoc tam thoi bao luu', 'nghi vi benh': 'nghi hoc tam thoi bao luu',
     'phuc khao': 'phuc tra', 'song nganh': 'hai chuong trinh',
     'mon bat buoc':'hoc phan bat buoc', 'nganh thu hai':'hai chuong trinh', 'nghi khong phep':'vang khong phep', 'luu bao lau':'luu tru', 'thoi gian toi da': 'thoi gian hoc toi da', 'rot mon': 'hoc lai', 'truot mot mon muon nang diem': 'hoc lai cai thien diem', 'luan van': 'khoa luan', 'nghi hoc do benh':'nghi hoc tam thoi bao luu', 'nghi hoc vi benh':'nghi hoc tam thoi bao luu', 'nghi hoc mot nam':'nghi hoc tam thoi bao luu', 'nghi mot nam':'nghi hoc tam thoi', 'cham nguoi than':'ly do ca nhan nghi hoc tam thoi', 'hoc lop cai thien':'hoc cai thien', 'lop cai thien':'hoc cai thien', 'vang mat':'vang', 'tu xin thoi hoc':'tu nguyen thoi hoc',
@@ -47,6 +51,13 @@ def normalize_query(question):
     query=strip_accents(question)
     for old,new in PARAPHRASES.items():
         query=query.replace(old,new)
+    # Các cụm thông dụng không nhất thiết dùng từ pháp lý 'nghỉ học tạm thời'.
+    # Chỉ nối ý định nghỉ học khi có yêu cầu nghỉ học theo kỳ/lý do, không bắt
+    # nhầm 'nghỉ thi', 'nghỉ không phép' hay hỏi giờ vắng mặt trong học phần.
+    if re.search(r'\b(?:chuyen|doi)\s+(?:den|qua|sang)?\s*(?:mot\s+)?(?:truong|dai hoc)\s+(?:dai hoc\s+)?khac\b', query):
+        query += ' chuyen truong'
+    if 'gpa tich luy' in query and any(x in query for x in ('duoc tinh', 'cong thuc', 'tinh tu', 'tinh nhu the nao')):
+        query += ' cong thuc gpa'
     if 'bao nhieu nam' in query and any(x in query for x in ('hoc','dao tao','ra truong')): query+=' thoi gian hoc toi da'
     if re.search(r'(?:vang|nghi)\s*\d+(?:[.,]\d+)?\s*%',query): query+=' cam thi'
     # Các câu xin nghỉ có thời hạn/lý do thường không nói nguyên cụm "bảo lưu".
@@ -55,7 +66,9 @@ def normalize_query(question):
         re.search(r'\b(?:xin|muon|co the|duoc)\s+nghi\s+(?:hoc\s+)?\d+\s*(?:hoc\s*)?ky\b',query)
         or re.search(r'\bnghi\s+(?:hoc\s+)?\d+\s*(?:hoc\s*)?ky\s+(?:vi|do)\b',query)
         or re.search(r'\b(?:xin|muon|co the|duoc)\s+nghi\s+\d+\s*(?:hoc\s*)?ky\b',query)
-        or ('nghi hoc' in query and any(x in query for x in ('kho khan tai chinh','bi om','vi om','vi benh','do benh','ly do ca nhan','mot hoc ky','moi hoc ky')))
+        or ('nghi hoc' in query and any(x in query for x in ('kho khan tai chinh','bi om','vi om','vi benh','do benh','dang benh','bi benh','benh nang','dieu tri','ly do ca nhan','mot hoc ky','moi hoc ky')))
+        or (re.search(r'\b(?:xin|muon|dinh|can)\s+nghi\s+(?:hoc\s+)?(?:mot|hai|ba|bon|1|2|3|4)\s*(?:hoc\s*)?ky\b',query)
+            and not any(x in query for x in ('nghi khong phep','nghi thi')))
     )
     if study_leave and not any(x in query for x in ('nghi khong phep','nghi thi','nghi le','nghi tet')):
         query += ' nghi hoc tam thoi bao luu'
@@ -149,9 +162,25 @@ def is_tuition_amount_query(question):
     return False
 
 
+def is_tuition_deadline_query(question):
+    """Lịch thu tiền cụ thể không có trong quy chế học vụ, kể cả 'kỳ tới'.
+
+    Tách riêng khỏi số tiền còn nợ hay thủ tục bảo lưu có lý do tài chính.
+    """
+    q = strip_accents(question)
+    if not re.search(r'\b(?:hoc\s*phi|dong\s*tien\s*hoc)\b', q):
+        return False
+    if any(x in q for x in ('no hoc phi', 'cong no', 'so ngay qua han', 'dong duoc bao nhieu')):
+        return False
+    return bool(
+        re.search(r'\b(?:khi nao|bao gio|ngay nao|ngay may|ngay bao nhieu|han chot|han cuoi|han dong|lich dong|lich nop|thoi han|deadline)\b', q)
+        or re.search(r'\b(?:dong|nop|thanh toan)\s+(?:tien\s+)?hoc\s*phi\b.*\b(?:ky toi|ki toi|ky sau|hoc ky toi|thang \d{1,2}|nam \d{4})\b', q)
+    )
+
+
 def unsupported(question):
     q=strip_accents(question)
-    if is_tuition_exemption_query(question) or is_tuition_amount_query(question):
+    if is_tuition_exemption_query(question) or is_tuition_amount_query(question) or is_tuition_deadline_query(question):
         return True
     # Lịch/ngày giờ/giá cụ thể thuộc thông báo vận hành, không phải quy chế.
     if re.search(r'\b(?:lich|ngay|thoi han|han chot)\s+(?:nghi le|nghi tet|nop hoc phi|dong hoc phi|thi cu the|thi lai cu the)',q): return True
@@ -275,7 +304,11 @@ class RegulationSearch:
         self.matrix_model = None
 
     def _cloud(self):
-        # Chỉ kích hoạt theo lựa chọn rõ ràng; không gửi hồ sơ, lịch sử chat hoặc token.
+        # Một file .env KHÔNG commit có thể được nhóm chia sẻ nội bộ. Biến môi
+        # trường thật luôn ưu tiên và chế độ cloud vẫn phải được bật rõ ràng.
+        from dotenv import load_dotenv
+        load_dotenv(self.root / '.env', override=False)
+        # Không gửi hồ sơ, lịch sử chat, token hay câu hỏi gốc cho LLM.
         if os.getenv('CMC_RAG_CLOUD') != '1' or not os.getenv('GEMINI_API_KEY'):
             return None
         with self.lock:
@@ -418,8 +451,10 @@ class RegulationSearch:
                 and unsupported(question)):
             policy = self._answer('Điều kiện nghỉ học tạm thời bảo lưu', False)
             if policy['regulations']:
-                policy['reply'] = ('<p>Quy chế này không cung cấp mức tiền hoặc chính sách học phí cụ thể; '
-                                   'hãy đối chiếu thông báo của trường. Về nghỉ học tạm thời/bảo lưu, '
+                boundary = ('ngày hoặc hạn đóng học phí' if is_tuition_deadline_query(question)
+                            else 'mức tiền hoặc chính sách học phí cụ thể')
+                policy['reply'] = ('<p>Quy chế này không cung cấp '+boundary+'; '
+                                   'hãy đối chiếu thông báo học phí của trường. Về nghỉ học tạm thời/bảo lưu, '
                                    'cần đáp ứng các điều kiện tại Điều 21:</p>' + policy['reply'])
                 return policy
         # Với câu ghép có một chủ đề ngoài phạm vi: chỉ trả nguồn của phần có
@@ -440,6 +475,8 @@ class RegulationSearch:
         if missing_clauses: diagnostics+='<p>Không tìm thấy Khoản '+', '.join(map(str,missing_clauses))+' của Điều '+str(requested[0])+' trong kho đang sử dụng.</p>'
         if len(requested)>1 and clauses: diagnostics+='<p>Hãy nêu từng Điều và Khoản riêng để tránh ghép nhầm.</p>'
         if not chunks:
+            if not requested and is_tuition_deadline_query(question):
+                return {'reply':diagnostics+'<p>Quy chế đào tạo đang sử dụng không có lịch hoặc ngày đến hạn đóng học phí của kỳ cụ thể. Hãy xem thông báo học phí chính thức hoặc liên hệ bộ phận tài chính của trường; không suy đoán ngày từ Điều/Khoản không liên quan.</p>', 'regulations':[], 'method':'none',**trace}
             if not requested and is_tuition_amount_query(question):
                 return {'reply':diagnostics+'<p>Quy chế đào tạo (QĐ 22/2023) không quy định mức tiền học phí cụ thể. Vui lòng tra cứu Thông báo học phí của nhà trường tương ứng khóa học, ngành và chương trình đào tạo.</p>','regulations':[], 'method':'none',**trace}
             if not requested and is_tuition_exemption_query(question):

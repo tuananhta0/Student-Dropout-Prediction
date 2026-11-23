@@ -43,7 +43,7 @@ Giới hạn: chỉ localhost, một tiến trình Uvicorn; chưa có tài kho�
 
 ## Kiểm tra trước khi chia sẻ
 
-- Đổi API key đã lộ tại Google AI Studio, nhập khóa mới qua `Read-Host -AsSecureString`; không chụp log có khóa. Cơ chế mã tài khoản làm mật khẩu chỉ dành cho dữ liệu mô phỏng; ai có quyền truy cập localhost đều có thể đăng nhập ADMIN.
+- Nhóm dùng chung một Gemini API key qua `.env` do `scripts.setup_shared_gemini` tạo, chia sẻ trong nhóm; không đưa key vào GitHub Public hoặc ảnh chụp/log. Cơ chế mã tài khoản làm mật khẩu chỉ dành cho dữ liệu mô phỏng; ai có quyền truy cập localhost đều có thể đăng nhập ADMIN.
 - Giới hạn đăng nhập 30 yêu cầu/phút theo địa chỉ kết nối, chat 15 yêu cầu/phút theo tài khoản; một câu đang xử lý mỗi phiên. Chỉ chạy `--host 127.0.0.1 --no-proxy-headers`.
 - Có thể đặt `CMC_ADVISOR_SCOPE_FILE` trỏ tới JSON tự quản lý, ví dụ `{"GV001":["IT25-09"],"GV002":["BA25-01"],"GV003":["AI25-01"]}`; khi bật, tài khoản không có danh sách được coi là không có lớp. Đây là ví dụ cấu hình, cần chọn mã lớp thực tế trong dữ liệu. Mặc định vẫn dùng phạm vi ngành mô phỏng.
 - CSS được biên dịch cục bộ với Tailwind 4.1.10; không còn CDN. Chỉ khi sửa CSS cần Node và `npm install; npm run build:css`. CSP cấm inline script, chỉ cho JavaScript cục bộ; style động vẫn dùng inline. Cloud giới hạn 2 worker, 30 lời gọi SDK/phút và 500/24 giờ cho mỗi tiến trình; trả fallback sau 25 giây. SDK đang chạy có thể chưa dừng ngay; những lời gọi nội bộ SDK không phải bộ đếm hóa đơn.
@@ -66,7 +66,7 @@ Sau khi commit sạch, chạy lại benchmark gốc, mở rộng, e2e và cloud 
 
 Frontend: `node --test tests/portal_async.test.cjs` dùng Node 22, mô phỏng fetch và DOM để kiểm tra timeout kể cả đọc body JSON, đăng nhập lỗi, phản hồi từ phiên cũ và đổi lớp. CI chạy tự động; không cần Node để khởi động ứng dụng. Vẫn kiểm thử thủ công trên trình duyệt thật. Timeout giao diện 35 giây; logout/đổi phiên hủy yêu cầu đang chờ phía client, không đảm bảo server dừng ngay.
 
-Có thể dùng chung API key của nhóm qua kênh riêng nếu chủ khóa chấp thuận; repository là public nên không hardcode, không lưu trong patch, không đưa vào gói dữ liệu hoặc Git. Khóa từng được chia sẻ nên thay trước khi sử dụng ngoài demo, giới hạn quota và theo dõi chi phí; đổi khóa do chủ sở hữu thực hiện. Kiểm thử offline không cần API key.
+Dự án sử dụng một Gemini API key chung của nhóm qua `.env` được chia sẻ nội bộ; repository là public nên không hardcode hoặc commit vào patch. Chỉ cần key trên máy thử cloud; test offline không cần key. Chủ key tự quản lý quota, chi phí và việc đổi key nếu cần.
 
 
 ## Đối chiếu sau merge và nguồn báo cáo
@@ -78,14 +78,14 @@ Sau commit sạch, xuất báo cáo mới để tránh đánh dấu sai provenan
 ```powershell
 python -B -X utf8 -m scripts.benchmark_rag --all --e2e --output data/kiem_tra_rag/bao_cao_e2e_Dung.json
 if ($LASTEXITCODE -ne 0) { throw 'Benchmark offline that bai' }
-python -B -X utf8 -m scripts.benchmark_rag --cloud --output data/kiem_tra_rag/bao_cao_cloud_Dung.json  # Chỉ khi đã thay khóa và chủ động bật cloud
+python -B -X utf8 -m scripts.benchmark_rag --cloud --output data/kiem_tra_rag/bao_cao_cloud_Dung.json  # Chỉ khi chủ động bật cloud và chủ key chấp thuận
 ```
 
 `provenance.source_commit` trong báo cáo đo ở nhánh nào phải là commit của **nhánh đó**; `source_dirty=false` chỉ hợp lệ khi worktree sạch. Để có chứng cứ `main`, người nghiệm thu phải chạy lại sau merge trên một clone `main` sạch. Gói runtime/model vẫn giữ tag `runtime-v1-7178718` và các metrics lịch sử của lần huấn luyện; **không** đổi thành commit mới chỉ vì code/chatbot được sửa. [Checklist nghiệm thu sau merge](kiem_tra_ban_giao.md) ghi rõ các hạng mục chưa thể tự xác nhận. Bảng kiểm tra ngữ nghĩa đối chiếu trực tiếp Điều 15, 21 ở [đối chiếu nguồn PDF](doi_chieu_ngu_nghia.md); chưa phải kết quả đánh giá Gemini mù của thành viên độc lập.
 
 ## Bảo mật trước khi trình diễn cloud và công khai bản bàn giao
 
-- Chủ khóa Gemini phải thu hồi khóa đã từng lộ trên Google AI Studio, tạo khóa mới, giới hạn quota và kiểm tra lượt sử dụng; không đưa khóa vào Git, PR, ZIP, Markdown hoặc ảnh chụp màn hình. Mỗi thành viên nhập khóa của mình qua `Read-Host -AsSecureString` trên máy cá nhân; chỉ bật cloud khi cần đo thật.
+- Nhóm dùng **một Gemini API key chung** trong `.env` nội bộ, không cần mỗi thành viên tạo key riêng. Có thể tạo bằng `python -B -m scripts.setup_shared_gemini` rồi chia sẻ `.env` riêng tư; không đưa key vào Git, PR, ZIP công khai, Markdown hoặc ảnh chụp màn hình. Chủ khóa quản lý quota và chi phí; chủ động bật cloud khi cần đo thật.
 - Với gói public: kiểm tra tên file và manifest của Release, đối chiếu SHA256 cố định, rà soát dữ liệu PII/secrets trong **nội dung file ZIP** trước khi công bố lại. Không coi quét mã nguồn trên GitHub là kiểm toán dữ liệu đã đóng gói; không mở file `.joblib` từ nguồn không tin cậy.
 - Ghi máy thử, Python 3.11, commit, SHA256 asset, kết quả unit/smoke, kiểm tra 3 vai trò và vài câu RAG trên **máy thành viên khác**. Đây là bước nghiệm thu vật lý phải do thành viên thực hiện, không thể được thay thế bằng CI hoặc fixture.
 

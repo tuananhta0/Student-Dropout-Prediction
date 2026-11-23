@@ -84,7 +84,11 @@ def cloud_quality(rows):
     known=[r for r in rows if r['dieu_mong_doi'] is not None]
     ok=sum(r['phuong_phap']=='gemini' and r['trang_thai_llm']=='OK' for r in known)
     rate=ok/len(known) if known else None
+    counts=Counter(r.get('trang_thai_llm','NOT_REQUESTED') for r in known)
     return {'so_cau_gemini_mong_doi':len(known),'ty_le_gemini_thanh_cong':rate,
+            'so_cau_generation_ok':ok,'so_cau_fallback':len(known)-ok,
+            'ty_le_fallback':(len(known)-ok)/len(known) if known else None,
+            'trang_thai_generation':dict(counts),
             'cloud_quality_gate':bool(rate is not None and rate>=.90)}
 
 
@@ -123,8 +127,9 @@ def main():
     print(json.dumps({k:v for k,v in report.items() if k!='chi_tiet'},ensure_ascii=False,indent=2))
     review=a.output.with_name(a.output.stem+'_doi_chieu.csv')
     with review.open('w',encoding='utf-8-sig',newline='') as f:
-        writer=csv.writer(f);writer.writerow(['cau_hoi','dieu_mong_doi','dieu_da_truy_xuat','phuong_phap','phan_hoi_html','dung_ngu_nghia','day_du','ghi_chu_nguoi_cham'])
-        for row in rows: writer.writerow([row['cau_hoi'],row['dieu_mong_doi'],row['dieu_truy_xuat'],row['phuong_phap'],row['phan_hoi'],'','',''])
+        writer=csv.writer(f);writer.writerow(['cau_hoi','dieu_mong_doi','dieu_da_truy_xuat','phuong_phap','phan_hoi_html',
+                                'dung_ngu_nghia','day_du','trich_dan_dung','khong_bia_quy_dinh','ghi_chu_nguoi_cham'])
+        for row in rows: writer.writerow([row['cau_hoi'],row['dieu_mong_doi'],row['dieu_truy_xuat'],row['phuong_phap'],row['phan_hoi'],'','','','',''])
     sidecar(review,report['provenance'])
     print('Báo cáo:',a.output,'; bảng đối chiếu thủ công:',review)
     return 0 if report['quality_gate'] and (not a.cloud or report['cloud_quality_gate']) else 1
