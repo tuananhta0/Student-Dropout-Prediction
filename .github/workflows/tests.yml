@@ -23,3 +23,8 @@ jobs:
       - run: python -B -m scripts.benchmark_rag
       - run: python -B -m scripts.benchmark_rag --extended --output data/kiem_tra_rag/bao_cao_mo_rong.json
       - run: python -B -m scripts.benchmark_rag --all --e2e --output data/kiem_tra_rag/bao_cao_e2e.json
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: node --check static/portal.js
+      - run: node --test tests/portal_async.test.cjs

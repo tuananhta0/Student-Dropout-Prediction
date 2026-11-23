@@ -188,6 +188,10 @@ def audit(source, scored_path, output):
             check('full_scored_label_match',~np.isclose(joined.dropout_next_2_terms_src,joined.dropout_next_2_terms_scored,equal_nan=True))
     stats['source_missing_counts']={name:{k:int(v) for k,v in df.isna().sum().items() if v} for name,df in source.cache.items()}
     report={'dataset_version':source.manifest.get('research_revision','3.2.1'),'scenario':scenario,'blocking_errors':checks,'review_required':reviews,'views':stats,'limitations':source.manifest['known_limitations'], 'temporal_split_note':'Các tập không trùng sinh viên nhưng khoảng thời gian có thể chồng lấn; cần thực nghiệm rolling-origin.', 'policy_note':'Không suy ra quyết định học vụ hoặc trúng tuyển chính thức từ dữ liệu mô phỏng.'}
+    from scripts.report_provenance import provenance, sha256, sidecar
+    report['provenance']=provenance(dataset_manifest_sha256=sha256(source.run/'manifests/generation_manifest.json'),scored_sha256=sha256(scored_path) if scored_path is not None else None,scenario=scenario)
+    for path in output.glob('*.csv'):
+        if path.stem in reviews: sidecar(path,report['provenance'])
     (output/'kiem_tra_du_lieu.json').write_text(json.dumps(report,ensure_ascii=False,indent=2),encoding='utf-8')
     print('Báo cáo kiểm tra dữ liệu:',output/'kiem_tra_du_lieu.json')
     return not any(checks.values())

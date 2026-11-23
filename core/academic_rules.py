@@ -135,7 +135,7 @@ def projected_gpa(points, credits, new_gpa, new_credits):
     return rounded((points+new_gpa*new_credits)/(credits+new_credits)) if credits+new_credits else None
 
 
-def projection(row, target=None):
+def projection(row, target=None, new_credits=None):
     """Kịch bản GPA chỉ học môn mới, không phải mô hình dự báo."""
     pts = number(row.get('gpa_quality_points'))
     credits = number(row.get('gpa_credit_count'))
@@ -150,8 +150,9 @@ def projection(row, target=None):
     owed=number(row.get("credits_owed_cumulative"))
     if None in (available, cap, owed): return None
     budget=max(0,remaining-earned-owed)
-    n = min(15, budget, available, cap)
-    if n == 0:
+    maximum = min(budget, available, cap)
+    n = min(15, maximum) if new_credits is None else whole(new_credits, 1)
+    if n is None or n > maximum or n == 0:
         return None
     # Giả định rõ ràng, không tự suy đoán hành vi.
     gpa = rounded(gpa)

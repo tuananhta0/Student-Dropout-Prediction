@@ -26,6 +26,8 @@ def main():
     p.add_argument('csv',type=Path);p.add_argument('--reviewer',required=True)
     p.add_argument('--output',type=Path,default=Path('data/kiem_tra_rag/danh_gia_doc_lap.json'))
     a=p.parse_args(); result=summarize(a.csv,a.reviewer)
+    from scripts.report_provenance import provenance, sha256, read_report_origin
+    result['provenance']=provenance(review_csv_sha256=sha256(a.csv),benchmark_csv_origin=read_report_origin(a.csv))
     a.output.parent.mkdir(parents=True,exist_ok=True)
     a.output.write_text(json.dumps(result,ensure_ascii=False,indent=2),encoding='utf-8')
     print(json.dumps(result,ensure_ascii=False,indent=2))

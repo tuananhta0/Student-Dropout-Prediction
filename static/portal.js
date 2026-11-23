@@ -3,20 +3,30 @@
     let listRequest=0, studentRequest=0, chatRequest=0;
     const workspaceError = text => { const el=document.getElementById("workspaceError"); el.textContent=text; el.classList.toggle("hidden",!text); };
     // Token chỉ giữ trong bộ nhớ của trang; không ghi vào localStorage.
-    async function apiFetch(path, options = {}) {
-      const session = currentUser;
+    let sessionEpoch=0;
+    const activeRequests=new Set();
+    async function apiFetch(path, options = {}, login = false) {
+      const epoch=sessionEpoch;
       const headers = new Headers(options.headers || {});
-      if (currentUser) headers.set('Authorization', 'Bearer ' + currentUser.access_token);
+      if (currentUser && !login) headers.set('Authorization', 'Bearer ' + currentUser.access_token);
       const controller=new AbortController();
+      activeRequests.add(controller);
       const timer=setTimeout(()=>controller.abort(),35000);
-      let res;
-      try { res=await fetch(path, {...options, headers, signal:controller.signal}); }
-      finally { clearTimeout(timer); }
-      if (currentUser !== session) throw new Error('Phiên làm việc đã thay đổi');
-      const read = res.json.bind(res);
-      res.json = async () => { const value = await read(); if (currentUser !== session) throw new Error('Phiên làm việc đã thay đổi'); return value; };
-      if (res.status === 401) { resetSession(); throw new Error('Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.'); }
-      return res;
+      const check=()=>{if(epoch!==sessionEpoch) throw new Error('Phiên làm việc đã thay đổi');};
+      try {
+        const res=await fetch(path, {...options, headers, signal:controller.signal});
+        check();
+        if (res.status===401 && !login) { resetSession(); const err=new Error('Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.');err.sessionExpired=true;throw err; }
+        // Mọi API giao diện trả JSON; đọc hết body trong cùng deadline.
+        const value=await res.json();
+        check();
+        return {ok:res.ok,status:res.status,json:async()=>{check();return value;}};
+      } catch(err) {
+        if(err.sessionExpired) throw err;
+        check();
+        if(controller.signal.aborted) throw new Error('Máy chủ phản hồi quá thời hạn. Vui lòng thử lại.');
+        throw err;
+      } finally { clearTimeout(timer); activeRequests.delete(controller); }
     }
     const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
     const safeCode = value => /^[A-Z0-9_-]+$/i.test(String(value)) ? String(value) : '';
@@ -32,28 +42,33 @@
       const u = document.getElementById('inpUsername').value.trim();
       const p = document.getElementById('inpPassword').value;
       const errBox = document.getElementById('loginError');
-      if(loginPending) return;
+      if(loginPending || currentUser) return;
       loginPending=true;
+      const epoch=sessionEpoch;
       const submit=document.querySelector('#loginForm button[type=submit]'); submit.disabled=true;
       errBox.classList.add('hidden');
 
       try {
-        const res = await fetch('/api/login', {
+        const res = await apiFetch('/api/login', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ username: u, password: p })
-        });
+        }, true);
         const data = await res.json();
+        if(epoch!==sessionEpoch) return;
         if (!res.ok) {
           errBox.innerText = data.detail || 'Đăng nhập thất bại';
           errBox.classList.remove('hidden');
           return;
         }
+        if(epoch!==sessionEpoch) return;
+        sessionEpoch++;
         currentUser = data;
         document.getElementById('loginScreen').classList.add('hidden');
         document.getElementById('mainApp').classList.remove('hidden');
         await setupWorkspaceByRole();
       } catch (err) {
+        if(epoch!==sessionEpoch && (!currentUser || epoch+1!==sessionEpoch)) return;
         if(currentUser) { workspaceError('Không tải được không gian học vụ: '+err.message); return; }
         errBox.innerText = 'Lỗi kết nối tới máy chủ: ' + err.message;
         errBox.classList.remove('hidden');
@@ -61,11 +76,14 @@
     }
 
     async function logout() {
+      const epoch=sessionEpoch;
       try { if (currentUser) await apiFetch('/api/logout', {method:'POST'}); }
-      finally { resetSession(); }
+      finally { if(epoch===sessionEpoch) resetSession(); }
     }
     function resetSession() {
+      sessionEpoch++;
       currentUser = null;
+      for(const controller of activeRequests) controller.abort();
       listRequest++; classRequest++; studentRequest++; chatRequest++;
       chatPending=false; const send=document.getElementById("chatSend"); send.disabled=false; send.textContent="Gửi";
       workspaceError("");
@@ -100,6 +118,8 @@
     }
 
     async function setupWorkspaceByRole() {
+      const session=currentUser;
+      if(!session) return;
       document.getElementById('txtUserId').innerText = currentUser.user_id;
       document.getElementById('badgeRole').innerText = ({student:'SINH VIÊN',advisor:'CỐ VẤN',admin:'QUẢN TRỊ'})[currentUser.role] || 'TÀI KHOẢN';
       document.getElementById('txtRoleLabel').innerText = currentUser.role_label;
@@ -107,10 +127,11 @@
         const view = await apiFetch('/api/data-view');
         if (view.ok) {
           const v = await view.json();
+          if(session!==currentUser) return;
           document.getElementById('txtRoleLabel').innerText += ` | Dữ liệu mô phỏng`;
         }
-      } catch (err) { workspaceError('Không tải được thông tin dữ liệu'); }
-      if (!currentUser) return;
+      } catch (err) { if(session===currentUser) workspaceError('Không tải được thông tin dữ liệu'); }
+      if (session!==currentUser) return;
 
       document.getElementById('panelStudentData').classList.add('hidden');
       document.getElementById('panelAdvisorData').classList.add('hidden');
@@ -164,7 +185,7 @@
         document.getElementById('panelAdminData').classList.remove('hidden');
         document.getElementById('panelAdvisorData').classList.remove('hidden');
         await initAdminFaculties();
-        await initAdvisorClasses('');
+        if(session===currentUser) await initAdvisorClasses('');
       }
     }
 
@@ -344,14 +365,18 @@
       };
       const credits = inputNumber('Tín chỉ môn mới',0,Math.min(latest.new_course_credits_available ?? 0,latest.registration_max_credits ?? 0,Math.max(0,(latest.credits_required ?? 0)-(latest.credits_earned_cumulative ?? 0)-(latest.credits_owed_cumulative ?? 0)),30),1), gpa = inputNumber('GPA môn mới',0,4,.1);
       const status = document.createElement('p'); status.className='text-emerald-300';
+      const scenarioRequests=new WeakMap();
       const post = async (path,payload,render,out) => {
+        const session=currentUser, id=(scenarioRequests.get(out)||0)+1;
+        scenarioRequests.set(out,id);
+        const isCurrent=()=>session===currentUser && scenarioRequests.get(out)===id && out.isConnected;
         out.textContent='Đang tính…';
         try {
           const response=await apiFetch(path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({user_id:stuId,...payload})});
           const value=await response.json();
           if (!response.ok) throw new Error(typeof value.detail==='string'?value.detail:'Thông tin nhập không hợp lệ');
-          out.textContent=render(value);
-        } catch (error) { out.textContent=error.message; }
+          if(isCurrent()) out.textContent=render(value);
+        } catch (error) { if(isCurrent()) out.textContent=error.message; }
       };
       const btn = document.createElement('button'); btn.type='button';btn.className='bg-blue-600 rounded-lg px-3 py-2 font-bold';btn.textContent='Tính GPA';controls.append(btn);
       btn.onclick=()=>post('/api/student/gpa-scenario',{changes:Object.fromEntries([...selects].filter(([_,v])=>v.value).map(([k,v])=>[k,v.value])),new_credits:Number(credits.value),new_gpa:Number(gpa.value)},v=>`GPA: ${v.gpa_before.toFixed(2)} → ${v.gpa_after.toFixed(2)}; ${v.gpa_credits} tín chỉ tính GPA`,status);
@@ -368,7 +393,9 @@
     }
 
     async function inspectStudentInTab(studentId) {
+      const session=currentUser;
       await loadStudentSelfData(studentId);
+      if(session!==currentUser) return;
       document.getElementById('panelStudentData').scrollIntoView({ behavior: 'smooth' });
     }
 
@@ -396,7 +423,7 @@
       classPage=Math.max(0,Math.floor(idx/classPageSize)); renderClassDropdownOptions(filteredClasses,false);
       sel.value=defaultCls;
       await loadAdvisorClassDetail(defaultCls);
-      if (majorCode) {
+      if (majorCode && req===listRequest && session===currentUser) {
         document.getElementById('panelAdvisorData').scrollIntoView({ behavior: 'smooth' });
       }
     }
@@ -475,9 +502,11 @@
     function fmtNumber(value, digits=0) { return typeof value === "number" && Number.isFinite(value) ? value.toFixed(digits) : "Chưa có"; }
 
     async function initAdminFaculties() {
+      const session=currentUser;
       const res = await apiFetch(`/api/admin/faculties`);
       if (!res.ok) { document.getElementById('admFacultiesTable').textContent='Không thể tải thống kê khoa.'; return; }
       const data = await res.json();
+      if(session!==currentUser) return;
       document.getElementById('admFacultiesTable').innerHTML = (data.faculties || []).map(f => `
         <tr class="hover:bg-[#282a2c]/50">
           <td class="py-2 px-2.5 font-bold text-amber-300">${safeCode(f.major_code)}</td>
@@ -554,7 +583,7 @@
     const actions={switchTab, initAdvisorClasses, changeClassPage: v=>changeClassPage(Number(v)), selectClassQuick, askFromData, inspectStudentInTab, logout};
     function handleAction(fn,arg) {
       const session=currentUser;
-      Promise.resolve().then(()=>fn(arg)).catch(err=>{if(session===currentUser) workspaceError(err.message);});
+      Promise.resolve().then(()=>{if(session===currentUser) return fn(arg);}).catch(err=>{if(session===currentUser) workspaceError(err.message);});
     }
     document.addEventListener('click',event=>{
       const el=event.target.closest('[data-action]');

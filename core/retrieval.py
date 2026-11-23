@@ -38,7 +38,7 @@ PARAPHRASES = {
     'chuyen sang truong': 'chuyen truong', 'chuyen sang dai hoc': 'chuyen truong',
     'bi om': 'nghi hoc tam thoi bao luu', 'nghi vi benh': 'nghi hoc tam thoi bao luu',
     'phuc khao': 'phuc tra', 'song nganh': 'hai chuong trinh',
-    'thoi gian toi da': 'thoi gian hoc toi da', 'rot mon': 'hoc lai', 'truot mot mon muon nang diem': 'hoc lai cai thien diem', 'luan van': 'khoa luan', 'nghi hoc do benh':'nghi hoc tam thoi bao luu', 'nghi hoc vi benh':'nghi hoc tam thoi bao luu', 'nghi mot nam':'nghi hoc tam thoi', 'cham nguoi than':'ly do ca nhan nghi hoc tam thoi', 'vang mat':'vang', 'tu xin thoi hoc':'tu nguyen thoi hoc',
+    'mon bat buoc':'hoc phan bat buoc', 'nganh thu hai':'hai chuong trinh', 'nghi khong phep':'vang khong phep', 'luu bao lau':'luu tru', 'thoi gian toi da': 'thoi gian hoc toi da', 'rot mon': 'hoc lai', 'truot mot mon muon nang diem': 'hoc lai cai thien diem', 'luan van': 'khoa luan', 'nghi hoc do benh':'nghi hoc tam thoi bao luu', 'nghi hoc vi benh':'nghi hoc tam thoi bao luu', 'nghi mot nam':'nghi hoc tam thoi', 'cham nguoi than':'ly do ca nhan nghi hoc tam thoi', 'vang mat':'vang', 'tu xin thoi hoc':'tu nguyen thoi hoc',
 }
 TOPICS = ('phuc tra ket qua thi|thoi gian hoc toi da|canh bao hoc tap|buoc thoi hoc|chuyen truong|chuyen nganh|bao luu|nghi hoc tam thoi|hoc phan tien quyet|hoc phan bat buoc|hoc phan tu chon|dang ky tin chi|rut hoc phan|diem liet|thi lai|hoc lai|cai thien diem|gpa|tot nghiep|tieng anh|hoc truc tuyen|ke hoach dao tao|quy mo lop|co van hoc tap|trach nhiem sinh vien|muc tieu dao tao|lop nhap hoc|trao doi sinh vien|luu tru khoa luan|hieu luc thi hanh|cam thi|ha hang tot nghiep|hoc phi rut mon|hoc phi|khoa luan|moi tiet|quy che ap dung|hai chuong trinh|tin chi|diem thi|tu nguyen thoi hoc|ly do ca nhan|chung nhan|thoi hoc|vang khong phep|dieu kien du thi|thi cuoi ky|cong nhan tin chi|quyen loi sau thoi hoc').split('|')
 
@@ -60,12 +60,45 @@ def public_focus(question):
     matched=[t for t in TOPICS if re.search(r'\b'+re.escape(t)+r'\b',q)]
     # Bổ sung khía cạnh hỏi bằng cụm công khai, không chuyển bất kỳ token gốc nào.
     aspects={'bao nhieu':'ngưỡng hoặc số lượng','toi da':'giới hạn tối đa','toi thieu':'giới hạn tối thiểu','lam sao':'thủ tục','giay xac nhan':'minh chứng','can gi':'điều kiện','khi nao':'thời hạn','co duoc':'điều kiện cho phép','ca nhan':'lý do cá nhân','co phep':'vắng có phép'}
+    matched=list(dict.fromkeys(matched+[t for terms in POLICY_TOPICS.values() for t in terms if re.search(r'\b'+re.escape(t)+r'\b',q)]))
     if not matched: return ''
     return '; '.join(matched+[v for k,v in aspects.items() if k in q])
 
 
+# Chủ đề hẹp được ánh xạ tới Điều có nội dung tương ứng. Chủ đề rộng như GPA,
+# tín chỉ, học phí không tự động khóa vào một Điều duy nhất.
+POLICY_TOPICS = {
+    1: ('quy che ap dung','pham vi doi tuong'), 2: ('muc tieu dao tao',),
+    3: ('thoi gian hoc toi da','hoc phan tien quyet'), 4: ('hoc phan bat buoc',),
+    5: ('moi tiet','gio hoc ly thuyet'), 6: ('trach nhiem sinh vien',),
+    7: ('co van hoc tap','giao vien chu nhiem'), 8: ('ke hoach dao tao',),
+    9: ('lop nhap hoc',), 10: ('quy mo lop',), 11: ('hoc truc tuyen',),
+    12: ('rut hoc phan','rut mon','dang ky tin chi','hoc phi rut mon','lam do an','lam khoa luan'),
+    13: ('diem liet','thi cuoi ky','diem thanh phan','diem chu'),
+    14: ('thi lai','thi bo sung','dieu kien du thi'), 15: ('cai thien diem','hoc lai'),
+    16: ('phuc tra','phuc khao'), 17: ('cong thuc gpa','quy doi thang 4','xep loai hoc luc'),
+    18: ('canh bao hoc tap','buoc thoi hoc','canh bao lien tiep'),
+    19: ('tieng anh','cong nhan tin chi'), 20: ('dieu kien tot nghiep','ha hang tot nghiep'),
+    21: ('bao luu','nghi hoc tam thoi','tu nguyen thoi hoc'),
+    22: ('chuyen truong','chuyen nganh'), 23: ('hai chuong trinh',),
+    24: ('trao doi sinh vien',), 25: ('cam thi','vang khong phep','thi ho'),
+    26: ('luu tru khoa luan','luu tru','khoa luan phai duoc luu'), 27: ('hieu luc thi hanh',),
+}
+
+
+def topic_articles(question):
+    q=normalize_query(question)
+    out={a for a,terms in POLICY_TOPICS.items() if any(re.search(r'\b'+re.escape(t)+r'\b',q) for t in terms)}
+    if 4 in out and not any(t in q for t in ('khong dat','truot','rot','phai lam gi')):
+        out.discard(4);out.add(3)
+    return out
+
+
 def unsupported(question):
     q=strip_accents(question)
+    # Lịch/ngày giờ/giá cụ thể thuộc thông báo vận hành, không phải quy chế.
+    if re.search(r'\b(?:lich|ngay|thoi han|han chot)\s+(?:nghi le|nghi tet|nop hoc phi|dong hoc phi|thi cu the|thi lai cu the)',q): return True
+    if re.search(r'\b(?:thu vien|can tin|nha xe)\b',q) or 'nghi le' in q or 'nghi tet' in q: return True
     return any(x in q for x in ('the ngan hang','chuyen khoan','vi dien tu','so tai khoan','thanh toan bang','mat khau','api key','thoi tiet','mat trang','nau an','gia vang','vay tien','gui xe','hoc phi bao nhieu','muc hoc phi','hoc phi mot tin','hoc phi bao nhieu mot thang','hoc phi moi tin','hoc phi tung tin','hoc phi moi hoc phan','cau lac bo','bong da','ky tuc xa','dia chi truong','so dien thoai','diem chuan nam','lich thi cu the'))
 
 
@@ -109,10 +142,12 @@ def tokens(text):
 
 
 def numbers(text):
+    """Danh sách số ngay sau nhãn; không nuốt số tín chỉ/học kỳ ở câu kế tiếp."""
     q = strip_accents(text)
-    arts = [int(x) for x in re.findall(r'\b(?:dieu|quy\s*che|quy\s*dinh)\s*(\d{1,2})\b', q)]
-    clauses = [int(x) for x in re.findall(r'\bkhoan\s*(\d{1,2})\b', q)]
-    return arts, clauses
+    def collect(label):
+        pattern = r'\b(?:'+label+r')\s*(?:so\s*)?(\d{1,3}\b(?:\s*(?:,|;|va|hoac|&|/)\s*\d{1,3}\b(?!\s*(?:tin chi|tc|hoc ky|diem|%)))*)'
+        return list(dict.fromkeys(int(x) for m in re.finditer(pattern,q) for x in re.findall(r'\d+',m.group(1))))
+    return collect(r'dieu|quy\s*che|quy\s*dinh'), collect('khoan')
 
 
 def span(s):
@@ -234,7 +269,8 @@ class RegulationSearch:
         if len(arts)>1 and clauses: return []
         if arts:
             return [c for c in self.chunks if c['article'] in arts and (not clauses or any(k in span(c['clause']) for k in clauses))]
-        if unsupported(question): return []
+        if unsupported(question):
+            return []
         query0=normalize_query(question)
         if any(x in query0 for x in ('cac hinh thuc thoi hoc','cac con duong dan den thoi hoc','phan biet cac loai thoi hoc')):
             wanted=('D18.K2','D25.K4–6','D21.K2–3','D12.K4','D21.K1')
@@ -243,11 +279,17 @@ class RegulationSearch:
             return [next(c for c in self.chunks if c['id']==key) for key in ('D20.K5–6','D19.K1–5','D18.K3–4')]
         query = normalize_query(question)
         focus = public_focus(question)
+        strong = topic_articles(question)
         q = set(tokens(query))
         original = set(re.findall(r'[^\W_]+', unicodedata.normalize('NFC', question.lower())))
         accented = {w for w in original if w != strip_accents(w) and strip_accents(w) in q}
         phrase = ' '.join(tokens(query))
         if not q: return []
+        if not (strong or focus):
+            # Với câu chưa xác định được chủ đề, chỉ nhận cụm từ có nghĩa xuất hiện
+            # nguyên cụm trong nhan đề; không dựa vào vài từ chung như sinh viên/học.
+            if not any(re.search(r'\b'+re.escape(strip_accents(c['title']))+r'\b',query) for c in self.chunks):
+                return []
         scores = []
         for i,b in enumerate(self.bags):
             score = sum(math.log(1+(len(self.bags)-self.df[w]+.5)/(self.df[w]+.5))*b[w]*2.5/(b[w]+1.5*(.25+.75*self.lengths[i]/self.avg)) for w in q if b[w])
@@ -260,10 +302,7 @@ class RegulationSearch:
         # Lọc từ hiếm/trùng chủ đề trước, không lấy kết quả ngẫu nhiên khi không có căn cứ.
         ranking = sorted(range(len(scores)),key=lambda i:scores[i],reverse=True)
         candidates = [i for i in ranking if scores[i]>=max(2.,scores[ranking[0]]*.50) and (len(q & self.bags[i].keys())>=2 or (len(q)==1 and any(len(w)>=4 and self.df[w]<=2 for w in q & self.bags[i].keys())))]
-        narrow=[(16,('phuc tra','phuc khao')),(21,('bao luu','nghi hoc tam thoi')),(25,('cam thi','vang khong phep')),(3,('thoi gian hoc toi da','hoc phan tien quyet')),(22,('chuyen truong','chuyen nganh'))]
-        strong={a for a,terms in narrow if any(t in query for t in terms)}
-        if len(strong)==1:
-            # Câu hỏi đơn chủ đề: không đưa nguồn thuộc chủ đề khác chỉ vì cùng chữ "thi", "học".
+        if strong:
             candidates=[i for i in candidates if self.chunks[i]['article'] in strong]
         if cloud and focus:
             try:
@@ -271,14 +310,25 @@ class RegulationSearch:
                     similarities = self._semantic(focus)
                     if trace is not None: trace['embedding_used']=True
                     # Tìm ngữ nghĩa trên toàn corpus, không giới hạn bởi BM25.
-                    semantic=[i for i in np.argsort(-similarities) if similarities[i]>=.55 and (len(strong)!=1 or self.chunks[i]['article'] in strong)][:limit]
+                    semantic=[i for i in np.argsort(-similarities) if similarities[i]>=.55 and (not strong or self.chunks[i]['article'] in strong)][:limit]
                     candidates=list(dict.fromkeys(candidates+semantic))
                     candidates.sort(key=lambda i:scores[i]/max(1,max(scores))+.65*float(similarities[i]),reverse=True)
             except Exception as exc:
                 code = safe_api_error(exc)
                 if trace is not None: trace['embedding_error'] = code
                 logging.getLogger(__name__).warning('Embedding không khả dụng (%s); dùng BM25.', code)
-        return [self.chunks[i] for i in candidates[:limit]]
+        if len(strong)>1:
+            # Bảo toàn ít nhất một bằng chứng cho mỗi chủ đề nhận diện được,
+            # không để một chủ đề có nhiều đoạn lấn hết chủ đề khác.
+            first=[]
+            for a in sorted(strong):
+                ranked=[i for i in candidates if self.chunks[i]['article']==a]
+                if not ranked:
+                    ranked=[i for i in ranking if self.chunks[i]['article']==a and scores[i]>0]
+                if ranked: first.append(ranked[0])
+            first.sort(key=lambda i: scores[i],reverse=True)
+            candidates=list(dict.fromkeys(first+candidates))
+        return [self.chunks[i] for i in candidates[:max(limit,len(strong))]]
 
     def answer(self, question, cloud=False):
         # Deadline tổng thể cho khách; tối đa hai worker, không xếp hàng vô hạn.
@@ -304,11 +354,25 @@ class RegulationSearch:
 
     def _answer(self, question, cloud=False):
         trace={'embedding_used':False,'generation_status':'NOT_REQUESTED'}
+        # Với câu ghép có một chủ đề ngoài phạm vi: chỉ trả nguồn của phần có
+        # căn cứ, không gửi câu thô hay tự suy đoán phần thiếu.
+        if not numbers(question)[0] and unsupported(question):
+            parts=re.split(r'(?i)\s+(?:và|va|đồng thời)\s+|[;?]+',question)
+            supported=[self._answer(part,False) for part in parts if part.strip() and not unsupported(part) and topic_articles(part)]
+            supported=[out for out in supported if out['regulations']]
+            if supported:
+                evidence=list({c['id']:c for out in supported for c in out['regulations']}.values())
+                return {'reply':'<p>Một phần câu hỏi nằm ngoài phạm vi quy chế; chỉ hiển thị các nội dung có căn cứ dưới đây.</p>'+''.join(out['reply'] for out in supported),'regulations':evidence,'retrieved':evidence,'method':'bm25',**trace}
         chunks = self.retrieve(question,cloud=cloud,trace=trace)
         requested,clauses=numbers(question)
-        missing=sorted(set(requested)-{c['article'] for c in chunks})
+        missing=sorted(set(requested)-{c['article'] for c in self.chunks})
+        missing_clauses=sorted(k for k in set(clauses) if not any(k in span(c['clause']) for c in chunks)) if len(requested)==1 else []
+        diagnostics=''
+        if missing: diagnostics+='<p>Không có căn cứ cho Điều '+', '.join(map(str,missing))+' trong kho đang sử dụng.</p>'
+        if missing_clauses: diagnostics+='<p>Không tìm thấy Khoản '+', '.join(map(str,missing_clauses))+' của Điều '+str(requested[0])+' trong kho đang sử dụng.</p>'
+        if len(requested)>1 and clauses: diagnostics+='<p>Hãy nêu từng Điều và Khoản riêng để tránh ghép nhầm.</p>'
         if not chunks:
-            return {'reply':'<p>Chưa tìm thấy căn cứ trong quy chế. Hãy nêu Điều, Khoản hoặc chủ đề cụ thể.</p>','regulations':[], 'method':'none',**trace}
+            return {'reply':diagnostics+'<p>Chưa tìm thấy căn cứ trong quy chế. Hãy nêu Điều, Khoản hoặc chủ đề cụ thể.</p>','regulations':[], 'method':'none',**trace}
         evidence = [{'id':c['id'],'article':c['article'],'clause':c['clause'],'pages':c['pages'],'document':PDF,'title':c['title'],'text':c['text']} for c in chunks]
         for c in evidence:
             if c['id'] in SUPPLEMENT_PAGES:
@@ -316,7 +380,7 @@ class RegulationSearch:
         method = 'bm25'
         intro = ''
         retrieved=list(evidence)
-        if cloud and len(chunks)<=12 and not missing:
+        if cloud and len(chunks)<=12 and not missing and not missing_clauses:
             code = 'SDK_ERROR'
             try:
                 client = self._cloud()
@@ -352,7 +416,14 @@ class RegulationSearch:
                         raise ValueError('Trích dẫn không hợp lệ')
                     intro = '<p><b>Diễn giải AI (đối chiếu bằng chứng bên dưới):</b> '+html.escape(obj['answer'][:6000])+' ['+html.escape(', '.join(ids))+']</p>'
                     # Giữ toàn bộ đoạn khi người dùng tra cứu Điều/Khoản trực tiếp.
-                    if not numbers(question)[0]: evidence=[c for c in evidence if c['id'] in ids]
+                    if not requested:
+                        cited=[c for c in evidence if c['id'] in ids]
+                        # Không để LLM bỏ mất một chủ đề đã truy xuất; giữ bằng chứng
+                        # trực tiếp và báo fallback nếu thiếu nguồn của một chủ đề.
+                        if len(topic_articles(question))>1 and {c['article'] for c in cited}!={c['article'] for c in evidence}:
+                            intro=''
+                            raise ValueError('Thiếu nguồn cho một chủ đề')
+                        evidence=cited
                     method='gemini'
                     trace['generation_status']='OK'
             except Exception as exc:
@@ -360,8 +431,7 @@ class RegulationSearch:
                 if code == 'SDK_ERROR': code = safe_api_error(exc)
                 trace['generation_status']=code
                 logging.getLogger(__name__).warning('LLM không khả dụng (%s); trả bằng chứng trực tiếp.',code)
-        if missing:
-            intro='<p>Không có căn cứ cho Điều '+ ', '.join(map(str,missing)) + ' trong kho đang sử dụng.</p>'+intro
+        intro=diagnostics+intro
         if len(chunks)>12:
             intro='<p>Truy vấn nhiều Điều: hiển thị đầy đủ các đoạn tóm lược, không yêu cầu AI rút gọn.</p>'+intro
         blocks = []

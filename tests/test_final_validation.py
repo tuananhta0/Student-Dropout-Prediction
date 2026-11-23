@@ -97,7 +97,7 @@ class FinalValidationTests(unittest.TestCase):
         finally: event.set()
 
     def test_quality_gate(self):
-        x=dict(so_cau=1,hit_rate_at_5=1,mrr_at_5=1,top1=1,tu_choi_ngoai_pham_vi=1,trich_dan_hop_le=True)
+        x=dict(so_cau=1,hit_rate_at_5=1,mrr_at_5=1,top1=1,tu_choi_ngoai_pham_vi=1,trich_dan_hop_le=True,ty_le_dieu_mong_doi_duoc_hien_thi=1)
         self.assertTrue(quality_pass(x));x['tu_choi_ngoai_pham_vi']=0;self.assertFalse(quality_pass(x))
 
     def test_manual_review_requires_scores(self):

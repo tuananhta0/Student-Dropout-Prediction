@@ -4,7 +4,7 @@ import json
 from pathlib import Path
 import tempfile
 import zipfile
-import subprocess
+from scripts.report_provenance import provenance, read_report_origin
 from core.data_pipeline import ROOT, MAIN, Dataset, digest, require
 from scripts.train_model import StressDataset
 from scripts.release_model import verify_pair, MODEL_FILES
@@ -38,12 +38,26 @@ def pack_research(source_archive,dataset,model,output):
     for path in sorted((ROOT/'data/kiem_tra_rag').glob('*')):
         if path.is_file() and not path.is_symlink() and path.suffix in ('.json','.csv') and path.name.startswith(('bao_cao','danh_gia')):
             files['ket_qua/kiem_tra_rag/'+path.name]=path
-    def git(*args):
-        try: return subprocess.check_output(['git','-C',str(ROOT),*args],text=True,stderr=subprocess.DEVNULL).strip()
-        except (OSError,subprocess.CalledProcessError): return None
-    commit=git('rev-parse','HEAD')
-    changes=git('status','--porcelain')
-    manifest={'version':meta['version'],'source_commit':commit,'source_tree':git('write-tree'),'source_dirty':bool(changes) if changes is not None else None,'files':{k:{'sha256':digest(v),'bytes':v.stat().st_size} for k,v in files.items()}}
+    # Chỉ bao gồm báo cáo đã tạo, không đánh dấu báo cáo cũ thành báo cáo của commit hiện tại.
+    audit_csv=('registration_exceptions','exam_eligibility_discrepancies','admission_missing_non_direct','curriculum_electives')
+    policy_csv=('registration','exam','grade_rounding','admission_method_mismatch','admission_missing','admission_method_summary','admission_evidence','admission_floor_review')
+    for rel, names, report_name in (('doi_chieu_quy_che',policy_csv,'review.json'),('kiem_tra_du_lieu',audit_csv,'kiem_tra_du_lieu.json'),('kiem_tra_stress',audit_csv,'kiem_tra_du_lieu.json')):
+        for name in (report_name, *(n+suffix for n in names for suffix in ('.csv','.csv.provenance.json'))):
+            path=ROOT/'data'/rel/name
+            if path.is_file() and not path.is_symlink(): files['ket_qua/'+rel+'/'+name]=path
+    # Không đóng gói tài khoản, khóa, .env, hoặc cache embedding.
+    files={k:v for k,v in files.items() if not v.is_symlink()}
+    origin=provenance()
+    reports={}
+    for k,v in files.items():
+        if not k.startswith('ket_qua/') or v.name.endswith('.provenance.json'): continue
+        entry=read_report_origin(v)
+        if entry['status']=='recorded':
+            info=entry['provenance']
+            entry['status']='current_clean' if info['source_commit']==origin['source_commit'] and info.get('source_dirty') is False and origin['source_dirty'] is False else 'different_or_dirty'
+        reports[k]=entry
+    manifest={'version':meta['version'],'source_commit':origin['source_commit'],'source_tree':origin['source_tree'],'source_dirty':origin['source_dirty'],'report_origins':reports,'files':{k:{'sha256':digest(v),'bytes':v.stat().st_size} for k,v in files.items()}}
+    print('Nguồn báo cáo:',{k:sum(x['status']==k for x in reports.values()) for k in ('current_clean','different_or_dirty','unknown','changed_after_recording')})
     output.parent.mkdir(parents=True,exist_ok=True)
     with tempfile.TemporaryDirectory(dir=output.parent) as tmp:
         staged=Path(tmp)/'research.zip'

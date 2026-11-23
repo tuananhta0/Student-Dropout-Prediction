@@ -57,6 +57,8 @@ def main():
     scored=pd.read_csv(model/'student_snapshots_scored.csv.gz',low_memory=False)
     original=json.loads((model/'bao_cao_thuc_nghiem.json').read_text(encoding='utf-8'))
     report=review(scored,source.table('students'),meta,original,a.bootstrap)
+    from scripts.report_provenance import provenance, sha256
+    report["provenance"]=provenance(model_version=meta["version"],model_metadata_sha256=sha256(model/"model_metadata.json"),scored_sha256=sha256(model/"student_snapshots_scored.csv.gz"),dataset_manifest_sha256=meta.get("dataset_manifest_sha256"),bootstrap=a.bootstrap)
     a.output.parent.mkdir(parents=True,exist_ok=True);a.output.write_text(json.dumps(report,ensure_ascii=False,indent=2,allow_nan=False),encoding='utf-8')
     print(json.dumps({'test_snapshot':report['test_snapshot'],'test_sinh_vien_snapshot_dau_tien':report['test_sinh_vien_snapshot_dau_tien'],'ece':report['ece']},ensure_ascii=False,indent=2)); print('Báo cáo:',a.output)
 

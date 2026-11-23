@@ -61,13 +61,13 @@ Student-Dropout-Prediction/
 ├── docs/                 # Tài liệu hướng dẫn tiếng Việt
 ├── templates/            # Giao diện web
 ├── regulations/          # Văn bản quy chế
-├── artifacts_model/      # Model và dữ liệu chấm điểm
+├── artifacts_model/      # Baseline lịch sử, KHÔNG phải model nghiệm thu
 ├── app.py                # Điểm khởi chạy FastAPI
 ├── requirements.txt
 └── README.md
 ```
 
-`dataset_full/`, `data/` và `.venv/` chỉ tồn tại trên máy, không commit vào Git.
+`dataset_full/`, `data/` và `.venv/` chỉ tồn tại trên máy, không commit vào Git. `artifacts_model/model_metadata.json` và pipeline trong Git là baseline lịch sử (ngưỡng 0,21); không dùng các chỉ số đó cho `cmc-research-v1` (ngưỡng 0,12). Hai thiết kế thực nghiệm khác nhau, không so sánh trực tiếp chỉ số giữa hai artifact. Nghiệm thu bằng release đã kiểm tra SHA256. Không tự bật `CMC_ALLOW_BASELINE` khi thiếu release.
 
 ## 🧪 Kiểm thử
 
@@ -87,3 +87,5 @@ Xem [hướng dẫn dữ liệu](docs/huong_dan_du_lieu.md) và [quy chế, côn
 Xem [hướng dẫn hiệu chỉnh, thực nghiệm và chọn phiên bản mô hình](docs/huan_luyen_va_thuc_nghiem.md). Quy trình mới tái sinh lịch sử học vụ đồng bộ, mở rộng snapshot qua các học kỳ và tách STRESS. Kết quả huấn luyện mới nằm trong `data/models/`, không ghi đè baseline. Không cần tái huấn luyện khi dùng gói phiên bản chính thức đã kiểm tra.
 
 Nghiệm thu cuối: xem [bàn giao](docs/ban_giao.md), [tra cứu và đánh giá RAG](docs/tra_cuu_quy_che.md) và [giới hạn thực nghiệm ML](docs/ket_qua_nghien_cuu.md). Giao diện chạy CSS/JS cục bộ, mật khẩu demo trùng mã tài khoản. Thống kê chỉ gồm hồ sơ đã có kết quả học kỳ; nguy cơ ML dự báo hai học kỳ tiếp theo từ snapshot.
+
+Kiểm thử hồi quy bổ sung: `python -B -m scripts.benchmark_rag --all --e2e` (68 câu, fixture, không cần cloud) và `node --test tests/portal_async.test.cjs` (Node 22, chỉ cần cho kiểm thử giao diện, không cần khi chạy ứng dụng). Báo cáo mới ghi nguồn commit/dirty và checksum đầu vào; chạy lại sau commit sạch trước khi tạo gói nghiên cứu mới. Xem [bàn giao](docs/ban_giao.md).

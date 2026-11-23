@@ -1,5 +1,5 @@
 import re
-from core.academic_rules import number, rounded, registration_bounds, warning_reasons, withdrawal_reasons, exam_barred, course_grade, projection, graduation_conditions, retake_projection, strict_bool
+from core.academic_rules import number, whole, rounded, registration_bounds, warning_reasons, withdrawal_reasons, exam_barred, course_grade, projection, graduation_conditions, retake_projection, strict_bool
 import os
 from core.data_pipeline import Dataset, runtime_view, visible_attempts, academic_view, digest
 from core.prediction import model_inputs, risk_level, apply_prediction_scope, payment_scenario
@@ -303,23 +303,23 @@ class CMCChatbotEngine:
 
 
     def evaluate_regulation_trap(self, query: str) -> str:
-        q = strip_accents(query).replace(",", ".")
+        q = re.sub(r"\s+", " ", strip_accents(query)).replace(",", ".")
         notes = []
         m = re.search(r'\bgpa\s*(?:=|la|dat)?\s*(-?\d+(?:\.\d+)?)', q)
         if m:
             g = number(m.group(1),0,4)
             if g is None:
-                notes.append("GPA phải nằm trong [0,4].")
+                notes.append("Điều 17: GPA phải nằm trong [0,4].")
             elif "khoa luan" in q or "do an" in q:
                 notes.append(f"Điều 12.3a: GPA {g:.2f} {'đạt' if g >= 2.5 else 'chưa đạt'} ngưỡng 2.50; còn điều kiện riêng của chương trình.")
             elif "canh bao" in q:
-                term = re.search(r'(?:hoc\s*ky|ky|hk)\s*(\d+)', q)
+                term = re.search(r'\b(?:hoc\s*ky|(?<!dang )ky|hk)\s*(\d+)\b(?!\s*(?:tin chi|tc)\b)', q)
                 if 'ky dau' in q:
                     term = 1
                 elif term:
                     term = int(term.group(1))
                 if isinstance(term,int) and term < 1:
-                    notes.append("Học kỳ phải từ 1 trở lên.")
+                    notes.append("Điều 18: Học kỳ phải từ 1 trở lên.")
                 elif term:
                     bad = warning_reasons(term,g,None,None,None)['gpa']
                     notes.append(f"Điều 18.1a: {'Bị' if bad else 'Không bị'} cảnh báo vì GPA; còn tiêu chí tín chỉ.")
@@ -328,20 +328,50 @@ class CMCChatbotEngine:
             elif "xep loai" in q or "loai gi" in q:
                 rank = next(label for n,label in [(3.6,'Xuất sắc'),(3.2,'Giỏi'),(2.5,'Khá'),(2,'Trung bình'),(1,'Yếu'),(0,'Kém')] if g >= n)
                 notes.append(f"Điều 17.3: {g:.2f} xếp loại {rank}.")
-        m = re.search(r'(?:dang ky|chuan)\s*(\d+)\s*(?:tin chi|tc)',q)
-        if m and any(k in q for k in ['toi thieu','toi da','chuan']):
+        m = re.search(r'(?:khoi luong chuan|chuan)\s*(?:la\s*)?(\d+)\s*(?:tin chi|tc)',q)
+        if m:
             lo, hi = registration_bounds(int(m.group(1))) if int(m.group(1)) else (None,None)
-            notes.append(f"Điều 12.2e: giới hạn {lo}–{hi} TC." if lo is not None else "Khối lượng chuẩn phải lớn hơn 0.")
+            notes.append(f"Điều 12.2e: giới hạn {lo}–{hi} TC." if lo is not None else "Điều 12: Khối lượng chuẩn phải lớn hơn 0.")
         m = re.search(r'truot\s*(\d+)\s*(?:/|tren)\s*(\d+)',q)
         if m:
             failed, reg = map(int,m.groups())
             if failed > reg or reg == 0:
-                notes.append("Số tín chỉ đăng ký/trượt không hợp lệ.")
+                notes.append("Điều 18: Số tín chỉ đăng ký/trượt không hợp lệ.")
             else:
                 notes.append("Điều 18.1b: " + ("Bị" if warning_reasons(None,None,reg,failed,None)['failed'] else "Không bị") + " cảnh báo vì tỷ lệ tín chỉ trượt.")
-        m = re.search(r'no(?: dong)?\s*(\d+)\s*(?:tin chi|tc)',q)
+        # Chỉ kết luận từ số lần cảnh báo người hỏi thực sự cung cấp.
+        streak = re.search(r'(?<![\d.,-])(-?\d+(?:\.\d+)?)\s*lan\s*(?:bi\s*)?canh bao(?: hoc tap)?\s*lien tiep|canh bao(?: hoc tap)?\s*(-?\d+(?:\.\d+)?)\s*lan\s*lien tiep', q)
+        total = re.search(r'(?<![\d.,-])(?:tong(?: cong)?\s*)?(-?\d+(?:\.\d+)?)\s*lan\s*(?:bi\s*)?canh bao(?: hoc tap)?\s*(?:khong lien tiep|khong lien tuc)|canh bao(?: hoc tap)?\s*(-?\d+(?:\.\d+)?)\s*lan\s*(?:khong lien tiep|khong lien tuc)', q)
+        if streak or total:
+            s = whole(next(v for v in streak.groups() if v is not None)) if streak else None
+            t = whole(next(v for v in total.groups() if v is not None)) if total else None
+            try:
+                if (streak and s is None) or (total and t is None): raise ValueError('Số lần không hợp lệ')
+                reasons = withdrawal_reasons(s, t, None, None)
+                for key, label in [('consecutive','liên tiếp'),('total','không liên tiếp (tổng số lần)')]:
+                    if reasons[key] is not None:
+                        notes.append(f"Điều 18.2: {'Đủ' if reasons[key] else 'Chưa đủ'} tiêu chí buộc thôi học theo số lần cảnh báo {label}; còn tiêu chí khác và quyết định của trường.")
+            except ValueError:
+                notes.append('Điều 18.2: Số lần cảnh báo không nhất quán; cần kiểm tra lại.')
+        m = re.search(r'\bno(?: dong)?\s*(-?\d+)\s*(?:tin chi|tc)\b',q)
         if m:
-            notes.append("Điều 18.1b: " + ("Bị" if int(m.group(1)) > 24 else "Không bị") + " cảnh báo do nợ tín chỉ, không tính chứng chỉ.")
+            count = int(m.group(1))
+            # Tín chỉ chứng chỉ không thuộc tiêu chí nợ. Không suy đoán phần nợ còn lại.
+            rest = q[m.end():]
+            excluded = re.match(r'\s*(?:chung chi|mon chung chi|gdqp|gdtc)', rest)
+            mixed = any(x in q for x in ('bao gom','gom ca','trong do','ke ca','tinh ca','chung chi','gdqp','gdtc')) and not any(x in q for x in ('khong tinh chung chi','khong gom chung chi','khong ke chung chi','da loai chung chi'))
+            component = re.search(r'(?:trong do|bao gom|gom ca|gom)\s*(\d+)\s*(?:tin chi|tc)\s*(?:mon )?chung chi', rest)
+            if count<0 or (component and int(component.group(1))>count):
+                notes.append('Điều 18.1b: Số tín chỉ nợ hoặc phần chứng chỉ không hợp lệ.')
+            elif component:
+                counted=count-int(component.group(1))
+                notes.append(f"Điều 18.1b: Nợ tính cảnh báo {counted} tín chỉ sau khi loại {int(component.group(1))} tín chỉ chứng chỉ. " + ('Bị' if warning_reasons(None,None,None,None,counted)['owed'] else 'Không bị') + ' cảnh báo theo tiêu chí này; còn tiêu chí khác.')
+            elif excluded:
+                notes.append("Điều 18.1b: Tín chỉ chứng chỉ đã nêu không tính vào ngưỡng nợ trên 24 tín chỉ. Cần biết số tín chỉ nợ ngoài chứng chỉ và các tiêu chí khác.")
+            elif mixed:
+                notes.append("Điều 18.1b: Cần tách tín chỉ nợ ngoài chứng chỉ trước khi xét ngưỡng trên 24 tín chỉ; chưa đủ căn cứ kết luận.")
+            else:
+                notes.append("Điều 18.1b: " + ("Bị" if warning_reasons(None,None,None,None,count)['owed'] else "Không bị") + " cảnh báo do nợ tín chỉ, giả định đã loại môn chứng chỉ; còn tiêu chí khác.")
         u = re.search(r'(\d+(?:\.\d+)?)\s*%\s*(?:vang\s*)?(?:khong co phep|khong phep)|(?:khong co phep|khong phep)\s*(\d+(?:\.\d+)?)\s*%',q)
         x = re.search(r'(\d+(?:\.\d+)?)\s*%\s*(?:vang\s*)?co phep|(?<!khong )co phep\s*(\d+(?:\.\d+)?)\s*%',q)
         if u or x:
@@ -351,18 +381,18 @@ class CMCChatbotEngine:
                 barred = exam_barred(100, un, ex)
                 notes.append("Điều 25.1a: " + ("Cấm thi và phải học lại." if barred else "Không vượt ngưỡng vắng đã nêu; cần kiểm tra tổng số giờ và lý do khác."))
             except ValueError:
-                notes.append("Tỷ lệ vắng không hợp lệ.")
+                notes.append("Điều 25: Tỷ lệ vắng không hợp lệ.")
         m = re.search(r'(?:thi cuoi ky|diem thi|thi lai)\s*(?:la|duoc|=)?\s*(-?\d+(?:\.\d+)?)',q)
         if m:
             v = number(m.group(1),0,10)
             if v is None:
-                notes.append("Điểm thi phải nằm trong [0,10].")
+                notes.append("Điều 13: Điểm thi phải nằm trong [0,10].")
             elif v <= 2:
                 notes.append("Điều 13: điểm liệt, xếp F.")
             elif 'thi lai' in q:
                 notes.append("Điều 14.3: điểm học phần sau thi lại tối đa C.")
             else:
-                notes.append("Không bị điểm liệt theo điểm thi đã nêu; còn phụ thuộc tổng điểm và điều kiện thi.")
+                notes.append("Điều 13: Không bị điểm liệt theo điểm thi đã nêu; còn phụ thuộc tổng điểm và điều kiện thi.")
         return "<div class='text-xs'>"+"<br>".join(notes)+"</div>" if notes else ""
 
 
@@ -660,7 +690,7 @@ class CMCChatbotEngine:
     def parse_flexible_query(self, query: str) -> dict:
         clean_q = re.sub(r'\s*\[(?:khoa|toàn trường)\s*#\d+\]\s*$', '', str(query), flags=re.IGNORECASE).strip()
         q_norm = normalize_vn(clean_q)
-        q_ascii = strip_accents(q_norm)
+        q_ascii = re.sub(r"\s+", " ", strip_accents(q_norm))
         stu_match = re.search(r'\b(B[A-Z]{2}\d{6}|SIMV31_\d{6})\b', clean_q.upper())
         cls_match = re.search(r'\b([A-Z]{2}\d{2}-\d{2})\b', clean_q.upper())
         maj_match = re.search(r'\b(?:KHOA|NGANH)\s+(IT|BA|CS|SE|AI|GD|KL|CL|EM|NS|LS|IB|MC|MK|PR|DA|GA|CB|EC)\b', q_ascii.upper())
@@ -670,7 +700,7 @@ class CMCChatbotEngine:
                 if any(a in q_ascii for a in aliases):
                     detected_major = m_code
                     break
-        term_match = re.search(r'\b(?:hoc\s*ky|ky|hk)\s*(\d{1,2})\b', q_ascii)
+        term_match = re.search(r'\b(?:hoc\s*ky|(?<!dang )ky|hk)\s*(\d{1,2})\b(?!\s*(?:tin chi|tc)\b)', q_ascii)
         term_num = int(term_match.group(1)) if term_match else None
         art_matches = re.findall(r'\b(?:dieu|quy\s*che|quy\s*dinh|muc)\s*(?:so\s*)?(\d{1,2})\b', q_ascii)
         art_matches = [a for a in art_matches if 1 <= int(a) <= 27]

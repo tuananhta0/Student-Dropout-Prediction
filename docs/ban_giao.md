@@ -51,6 +51,14 @@ Trên máy thành viên khác, clone vào thư mục mới bằng `git clone -b 
 
 CI: `python -B -m scripts.benchmark_rag --all --e2e --output data/kiem_tra_rag/bao_cao_e2e.json` dùng HTTP TestClient và hồ sơ fixture; không kiểm chứng artifact thực. Báo cáo retrieval và benchmark e2e đều có quality gate.
 
-Sau khi commit sạch, đóng gói nghiên cứu vào đường dẫn mới bằng `python -B -m scripts.package_research <archive-nguon> --output data/cmc-research-full-final.zip`. Manifest ghi commit, Git index tree, trạng thái dirty, checksum các file. Gói không ghi đè file cũ; chỉ đóng gói báo cáo đã có. Đối chiếu báo cáo đúng phiên bản trước khi chia sẻ. Dùng `Get-FileHash` đối chiếu SHA256 gói.
+Sau khi commit sạch, đóng gói nghiên cứu vào đường dẫn mới bằng `python -B -m scripts.package_research <archive-nguon> --output data/cmc-research-full-final.zip`. Manifest ghi commit, Git HEAD tree, trạng thái dirty, checksum các file; `report_origins` ghi nguồn riêng của từng báo cáo. Gói không ghi đè file cũ; chỉ đóng gói báo cáo đã có. Đối chiếu báo cáo đúng phiên bản trước khi chia sẻ. Dùng `Get-FileHash` đối chiếu SHA256 gói.
 
 Chỉ bật Gemini khi cần, nhập khóa qua `Read-Host -AsSecureString`. Thu hồi khóa đã lộ tại Google AI Studio; không dùng khóa thật trong CI.
+
+## Kiểm thử và chứng cứ phiên bản
+
+Sau khi commit sạch, chạy lại benchmark gốc, mở rộng, e2e và cloud (nếu bật), `scripts.review_experiment --bootstrap 200`, audit MAIN/STRESS và `scripts.review_policy` để những báo cáo mới ghi đúng commit. Không cần train lại. Các báo cáo model gốc trong gói release là chứng cứ lịch sử của lần huấn luyện, không bị ghi đè. `report_origins` trong gói nghiên cứu phân biệt `current_clean`, `different_or_dirty`, `unknown` (báo cáo cũ chưa có metadata), `changed_after_recording` (CSV thay đổi sau khi xuất). Đây là thông tin provenance, không phải chữ ký số. Không sửa JSON cũ chỉ để đánh dấu khớp commit. Khi chạy từ ZIP không có Git, commit có thể là null.
+
+Frontend: `node --test tests/portal_async.test.cjs` dùng Node 22, mô phỏng fetch và DOM để kiểm tra timeout kể cả đọc body JSON, đăng nhập lỗi, phản hồi từ phiên cũ và đổi lớp. CI chạy tự động; không cần Node để khởi động ứng dụng. Vẫn kiểm thử thủ công trên trình duyệt thật. Timeout giao diện 35 giây; logout/đổi phiên hủy yêu cầu đang chờ phía client, không đảm bảo server dừng ngay.
+
+Có thể dùng chung API key của nhóm qua kênh riêng nếu chủ khóa chấp thuận; repository là public nên không hardcode, không lưu trong patch, không đưa vào gói dữ liệu hoặc Git. Khóa từng được chia sẻ nên thay trước khi sử dụng ngoài demo, giới hạn quota và theo dõi chi phí; đổi khóa do chủ sở hữu thực hiện. Kiểm thử offline không cần API key.

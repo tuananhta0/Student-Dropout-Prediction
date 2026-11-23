@@ -79,6 +79,10 @@ def main():
         'tuyen_sinh_thieu':'Giữ giá trị thiếu, không điền điểm giả',
         'tuyen_sinh_duoi_nguong':'Đánh dấu không dùng để kết luận đủ điều kiện tuyển sinh',
         'lam_tron':'Đã tái sinh; kiểm tra lại lịch sử và nhãn' if source.manifest.get('research_revision') else 'Chờ tái tạo đồng bộ điểm, lịch sử học lại, GPA, feature và nhãn trước khi huấn luyện'}
+    from scripts.report_provenance import provenance, sha256, sidecar
+    report['provenance']=provenance(dataset_manifest_sha256=sha256(source.run/'manifests/generation_manifest.json'))
+    for name in ('registration','exam','grade_rounding','admission_method_mismatch','admission_missing','admission_method_summary','admission_evidence','admission_floor_review'):
+        sidecar(output/(name+'.csv'),report['provenance'])
     (output/'review.json').write_text(json.dumps(report,ensure_ascii=False,indent=2,default=int),encoding='utf-8')
     print('Kết quả đối chiếu quy chế (chi tiết trong data/doi_chieu_quy_che/review.json):')
     for label,key in [('Ngoại lệ đăng ký','registration'),('Điều kiện thi cần đối chiếu','exam_reviews'),('Điểm chữ cần hiệu chỉnh','grade_rounding_reviews'),('Thiếu điểm tuyển sinh','missing_non_direct'),('Dưới ngưỡng đã đối chiếu','admission_below_published_floor')]:

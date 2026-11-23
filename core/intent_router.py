@@ -4,8 +4,8 @@ import re
 from fastapi import HTTPException
 from core.chatbot_engine import row_to_clean_dict, risk_display, strip_accents
 from core.security import permitted_student, require_role, require_major, require_class, scoped_classes, scoped_frame, assigned_classes, ADVISOR_MAJORS
-from core.retrieval import numbers, public_focus, unsupported, normalize_query
-from core.academic_rules import graduation_conditions, projection, number
+from core.retrieval import numbers, public_focus, unsupported, normalize_query, span
+from core.academic_rules import graduation_conditions, projection, number, whole
 
 
 def reply(text, intent):
@@ -13,7 +13,7 @@ def reply(text, intent):
 
 
 def route(engine, retrieval, principal, message, context):
-    q=strip_accents(message)
+    q=re.sub(r"\s+", " ", strip_accents(message))
     simple=re.sub(r'[^a-z0-9 ]','',q).strip()
     if simple in ('xin chao','chao','hello','hi','chao ban','cam on','cam on ban','thanks','huong dan','ban lam duoc gi'):
         context.pop('article',None)
@@ -34,6 +34,8 @@ def route(engine, retrieval, principal, message, context):
     admission='dau vao' in q or 'diem tuyen sinh' in q or 'phuong thuc tuyen sinh' in q
     risk=any(x in q for x in ('nguy co thoi hoc','xac suat thoi hoc','du bao thoi hoc','nguy co dropout'))
     target_match=re.search(r'(?:gpa(?: tich luy)?|muc tieu(?: gpa)?)\s*(?:la |dat |=\s*)?(-?\d+(?:[.,]\d+)?)',q) if any(x in q for x in ('muon dat','muc tieu','can dat','ky sau','ky toi')) and 'gpa' in q else None
+    requested_registration = re.search(r'\bdang ky\s*(?:hoc\s*)?(-?\d+(?:[.,]\d+)?)\s*(?:tin chi|tc)\b',q)
+    if requested_registration and principal.role=='student': personal=True
     scenario=bool(target_match) or any(x in q for x in ('kich ban','du doan diem','du doan gpa','diem ky sau','gpa ky sau','gpa ky toi','what-if','what if','cai thien'))
     course=parsed['is_course'] and (personal or q.startswith(('bang diem','xem diem','xem mon','xem hoc phan','diem mon')))
     model=any(x in q for x in ('roc-auc','pr-auc','average precision','recall','precision','brier','thong so mo hinh')) and not personal
@@ -95,12 +97,12 @@ def route(engine, retrieval, principal, message, context):
         return reply('<p>Các lớp trong phạm vi được phép (sinh viên đang học):</p><ul>'+''.join(f"<li>{html.escape(r['class_code'])}: {r['n_students']} SV, GPA TB {r['gpa_mean'] if r['gpa_mean'] is not None else 'Chưa có'}, cần hỗ trợ {r['high_risk_count']} SV.</li>" for r in rows)+'</ul>','analytics')
     # Điều hoặc khoản rõ ràng luôn tra cứu nguồn, trừ câu hỏi rõ ràng về hồ sơ cá nhân.
     # Các giả định có số rõ ràng đi qua Rule Engine; không suy diễn từ hồ sơ.
-    calculation = engine.evaluate_regulation_trap(message) if not ids and not aggregate else ''
+    calculation = engine.evaluate_regulation_trap(message) if not ids and not aggregate and not target_match else ''
     if unsupported(message) and not calculation and not arts:
-        return reply('<p>Chưa tìm thấy căn cứ trong quy chế cho nội dung này.</p>','regulation')
+        result=retrieval.answer(message,cloud=False); result['intent']='regulation';return result
     pq=normalize_query(message)
     policy_only=not ids and not target_match and (any(x in pq for x in ('bao luu','nghi hoc tam thoi','hoc phan tien quyet','chuyen nganh','chuyen truong','phuc tra','thoi gian hoc toi da','dang ky tin chi','hoc cai thien diem','cam thi','dieu kien du thi')) or (not personal and bool(public_focus(message)) and not any((risk,admission,course)) and not any(x in q for x in ('kich ban','gpa hoc ky','gpa tich luy','gpa ky sau','gpa ky toi','hoc phi con no','tin chi da dat','tin chi no dong','so lan canh bao hoc tap','canh bao lien tiep','xem ho so','bang diem'))))
-    if 'tot nghiep' in q and personal and not ids and not arts:
+    if ('tot nghiep' in q or requested_registration) and personal and not arts:
         policy_only=False
     if re.search(r'(?:vang|nghi)\s*\d+(?:[.,]\d+)?\s*%',q) and not calculation and not arts:
         result=retrieval.answer('Điều 25 Khoản 1',cloud=False);result['intent']='regulation'
@@ -112,12 +114,16 @@ def route(engine, retrieval, principal, message, context):
             if not inferred: return reply(calculation,'regulation')
             wrong=bool(arts and set(arts)!=set(map(int,inferred)))
             message=' '.join('Điều '+x for x in inferred)
+            if len(inferred)==1:
+                references=re.findall(r'Điều (\d+)(?:\.(\d+))?',calculation)
+                if references and all(k for _,k in references):
+                    message+=' '+ ' và '.join('Khoản '+k for k in dict.fromkeys(k for _,k in references))
             result=retrieval.answer(message,cloud=False)
             result['reply']=('<p>Điều được nêu không phải căn cứ của phép tính; xem căn cứ đúng bên dưới.</p>' if wrong else '')+calculation+result['reply']
         else: result=retrieval.answer(message,cloud=True)
         result['intent']='regulation'
         found={c['article'] for c in result['regulations']}
-        if len(found)==1: context['article']=next(iter(found))
+        if len(found)==1 and not (set(arts)-found) and all(any(k in span(c['clause']) for c in result['regulations']) for k in clauses): context['article']=next(iter(found))
         return result
     personal_request=personal or (principal.role=='advisor' and bool(context.get('target')) and (risk or admission or scenario or course)) or (principal.role=='student' and (risk or admission or scenario or course or any(x in q for x in ('gio tu hoc','gio lam them','xem ho so','bang diem','gpa tich luy','gpa hoc ky','no hoc phi bao nhieu','tin chi da dat','so lan canh bao hoc tap','ty le chuyen can','hoc phi con no','tin chi no dong','tin chi tich luy','diem trung binh tich luy','dang nhap lms','buoi gap co van','buoi phu dao','so ngay qua han'))))
     if personal_request:
@@ -154,14 +160,37 @@ def route(engine, retrieval, principal, message, context):
             result=retrieval.answer('Điều 20 Khoản 1',cloud=False);result['intent']='graduation'
             result['reply']='<p><b>'+verdict+'</b>; không thay thế quyết định xét tốt nghiệp.</p><ul>'+''.join(f'<li>{labels[k]}: '+('Đạt' if v is True else 'Chưa đạt' if v is False else 'Chưa xác minh')+'</li>' for k,v in conditions.items())+'</ul>'+result['reply']
             return result
+        if requested_registration and not target_match:
+            requested=whole(requested_registration.group(1).replace(',','.'),1)
+            lo=whole(row.get('registration_min_credits'),1); hi=whole(row.get('registration_max_credits'),1)
+            result=retrieval.answer('Điều 12 Khoản 2',cloud=False); result['intent']='registration'
+            if requested is None: text='Số tín chỉ đăng ký phải là số nguyên dương.'
+            elif lo is None or hi is None or lo>hi: text='Chưa đủ dữ liệu giới hạn đăng ký trong hồ sơ; cần biết khối lượng chuẩn của kỳ dự kiến.'
+            elif requested>hi: text=f'{requested:.0f} tín chỉ vượt giới hạn tối đa {hi:.0f} tín chỉ theo giới hạn lưu trong hồ sơ.'
+            elif requested<lo: text=f'{requested:.0f} tín chỉ dưới giới hạn tối thiểu {lo:.0f}; cần kiểm tra ngoại lệ cuối chương trình.'
+            else: text=f'{requested:.0f} tín chỉ nằm trong khoảng {lo:.0f}–{hi:.0f} theo giới hạn lưu trong hồ sơ.'
+            result['reply']='<p>'+text+' Chưa xác nhận đăng ký thực tế; cần đối chiếu khối lượng chuẩn kỳ tới, học phần và điều kiện tiên quyết.</p>'+result['reply']
+            return result
         if target_match:
             goal=number(target_match.group(1).replace(',','.'),0,4)
-            if goal is None: return reply('<p>GPA mục tiêu phải từ 0 đến 4.</p>','gpa')
-            p=projection(row,target=goal)
-            if p is None or row.get('state_as_of')!='ENROLLED': return reply('<p>Chưa đủ dữ liệu hoặc không còn tín chỉ mới để tính mục tiêu GPA.</p>','gpa')
-            needed=p['req_gpa_next']
             result=retrieval.answer('Điều 17 Khoản 2',cloud=False);result['intent']='gpa'
-            result['reply']=f'<p>Mục tiêu GPA tích lũy {goal:.2f}; giả định {p["next_tc"]:.0f} tín chỉ mới, không học lại. '+(f'GPA kỳ tới tối thiểu {needed:.2f}/4.' if needed<=4 else f'Không khả thi chỉ bằng số tín chỉ mới này (cần {needed:.2f}/4).')+'</p>'+result['reply']
+            def explain(text):
+                result['reply']='<p>'+text+'</p>'+result['reply'];return result
+            if goal is None: return explain('GPA mục tiêu phải từ 0 đến 4.')
+            quantities=re.findall(r'(?<![\d.,-])(-?\d+(?:[.,]\d+)?)\s*(?:tin chi|tc)\b',q)
+            # Không tự chọn giữa hai số tín chỉ khác nhau hoặc giả định cả học lại.
+            if len(quantities)>1 or ('hoc lai' in q and 'khong hoc lai' not in q):
+                return explain('Hãy nêu một số tín chỉ môn mới, không tính học lại, để tính GPA mục tiêu.')
+            selected=whole(quantities[0].replace(',','.'),1) if quantities else None
+            if quantities and selected is None: return explain('Số tín chỉ mới phải là số nguyên dương.')
+            fields=[number(row.get(k)) for k in ('credits_required','credits_earned_cumulative','credits_owed_cumulative','new_course_credits_available','registration_max_credits')]
+            if selected is not None and None not in fields:
+                maximum=min(max(0,fields[0]-fields[1]-fields[2]),fields[3],fields[4])
+                if selected>maximum: return explain(f'Yêu cầu {selected:.0f} tín chỉ mới vượt mức tối đa có thể giả định {maximum:.0f} tín chỉ (giới hạn hồ sơ, số môn mới và số tín chỉ còn lại). Không tự giảm số tín chỉ.')
+            p=projection(row,target=goal,new_credits=selected)
+            if p is None or row.get('state_as_of')!='ENROLLED': return explain('Chưa đủ dữ liệu hoặc không còn tín chỉ mới để tính mục tiêu GPA.')
+            needed=p['req_gpa_next']
+            result['reply']=f'<p>Mục tiêu GPA tích lũy {goal:.2f}; giả định {p["next_tc"]:.0f} tín chỉ mới, không học lại. '+(f'GPA kỳ tới tối thiểu {needed:.2f}/4.' if needed<=4 else f'Không khả thi chỉ bằng số tín chỉ mới này (cần {needed:.2f}/4).')+' Đây là phương án toán học, cần kiểm tra khối lượng đăng ký kỳ tới và khả năng mở lớp.</p>'+result['reply']
             return result
         if 'what-if' in q or 'what if' in q or 'thanh toan hoc phi' in q:
             return reply('<p>Mở Bảng điểm &amp; Kịch bản để nhập số tiền thanh toán giả định. Kết quả không chứng minh quan hệ nhân quả.</p>','payment')
