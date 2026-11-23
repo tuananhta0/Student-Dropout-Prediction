@@ -12,6 +12,33 @@ def reply(text, intent):
     return {'reply':text, 'regulations':[], 'intent':intent, 'method':'python'}
 
 
+def extract_target_gpa(q):
+    if not any(x in q for x in ('gpa', 'diem trung binh', 'dtb')):
+        return None
+    if any(x in q for x in ('xep loai', 'loai gi', 'canh bao', 'khoa luan', 'do an')) and not any(
+        x in q for x in ('muc tieu', 'keo', 'nang', 'tang', 'muon dat', 'de dat', 'cai thien')
+    ):
+        return None
+    goal_cues = (
+        'muon', 'muc tieu', 'can dat', 'de dat', 'dat duoc',
+        'keo', 'nang', 'tang', 'len', 'ky sau', 'ki sau', 'ky toi', 'ki toi', 'cai thien'
+    )
+    if not any(x in q for x in goal_cues):
+        return None
+    patterns = (
+        r'(?:muc tieu(?:\s+(?:gpa|diem trung binh|dtb)(?:\s+tich luy)?)?|(?:keo|nang|tang|cai thien|muon dat|can dat|de dat|dat duoc)\s+(?:gpa|diem trung binh|dtb)(?:\s+tich luy)?)(?:\s+cua\s+(?:em|toi|minh))?\s*(?:(?:la|dat|duoc|len|thanh|toi|den|o muc|muc|it nhat|toi thieu|tu|tren|khoang|=)\s*){0,3}(-?\d+(?:[.,]\d+)?)(?!\s*(?:tin chi|tc|hoc ky|hk|mon|lan|%)\b)',
+        r'(?:gpa|diem trung binh|dtb)(?:\s+tich luy)?(?:\s+cua\s+(?:em|toi|minh))?\s*(?:muc tieu\s*)?(?:len|thanh|toi|den|o muc|muc)\s*(?:(?:duoc|it nhat|toi thieu|tu|tren|khoang)\s*){0,2}(-?\d+(?:[.,]\d+)?)(?!\s*(?:tin chi|tc|hoc ky|hk|mon|lan|%)\b)',
+        r'(?:muc tieu|muon dat|can dat|de dat|dat duoc|dat muc|keo len|nang len|tang len|muon len|len muc|len|toi muc|den muc)\s+(?:(?:gpa|diem trung binh|dtb)(?:\s+tich luy)?\s*)?(?:(?:la|dat|duoc|len|thanh|muc|it nhat|toi thieu|tu|tren|khoang|=)\s*){0,3}(-?\d+(?:[.,]\d+)?)(?!\s*(?:tin chi|tc|hoc ky|hk|mon|lan|%)\b)',
+        r'(-?\d+(?:[.,]\d+)?)\s*(?:gpa|diem trung binh|dtb)\b',
+        r'(?:gpa|diem trung binh|dtb)(?:\s+tich luy)?\s*(?:(?:la|dat|it nhat|toi thieu|=)\s*){0,2}(-?\d+(?:[.,]\d+)?)(?!\s*(?:tin chi|tc|hoc ky|hk|mon|lan|%)\b)',
+    )
+    for pattern in patterns:
+        match = re.search(pattern, q)
+        if match:
+            return match
+    return None
+
+
 def route(engine, retrieval, principal, message, context):
     q=re.sub(r"\s+", " ", strip_accents(message))
     simple=re.sub(r'[^a-z0-9 ]','',q).strip()
@@ -33,10 +60,25 @@ def route(engine, retrieval, principal, message, context):
     aggregate=bool(classes) or any(x in q for x in ('lop manh nhat','lop yeu nhat','toan truong','tong ket khoa','tong so sinh vien','thong ke lop','xem lop','danh sach lop','top 5 lop','so sanh cac lop','hoc bong co giu chan','ty le thoi hoc','tong no hoc phi','thong ke theo','thong ke khoa','so sanh he','so sanh bac','so sanh khoa','ty le bo hoc'))
     admission='dau vao' in q or 'diem tuyen sinh' in q or 'phuong thuc tuyen sinh' in q
     risk=any(x in q for x in ('nguy co thoi hoc','xac suat thoi hoc','du bao thoi hoc','nguy co dropout'))
-    target_match=re.search(r'(?:gpa(?: tich luy)?|muc tieu(?: gpa)?)\s*(?:la |dat |=\s*)?(-?\d+(?:[.,]\d+)?)',q) if any(x in q for x in ('muon dat','muc tieu','can dat','ky sau','ky toi')) and 'gpa' in q else None
+    target_match = extract_target_gpa(q)
     requested_registration = re.search(r'\bdang ky\s*(?:hoc\s*)?(-?\d+(?:[.,]\d+)?)\s*(?:tin chi|tc)\b',q)
     if requested_registration and principal.role=='student': personal=True
-    scenario=bool(target_match) or any(x in q for x in ('kich ban','du doan diem','du doan gpa','diem ky sau','gpa ky sau','gpa ky toi','what-if','what if','cai thien'))
+    retake_cmd = bool(re.search(r'(?:hoc lai|cai thien)\s+\S+\s+(?:dat|len)\s+(?:a\+|a|b\+|b|c\+|c|d\+|d|f)(?:\s|$)', q))
+    has_scenario_cue = any(x in q for x in ('kich ban', 'du doan', 'gia lap', 'what-if', 'what if', 'ky sau', 'ki sau', 'ky toi', 'ki toi'))
+    improve_policy_cues = ('quy che', 'quy dinh', 'dieu kien', 'lay diem', 'tinh diem', 'tinh vao gpa', 'diem cao nhat', 'lan sau', 'duoc phep', 'co duoc', 'gioi han', 'bao nhieu lan', 'diem d', 'diem c', 'khac nhau', 'nhu the nao', 'the nao')
+    asking_improve_policy = (
+        any(x in q for x in ('hoc cai thien', 'cai thien diem'))
+        and not target_match
+        and not retake_cmd
+        and not any(x in q for x in ('kich ban', 'du doan', 'gia lap', 'what-if', 'what if'))
+        and (any(x in q for x in improve_policy_cues) or not any(x in q for x in ('ky sau', 'ki sau', 'ky toi', 'ki toi')))
+    )
+    gpa_improve_scenario = (
+        bool(target_match)
+        or retake_cmd
+        or ('cai thien' in q and not asking_improve_policy and (has_scenario_cue or any(x in q for x in ('gpa', 'diem trung binh', 'dtb'))))
+    )
+    scenario = gpa_improve_scenario or any(x in q for x in ('kich ban','du doan diem','du doan gpa','diem ky sau','gpa ky sau','gpa ky toi','what-if','what if'))
     course=parsed['is_course'] and (personal or q.startswith(('bang diem','xem diem','xem mon','xem hoc phan','diem mon')))
     model=any(x in q for x in ('roc-auc','pr-auc','average precision','recall','precision','brier','thong so mo hinh')) and not personal
     follow_clause=not arts and clauses and context.get('article') and not ids and not personal and not aggregate
@@ -101,7 +143,8 @@ def route(engine, retrieval, principal, message, context):
     if unsupported(message) and not calculation and not arts:
         result=retrieval.answer(message,cloud=False); result['intent']='regulation';return result
     pq=normalize_query(message)
-    policy_only=not ids and not target_match and (any(x in pq for x in ('bao luu','nghi hoc tam thoi','hoc phan tien quyet','chuyen nganh','chuyen truong','phuc tra','thoi gian hoc toi da','dang ky tin chi','hoc cai thien diem','cam thi','dieu kien du thi')) or (not personal and bool(public_focus(message)) and not any((risk,admission,course)) and not any(x in q for x in ('kich ban','gpa hoc ky','gpa tich luy','gpa ky sau','gpa ky toi','hoc phi con no','tin chi da dat','tin chi no dong','so lan canh bao hoc tap','canh bao lien tiep','xem ho so','bang diem'))))
+    policy_improve = not ids and not gpa_improve_scenario and any(x in pq for x in ('hoc cai thien', 'cai thien diem'))
+    policy_only=not ids and not target_match and not gpa_improve_scenario and (policy_improve or any(x in pq for x in ('bao luu','nghi hoc tam thoi','hoc phan tien quyet','chuyen nganh','chuyen truong','phuc tra','thoi gian hoc toi da','dang ky tin chi','cam thi','dieu kien du thi')) or (not personal and bool(public_focus(message)) and not any((risk,admission,course)) and not any(x in q for x in ('kich ban','gpa hoc ky','gpa tich luy','gpa ky sau','gpa ky toi','hoc phi con no','tin chi da dat','tin chi no dong','so lan canh bao hoc tap','canh bao lien tiep','xem ho so','bang diem'))))
     if ('tot nghiep' in q or requested_registration) and personal and not arts:
         policy_only=False
     if re.search(r'(?:vang|nghi)\s*\d+(?:[.,]\d+)?\s*%',q) and not calculation and not arts:
@@ -153,7 +196,7 @@ def route(engine, retrieval, principal, message, context):
             if term is not None and prob is not None and (term!=int(rec.iloc[-1]['snapshot_term_index']) or row.get('prediction_status')!='VALID') and row.get('prediction_status') not in ('OUT_OF_SCOPE',):
                 label=f'Dự báo lịch sử HK{term}: {prob*100:.1f}% (không dùng để can thiệp hiện tại)'
             return reply('<p>'+html.escape(label)+'. Chân trời: hai học kỳ tiếp theo tính từ snapshot; không phải quyết định học vụ.</p>','risk')
-        if 'tot nghiep' in q and any(x in q for x in ('dieu kien','du','thieu','duoc','chua','khi nao')):
+        if not target_match and 'tot nghiep' in q and any(x in q for x in ('dieu kien','du','thieu','duoc','chua','khi nao')):
             conditions=graduation_conditions(row)
             labels={'credits':'Tín chỉ','mandatory_courses':'Học phần bắt buộc','gpa':'GPA','english':'Ngoại ngữ','physical_education':'GDTC','national_defense':'GDQP-AN','financial':'Tài chính','program_outcomes':'Chuẩn đầu ra','discipline_and_criminal_clearance':'Kỷ luật / pháp lý','academic_debt':'Nợ học phần'}
             verdict='Chưa đủ điều kiện' if False in conditions.values() else 'Chưa đủ căn cứ xác nhận' if None in conditions.values() else 'Đạt các điều kiện có dữ liệu kiểm tra'
