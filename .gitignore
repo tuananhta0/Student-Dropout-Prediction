@@ -18,3 +18,4 @@ data/
 !artifacts_model/*.json
 !artifacts_model/*.csv.gz
 !regulations/*.pdf
+node_modules/

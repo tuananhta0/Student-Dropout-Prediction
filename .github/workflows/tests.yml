@@ -1,0 +1,30 @@
+name: Kiểm thử học vụ
+on:
+  push:
+    branches: [Dung]
+  pull_request:
+    branches: [Dung]
+permissions:
+  contents: read
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    env:
+      CMC_RAG_CLOUD: "0"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - run: python -m pip install -r requirements.txt
+      - run: python -m pip check
+      - run: python -B -m unittest discover -s tests -v
+      - run: python -B -m scripts.benchmark_rag
+      - run: python -B -m scripts.benchmark_rag --extended --output data/kiem_tra_rag/bao_cao_mo_rong.json
+      - run: python -B -m scripts.benchmark_rag --all --e2e --output data/kiem_tra_rag/bao_cao_e2e.json
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: node --check static/portal.js
+      - run: node --test tests/portal_async.test.cjs
