@@ -78,14 +78,28 @@ def verify_stress(source, require_stress=False):
     stress=StressDataset(path)
     main=source.table('students')
     other=stress.table('students')
-    require(not set(main.record_uid)&set(other.record_uid),'MAIN/STRESS trùng record_uid')
-    require(not set(main.student_id)&set(other.student_id),'MAIN/STRESS trùng student_id')
+    # record_uid chi la ID noi bo tung scenario, nen co the trung giua
+    # MAIN/STRESS. Khong merge hai tap chi theo record_uid.
+    for frame, scenario in ((main, 'V3_2_MAIN'), (other, 'V3_2_STRESS')):
+        require({'scenario_id', 'record_uid', 'student_id'} <= set(frame.columns),
+                f'{scenario}: thieu cot dinh danh')
+        require(frame.scenario_id.eq(scenario).all(),
+                f'{scenario}: scenario_id khong khop manifest')
+        for key in ('record_uid', 'student_id'):
+            require(frame[key].notna().all() and frame[key].is_unique,
+                    f'{scenario}: {key} rong hoac trung trong cung scenario')
+    local_uid_overlap = len(set(main.record_uid) & set(other.record_uid))
+    student_id_overlap = len(set(main.student_id) & set(other.student_id))
+    require(student_id_overlap == 0, 'MAIN/STRESS trung student_id (co nguy co ro ri du lieu)')
     # Dataset.table kiểm tra đúng SHA và kích thước của từng table khi được mở.
     for name in ('prediction_snapshots','snapshot_labels_FULL_SIMULATION','snapshot_labels_ASOF_2026_DEMO'):
         stress.table(name)
     return {'status':'PASS','n_students':len(other),
             'stress_manifest_sha256':digest(path/'manifests/generation_manifest.json'),
-            'id_overlap':0,'checked_tables':['students','prediction_snapshots','snapshot_labels_FULL_SIMULATION','snapshot_labels_ASOF_2026_DEMO'],
+            'identity_scope':'scenario_id + record_uid',
+            'record_uid_overlap_local':local_uid_overlap,
+            'student_id_overlap':student_id_overlap,
+            'checked_tables':['students','prediction_snapshots','snapshot_labels_FULL_SIMULATION','snapshot_labels_ASOF_2026_DEMO'],
             'full_stress_audit':'NOT_RUN (chạy scripts.audit_dataset --stress-run để audit toàn bộ)'}
 
 
