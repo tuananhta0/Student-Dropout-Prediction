@@ -85,3 +85,5 @@ Xem [hướng dẫn dữ liệu](docs/huong_dan_du_lieu.md) và [quy chế, côn
 ## 🔬 Hiệu chỉnh và huấn luyện mô hình mới
 
 Xem [hướng dẫn hiệu chỉnh, thực nghiệm và chọn phiên bản mô hình](docs/huan_luyen_va_thuc_nghiem.md). Quy trình mới tái sinh lịch sử học vụ đồng bộ, mở rộng snapshot qua các học kỳ và tách STRESS. Kết quả huấn luyện mới nằm trong `data/models/`, không ghi đè baseline. Không cần tái huấn luyện khi dùng gói phiên bản chính thức đã kiểm tra.
+
+Nghiệm thu cuối: xem [bàn giao](docs/ban_giao.md), [tra cứu và đánh giá RAG](docs/tra_cuu_quy_che.md) và [giới hạn thực nghiệm ML](docs/ket_qua_nghien_cuu.md). Giao diện chạy CSS/JS cục bộ, mật khẩu demo trùng mã tài khoản. Thống kê chỉ gồm hồ sơ đã có kết quả học kỳ; nguy cơ ML dự báo hai học kỳ tiếp theo từ snapshot.

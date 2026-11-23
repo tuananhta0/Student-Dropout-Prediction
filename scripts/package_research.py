@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 import tempfile
 import zipfile
+import subprocess
 from core.data_pipeline import ROOT, MAIN, Dataset, digest, require
 from scripts.train_model import StressDataset
 from scripts.release_model import verify_pair, MODEL_FILES
@@ -34,7 +35,15 @@ def pack_research(source_archive,dataset,model,output):
     for rel in ('kiem_tra_ml/bao_cao.json','kiem_tra_rag/bao_cao.json','kiem_tra_rag/bao_cao_mo_rong.json','kiem_tra_du_lieu/kiem_tra_du_lieu.json','kiem_tra_stress/kiem_tra_du_lieu.json'):
         path=ROOT/'data'/rel
         if path.is_file():files['ket_qua/'+rel]=path
-    manifest={'version':meta['version'],'files':{k:{'sha256':digest(v),'bytes':v.stat().st_size} for k,v in files.items()}}
+    for path in sorted((ROOT/'data/kiem_tra_rag').glob('*')):
+        if path.is_file() and not path.is_symlink() and path.suffix in ('.json','.csv') and path.name.startswith(('bao_cao','danh_gia')):
+            files['ket_qua/kiem_tra_rag/'+path.name]=path
+    def git(*args):
+        try: return subprocess.check_output(['git','-C',str(ROOT),*args],text=True,stderr=subprocess.DEVNULL).strip()
+        except (OSError,subprocess.CalledProcessError): return None
+    commit=git('rev-parse','HEAD')
+    changes=git('status','--porcelain')
+    manifest={'version':meta['version'],'source_commit':commit,'source_tree':git('write-tree'),'source_dirty':bool(changes) if changes is not None else None,'files':{k:{'sha256':digest(v),'bytes':v.stat().st_size} for k,v in files.items()}}
     output.parent.mkdir(parents=True,exist_ok=True)
     with tempfile.TemporaryDirectory(dir=output.parent) as tmp:
         staged=Path(tmp)/'research.zip'

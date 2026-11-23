@@ -16,7 +16,7 @@ from pydantic import BaseModel, Field
 from core.chatbot_engine import CMCChatbotEngine, row_to_clean_dict, risk_display
 from core.security import (SessionStore, RateLimiter, authenticate, permitted_student, require_role, require_major, require_class, scoped_classes, ADVISOR_MAJORS)
 from core.runtime_config import configure_runtime
-from core.retrieval import RegulationSearch, PDF
+from core.retrieval import RegulationSearch, PDF, SUPPLEMENT
 from core.intent_router import route
 from core.data_pipeline import ROOT
 
@@ -44,8 +44,8 @@ async def local_only(request: Request, call_next):
     response.headers['Referrer-Policy']='no-referrer'
     response.headers['X-Frame-Options']='DENY'
     response.headers['Cache-Control']='no-store'
-    # Giao diện cũ còn JS/CSS inline, không cho tải script hoặc kết nối từ xa.
-    response.headers['Content-Security-Policy']="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'"
+    # JavaScript cục bộ, không inline; style động của biểu đồ vẫn cần inline.
+    response.headers['Content-Security-Policy']="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'"
     return response
 
 @app.exception_handler(RequestValidationError)
@@ -82,6 +82,10 @@ def index():
 def regulation_pdf():
     return FileResponse(ROOT/'regulations'/PDF,media_type='application/pdf')
 
+@app.get('/regulations/'+SUPPLEMENT)
+def regulation_supplement():
+    return FileResponse(ROOT/'regulations'/SUPPLEMENT,media_type='application/pdf')
+
 @app.get('/favicon.ico',include_in_schema=False)
 def favicon():
     from fastapi.responses import Response
@@ -92,7 +96,7 @@ def data_view(p=Depends(principal)):
     # Sinh viên chỉ cần mốc dữ liệu và phiên bản, không cần số liệu toàn trường.
     base={'mode':engine.data_mode,'as_of':engine.data_as_of,'synthetic':True,'model_version':engine.meta.get('version','baseline')}
     if p.role=='admin':
-        base.update(snapshots=len(engine.ml_df),academic_terms=len(engine.df),active_students=len(engine.active_latest_df),students_with_snapshots=len(engine.latest_df),valid_predictions=int(engine.active_latest_df.prediction_status.eq('VALID').sum()))
+        base.update(statistics_scope='Sinh viên đã có kết quả học kỳ tại mốc dữ liệu',snapshots=len(engine.ml_df),academic_terms=len(engine.df),active_students=len(engine.active_latest_df),students_with_snapshots=len(engine.latest_df),valid_predictions=int(engine.active_latest_df.prediction_status.eq('VALID').sum()))
     return base
 
 @app.post('/api/login')
@@ -199,7 +203,7 @@ def get_admin_faculty_detail(major_code: str,p=Depends(principal)):
 # HTML sinh bởi các dịch vụ cũ được lọc; không cho script, event handler, style hoặc link tùy ý.
 def safe_link(tag,name,value):
     if name=='class': return True
-    if tag=='a' and name=='href': return bool(re.fullmatch(r'/regulations/'+re.escape(PDF)+r'#page=\d{1,2}',value))
+    if tag=='a' and name=='href': return any(re.fullmatch(r'/regulations/'+re.escape(doc)+r'#page=\d{1,2}',value) for doc in (PDF,SUPPLEMENT))
     if tag=='a' and name=='target': return value=='_blank'
     if tag=='a' and name=='rel': return value=='noopener noreferrer'
     return tag=='td' and name=='colspan' and value.isdigit()
@@ -223,4 +227,4 @@ def chat_endpoint(req: ChatRequest, token: str=Depends(credential)):
     finally:
         with context_lock: chat_busy.discard(token)
     # Không trả hồ sơ thô hoặc kết quả công cụ ngoài phạm vi đã cấp.
-    return {'reply':sanitize_reply(result['reply']),'regulations':result.get('regulations',[]),'intent':result['intent'],'method':result['method'],'embedding_used':result.get('embedding_used',False),'retrieval_method':result.get('retrieval_method'),'generation_status':result.get('generation_status','NOT_REQUESTED')}
+    return {'reply':sanitize_reply(result['reply']),'regulations':result.get('regulations',[]),'retrieved_articles':[c['article'] for c in result.get('retrieved',result.get('regulations',[]))],'intent':result['intent'],'method':result['method'],'embedding_used':result.get('embedding_used',False),'retrieval_method':result.get('retrieval_method'),'generation_status':result.get('generation_status','NOT_REQUESTED')}

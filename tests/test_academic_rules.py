@@ -60,7 +60,7 @@ class AcademicRulesTests(unittest.TestCase):
         self.assertEqual(projected_gpa(0,0,0,15),0)
         self.assertIsNone(projected_gpa(None,0,3,15))
         p=projection(dict(gpa_quality_points=28.5,gpa_credit_count=15,gpa4_cumulative=1.9,
-                          snapshot_term_index=1,credits_required=120,credits_earned_cumulative=12))
+                          snapshot_term_index=1,credits_required=120,credits_earned_cumulative=12,credits_owed_cumulative=3,new_course_credits_available=105,registration_max_credits=22))
         self.assertEqual(p['next_tc'],15)
         self.assertEqual(p['pred_cum_imp'],2.15)
         self.assertEqual(projection({}),None)

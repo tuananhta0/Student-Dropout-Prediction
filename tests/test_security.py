@@ -87,6 +87,16 @@ class SecurityTests(unittest.TestCase):
         html=self.module.sanitize_reply('<img src=x onerror=alert(1)><script>alert(1)</script><b onclick="evil()">ok</b><a href="javascript:alert(1)">x</a>')
         for bad in ('<img','<script','onclick','javascript:'):self.assertNotIn(bad,html)
         self.assertIn('<b>ok</b>',html)
+    def test_csp_and_supplement(self):
+        result=self.client.get('/')
+        self.assertEqual(result.status_code,200)
+        self.assertIn("script-src 'self';",result.headers['content-security-policy'])
+        self.assertNotIn('onclick=',result.text)
+        self.assertIn('/static/portal.js',result.text)
+        self.assertEqual(self.client.get('/static/portal.js').status_code,200)
+        self.assertEqual(self.client.get('/regulations/Quy-dinh-thoi-hoc-DH-CMC.pdf').status_code,200)
+        self.assertNotIn('data-action',self.module.sanitize_reply('<b data-action="logout">x</b>'))
+
     def test_expired(self):
         store=SessionStore(ttl=-1);t=store.issue(Principal('ADMIN','admin'))
         from fastapi import HTTPException

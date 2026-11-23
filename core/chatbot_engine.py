@@ -23,7 +23,7 @@ def risk_display(row, threshold):
     if row.get('prediction_status') != 'VALID':
         return {'OUT_OF_SCOPE':'Ngoài phạm vi mô hình','RETROSPECTIVE':'Dự báo hồi cứu'}.get(row.get('prediction_status'),'Dự báo đã hết hạn')
     level = risk_level(risk, threshold)
-    return f'Nguy cơ thôi học: {risk*100:.1f}% ({level})'
+    return f'Nguy cơ thôi học: {risk*100:.1f}% ({level}) trong 2 học kỳ tiếp theo'
 
 
 def normalize_vn(text: str) -> str:
@@ -452,13 +452,14 @@ class CMCChatbotEngine:
         last = records.iloc[-1]
         remaining = number(last.get('new_course_credits_available'))
         required=number(last.get('credits_required')); earned=number(last.get('credits_earned_cumulative')); owed=number(last.get('credits_owed_cumulative'))
-        if None not in (remaining,required,earned,owed): remaining=min(remaining,max(0,required-earned-owed))
-        if remaining is None:
-            raise ValueError('Chưa có sổ tín chỉ môn mới trong chương trình')
+        cap=number(last.get('registration_max_credits'))
+        if None in (remaining,required,earned,owed,cap):
+            raise ValueError('Chưa đủ sổ tín chỉ hoặc giới hạn đăng ký học kỳ')
+        remaining=min(remaining,max(0,required-earned-owed))
         if number(new_credits,0,remaining) is None:
             raise ValueError('Tín chỉ môn mới vượt số tín chỉ chưa từng học hoặc không hợp lệ')
         selected = attempts.loc[attempts.course_id.isin(changes)].drop_duplicates('course_id')
-        if float(new_credits) + selected.registered_credits.sum() > float(last['registration_max_credits']):
+        if float(new_credits) + selected.registered_credits.sum() > cap:
             raise ValueError('Tổng tín chỉ giả định vượt giới hạn đăng ký học kỳ')
         return retake_projection(attempts.to_dict('records'),changes,new_gpa,new_credits)
 

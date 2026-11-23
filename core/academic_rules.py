@@ -135,7 +135,7 @@ def projected_gpa(points, credits, new_gpa, new_credits):
     return rounded((points+new_gpa*new_credits)/(credits+new_credits)) if credits+new_credits else None
 
 
-def projection(row):
+def projection(row, target=None):
     """Kịch bản GPA chỉ học môn mới, không phải mô hình dự báo."""
     pts = number(row.get('gpa_quality_points'))
     credits = number(row.get('gpa_credit_count'))
@@ -148,15 +148,17 @@ def projection(row):
     available = number(row.get('new_course_credits_available'))
     cap = number(row.get('registration_max_credits'))
     owed=number(row.get("credits_owed_cumulative"))
-    budget=max(0,remaining-earned-(owed or 0))
-    n = min(15, budget, budget if available is None else available, 15 if cap is None else cap)
+    if None in (available, cap, owed): return None
+    budget=max(0,remaining-earned-owed)
+    n = min(15, budget, available, cap)
     if n == 0:
         return None
     # Giả định rõ ràng, không tự suy đoán hành vi.
     gpa = rounded(gpa)
     cur = gpa
     improved = min(4, rounded(cur+.5))
-    target = 2 if gpa < 2 else 2.5 if gpa < 2.5 else 3.2 if gpa < 3.2 else gpa
+    target = (2 if gpa < 2 else 2.5 if gpa < 2.5 else 3.2 if gpa < 3.2 else gpa) if target is None else number(target,0,4)
+    if target is None: return None
     return {'next_term': int(term)+1, 'next_tc': n, 'gpa_credit_count': credits,
             'gpa_quality_points': pts, 'pred_gpa_cur': rounded(cur),
             'pred_gpa_imp': rounded(improved), 'pred_cum_cur': projected_gpa(pts,credits,cur,n),

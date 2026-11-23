@@ -34,13 +34,23 @@ Mật khẩu demo là chính mã tài khoản viết hoa: `BIT250093` / `BIT2500
 
 Phiên bearer có thời hạn 1 giờ, lưu bộ nhớ máy chủ và mất khi server khởi động lại; đăng xuất thu hồi token. Student chỉ truy cập bản thân; GV001 quản lý lớp ngành IT, GV002 ngành BA, GV003 ngành AI (phân công mô phỏng, có thể chỉnh cấu hình trong `core/security.py`); Admin toàn trường. API không chấp nhận vai trò do client tự khai báo. API chỉ trả trường cần thiết cho giao diện, HTML chatbot lọc loại script, link tùy ý, sự kiện và style không tin cậy. Dùng `textContent` cho nội dung nhập. Không gửi thông tin hồ sơ vào Gemini.
 
-Giới hạn: chỉ localhost, một tiến trình Uvicorn; chưa có tài khoản thật, TLS, xác thực của trường, khóa phiên phân tán, kiểm toán vận hành, giới hạn tốc độ và kiểm thử thâm nhập độc lập. Không đưa lên Internet hoặc dùng dữ liệu thật. Giao diện vẫn dùng Tailwind CDN; không coi là môi trường sản xuất. Gói SHA256 xác minh toàn vẹn, không phải chữ ký xác thực nguồn. Thành viên khác cần tự nghiệm thu trên Python 3.11 và phiên bản trong requirements trước khi đánh dấu hoàn tất bàn giao.
+Giới hạn: chỉ localhost, một tiến trình Uvicorn; chưa có tài khoản thật, TLS, xác thực của trường, khóa phiên phân tán, kiểm toán vận hành, kiểm thử thâm nhập độc lập. Không đưa lên Internet hoặc dùng dữ liệu thật. Giao diện dùng CSS và JavaScript cục bộ; không coi là môi trường sản xuất. Gói SHA256 xác minh toàn vẹn, không phải chữ ký xác thực nguồn. Thành viên khác cần tự nghiệm thu trên Python 3.11 và phiên bản trong requirements trước khi đánh dấu hoàn tất bàn giao.
 
 ## Kiểm tra trước khi chia sẻ
 
 - Đổi API key đã lộ tại Google AI Studio, nhập khóa mới qua `Read-Host -AsSecureString`; không chụp log có khóa. Cơ chế mã tài khoản làm mật khẩu chỉ dành cho dữ liệu mô phỏng; ai có quyền truy cập localhost đều có thể đăng nhập ADMIN.
 - Giới hạn đăng nhập 30 yêu cầu/phút theo địa chỉ kết nối, chat 15 yêu cầu/phút theo tài khoản; một câu đang xử lý mỗi phiên. Chỉ chạy `--host 127.0.0.1 --no-proxy-headers`.
 - Có thể đặt `CMC_ADVISOR_SCOPE_FILE` trỏ tới JSON tự quản lý, ví dụ `{"GV001":["IT25-09"],"GV002":["BA25-01"],"GV003":["AI25-01"]}`; khi bật, tài khoản không có danh sách được coi là không có lớp. Đây là ví dụ cấu hình, cần chọn mã lớp thực tế trong dữ liệu. Mặc định vẫn dùng phạm vi ngành mô phỏng.
-- CSS được biên dịch cục bộ với Tailwind 4.1.10; không còn CDN. Chỉ khi sửa CSS cần Node và `npm install; npm run build:css`. CSP chặn tài nguyên ngoài, nhưng tạm giữ inline script/style vì UI hiện còn handler nội tuyến.
+- CSS được biên dịch cục bộ với Tailwind 4.1.10; không còn CDN. Chỉ khi sửa CSS cần Node và `npm install; npm run build:css`. CSP cấm inline script, chỉ cho JavaScript cục bộ; style động vẫn dùng inline. Cloud giới hạn 2 worker, 30 lời gọi SDK/phút và 500/24 giờ cho mỗi tiến trình; trả fallback sau 25 giây. SDK đang chạy có thể chưa dừng ngay; những lời gọi nội bộ SDK không phải bộ đếm hóa đơn.
 - Dùng `python -m scripts.package_research <đường-dẫn-archive-nguồn>` để tạo gói `data/cmc-research-full.zip` chứa archive nguồn, bảng MAIN/STRESS hiệu chỉnh, model, manifest và các báo cáo sẵn có. Gói không dùng thay gói runtime `cmc-research-v1.zip`; chia sẻ riêng, không commit.
 - Kiểm thử clone sạch bằng gói runtime trên máy thành viên khác; chạy unit test, smoke runtime, smoke academic, smoke security với cloud tắt. CI không cần dữ liệu nặng hoặc API key.
+
+## Nghiệm thu cuối
+
+Trên máy thành viên khác, clone vào thư mục mới bằng `git clone -b Dung --single-branch https://github.com/tuananhta0/Student-Dropout-Prediction.git`, tạo `.venv` bằng Python 3.11, `pip install -r requirements.txt`, cài release theo SHA256 đã nhận riêng. Không sao chép `.venv` hoặc API key. Tắt cloud, chạy unit test, ba chế độ smoke runtime/học vụ và smoke security, kiểm thử cả ba vai trò. Ghi commit, kết quả và máy thử (không ghi thông tin bí mật).
+
+CI: `python -B -m scripts.benchmark_rag --all --e2e --output data/kiem_tra_rag/bao_cao_e2e.json` dùng HTTP TestClient và hồ sơ fixture; không kiểm chứng artifact thực. Báo cáo retrieval và benchmark e2e đều có quality gate.
+
+Sau khi commit sạch, đóng gói nghiên cứu vào đường dẫn mới bằng `python -B -m scripts.package_research <archive-nguon> --output data/cmc-research-full-final.zip`. Manifest ghi commit, Git index tree, trạng thái dirty, checksum các file. Gói không ghi đè file cũ; chỉ đóng gói báo cáo đã có. Đối chiếu báo cáo đúng phiên bản trước khi chia sẻ. Dùng `Get-FileHash` đối chiếu SHA256 gói.
+
+Chỉ bật Gemini khi cần, nhập khóa qua `Read-Host -AsSecureString`. Thu hồi khóa đã lộ tại Google AI Studio; không dùng khóa thật trong CI.

@@ -7,7 +7,7 @@ const {compile} = require('tailwindcss');
   const compiler = await compile(fs.readFileSync(path.join(twPath,'index.css'),'utf8'), {
     base:twPath, loadStylesheet:async (id,base) => ({content:fs.readFileSync(path.resolve(base,id),'utf8'),base:path.dirname(path.resolve(base,id))})
   });
-  const files=['templates/index.html',...fs.readdirSync('core').filter(f=>f.endsWith('.py')).map(f=>'core/'+f)];
+  const files=['templates/index.html','static/portal.js',...fs.readdirSync('core').filter(f=>f.endsWith('.py')).map(f=>'core/'+f)];
   const candidates=[...new Set(files.flatMap(f=>fs.readFileSync(f,'utf8').match(/[A-Za-z0-9_!@#%/:.\[\]\-]+/g)||[]))];
   fs.writeFileSync('static/portal.css',compiler.build(candidates).trimEnd()+'\n');
 })().catch(e=>{console.error(e.message);process.exitCode=1;});

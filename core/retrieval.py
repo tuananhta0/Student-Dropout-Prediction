@@ -12,6 +12,9 @@ import re
 import threading
 import time
 import tempfile
+from collections import deque
+from concurrent.futures import ThreadPoolExecutor, TimeoutError as FutureTimeout
+from contextvars import ContextVar
 import unicodedata
 
 import numpy as np
@@ -19,6 +22,10 @@ from core.chatbot_engine import strip_accents
 
 ROOT = Path(__file__).resolve().parents[1]
 PDF = 'Quy-che-dao-tao-trinh-do-dai-hoc.pdf'
+SUPPLEMENT = 'Quy-dinh-thoi-hoc-DH-CMC.pdf'
+SUPPLEMENT_SHA = '6c5b0c2e085bd7f7820f4cbf827acf8e555295b95ad6f1147842c3a90e6ec042'
+# Bản tổng hợp, không phải quy phạm độc lập; chỉ gắn vào các đoạn chính tương ứng.
+SUPPLEMENT_PAGES = {'D3.K5–6':'1–2','D9.K1–2':'2','D12.K2':'2','D12.K4':'2','D13.K1':'3','D14.K3':'3','D15.K1–3':'2','D17.K1':'3','D17.K3–4':'3','D18.K1':'1','D18.K2':'1','D18.K3–4':'1','D19.K1–5':'4','D20.K5–6':'3','D21.K1':'2','D21.K2–3':'2','D25.K1':'3','D25.K2–3':'3','D25.K4–6':'3'}
 PDF_SHA = '10692552bf4245f4ee5a5487cbad69d123ea7bdb2fde6c13d1658d97ed857ea7'
 STOP = set('la cua va trong cho ve co duoc hay nhu the nao nhieu gi toi em mot nhung cac khong sinh vien truong cmc theo quy dinh quy che'.split())
 
@@ -27,19 +34,21 @@ STOP = set('la cua va trong cho ve co duoc hay nhu the nao nhieu gi toi em mot n
 PARAPHRASES = {
     'cham lai bai thi': 'phuc tra ket qua thi', 'cham lai diem': 'phuc tra ket qua thi',
     'nhac nho lien tiep': 'canh bao hoc tap lien tiep', 'duoi hoc': 'buoc thoi hoc',
-    'hoc het bao nhieu nam thi phai ra truong': 'thoi gian hoc toi da', 'bao nhieu nam': 'thoi gian hoc toi da', 'hoc het bao lau': 'thoi gian hoc toi da',
+    'hoc het bao nhieu nam thi phai ra truong': 'thoi gian hoc toi da', 'hoc het bao lau': 'thoi gian hoc toi da',
     'chuyen sang truong': 'chuyen truong', 'chuyen sang dai hoc': 'chuyen truong',
     'bi om': 'nghi hoc tam thoi bao luu', 'nghi vi benh': 'nghi hoc tam thoi bao luu',
     'phuc khao': 'phuc tra', 'song nganh': 'hai chuong trinh',
-    'thoi gian toi da': 'thoi gian hoc toi da', 'rot mon': 'hoc lai', 'truot mot mon muon nang diem': 'hoc lai cai thien diem', 'luan van': 'khoa luan',
+    'thoi gian toi da': 'thoi gian hoc toi da', 'rot mon': 'hoc lai', 'truot mot mon muon nang diem': 'hoc lai cai thien diem', 'luan van': 'khoa luan', 'nghi hoc do benh':'nghi hoc tam thoi bao luu', 'nghi hoc vi benh':'nghi hoc tam thoi bao luu', 'nghi mot nam':'nghi hoc tam thoi', 'cham nguoi than':'ly do ca nhan nghi hoc tam thoi', 'vang mat':'vang', 'tu xin thoi hoc':'tu nguyen thoi hoc',
 }
-TOPICS = ('phuc tra ket qua thi|thoi gian hoc toi da|canh bao hoc tap|buoc thoi hoc|chuyen truong|chuyen nganh|bao luu|nghi hoc tam thoi|hoc phan tien quyet|hoc phan bat buoc|hoc phan tu chon|dang ky tin chi|rut hoc phan|diem liet|thi lai|hoc lai|cai thien diem|gpa|tot nghiep|tieng anh|hoc truc tuyen|ke hoach dao tao|quy mo lop|co van hoc tap|trach nhiem sinh vien|muc tieu dao tao|lop nhap hoc|trao doi sinh vien|luu tru khoa luan|hieu luc thi hanh|cam thi|ha hang tot nghiep|hoc phi rut mon|hoc phi|khoa luan|moi tiet|quy che ap dung|hai chuong trinh|tin chi|diem thi').split('|')
+TOPICS = ('phuc tra ket qua thi|thoi gian hoc toi da|canh bao hoc tap|buoc thoi hoc|chuyen truong|chuyen nganh|bao luu|nghi hoc tam thoi|hoc phan tien quyet|hoc phan bat buoc|hoc phan tu chon|dang ky tin chi|rut hoc phan|diem liet|thi lai|hoc lai|cai thien diem|gpa|tot nghiep|tieng anh|hoc truc tuyen|ke hoach dao tao|quy mo lop|co van hoc tap|trach nhiem sinh vien|muc tieu dao tao|lop nhap hoc|trao doi sinh vien|luu tru khoa luan|hieu luc thi hanh|cam thi|ha hang tot nghiep|hoc phi rut mon|hoc phi|khoa luan|moi tiet|quy che ap dung|hai chuong trinh|tin chi|diem thi|tu nguyen thoi hoc|ly do ca nhan|chung nhan|thoi hoc|vang khong phep|dieu kien du thi|thi cuoi ky|cong nhan tin chi|quyen loi sau thoi hoc').split('|')
 
 
 def normalize_query(question):
     query=strip_accents(question)
     for old,new in PARAPHRASES.items():
         query=query.replace(old,new)
+    if 'bao nhieu nam' in query and any(x in query for x in ('hoc','dao tao','ra truong')): query+=' thoi gian hoc toi da'
+    if re.search(r'(?:vang|nghi)\s*\d+(?:[.,]\d+)?\s*%',query): query+=' cam thi'
     return query
 
 
@@ -48,13 +57,43 @@ def public_focus(question):
     q=normalize_query(question)
     if any(x in q for x in ('the ngan hang','chuyen khoan','vi dien tu','so tai khoan','thanh toan bang','mat khau','api key')):
         return ''
-    return '; '.join(t for t in TOPICS if re.search(r'\b'+re.escape(t)+r'\b',q))
+    matched=[t for t in TOPICS if re.search(r'\b'+re.escape(t)+r'\b',q)]
+    # Bổ sung khía cạnh hỏi bằng cụm công khai, không chuyển bất kỳ token gốc nào.
+    aspects={'bao nhieu':'ngưỡng hoặc số lượng','toi da':'giới hạn tối đa','toi thieu':'giới hạn tối thiểu','lam sao':'thủ tục','giay xac nhan':'minh chứng','can gi':'điều kiện','khi nao':'thời hạn','co duoc':'điều kiện cho phép','ca nhan':'lý do cá nhân','co phep':'vắng có phép'}
+    if not matched: return ''
+    return '; '.join(matched+[v for k,v in aspects.items() if k in q])
 
 
 def unsupported(question):
     q=strip_accents(question)
-    return any(x in q for x in ('the ngan hang','chuyen khoan','vi dien tu','so tai khoan','thanh toan bang','mat khau','api key','thoi tiet','mat trang','nau an','gia vang','vay tien','gui xe','hoc phi bao nhieu','muc hoc phi','hoc phi mot tin','hoc phi bao nhieu mot thang'))
+    return any(x in q for x in ('the ngan hang','chuyen khoan','vi dien tu','so tai khoan','thanh toan bang','mat khau','api key','thoi tiet','mat trang','nau an','gia vang','vay tien','gui xe','hoc phi bao nhieu','muc hoc phi','hoc phi mot tin','hoc phi bao nhieu mot thang','hoc phi moi tin','hoc phi tung tin','hoc phi moi hoc phan','cau lac bo','bong da','ky tuc xa','dia chi truong','so dien thoai','diem chuan nam','lich thi cu the'))
 
+
+# Ngân sách theo tiến trình; reset khi khởi động lại. Đếm cả embedding và retry.
+CLOUD_DEADLINE = 25.0
+# SDK gửi X-Server-Timeout theo giây; Gemini có thể từ chối deadline dưới 10 giây.
+CLOUD_SDK_TIMEOUT_MS = 20000
+CLOUD_LIMIT_MINUTE = 30
+CLOUD_LIMIT_DAY = 500
+_cloud_calls = deque()
+_cloud_budget_lock = threading.Lock()
+_cloud_slots = threading.BoundedSemaphore(2)
+_cloud_pool = ThreadPoolExecutor(max_workers=2,thread_name_prefix='quy-che-cloud')
+_deadline = ContextVar('rag_deadline',default=None)
+
+class CloudBudgetError(RuntimeError):
+    pass
+
+def cloud_call(call):
+    now=time.monotonic()
+    deadline=_deadline.get()
+    if deadline is not None and deadline-now < 1: raise TimeoutError('Hết thời gian cloud')
+    with _cloud_budget_lock:
+        while _cloud_calls and now-_cloud_calls[0]>=86400: _cloud_calls.popleft()
+        if len(_cloud_calls)>=CLOUD_LIMIT_DAY or sum(now-t<60 for t in _cloud_calls)>=CLOUD_LIMIT_MINUTE:
+            raise CloudBudgetError('Đã đạt giới hạn gọi cloud')
+        _cloud_calls.append(now)
+    return call()
 
 def retry_transient(call):
     # Một lần thử lại cho lỗi dịch vụ; không thử lại 429 hoặc lỗi dữ liệu.
@@ -86,8 +125,14 @@ def safe_api_error(exc):
     code = getattr(exc, 'code', None)
     if code is None:
         code = getattr(exc, 'status_code', None)
+    if code == 400:
+        # Chỉ phân loại thông báo tại chỗ, tuyệt đối không xuất chuỗi lỗi gốc.
+        message = str(exc).lower()
+        if 'deadline' in message and ('too short' in message or 'minimum allowed deadline' in message):
+            return 'HTTP_400_DEADLINE'
     if isinstance(code, int) and 400 <= code <= 599:
         return f'HTTP_{code}'
+    if isinstance(exc, CloudBudgetError): return 'CLOUD_BUDGET'
     if isinstance(exc, TimeoutError) or 'timeout' in type(exc).__name__.lower():
         return 'TIMEOUT'
     return 'SDK_ERROR'
@@ -113,8 +158,10 @@ class RegulationSearch:
         with pdf.open('rb') as stream:
             if hashlib.file_digest(stream,'sha256').hexdigest() != PDF_SHA:
                 raise ValueError('PDF quy chế đã thay đổi; phải đối chiếu lại kho bằng chứng.')
+        if hashlib.sha256((self.root/'regulations'/SUPPLEMENT).read_bytes()).hexdigest()!=SUPPLEMENT_SHA:
+            raise ValueError('Bản tổng hợp thôi học đã thay đổi; cần đối chiếu lại.')
         path = self.root/'regulations/quy_che_chuan_hoa.tsv'
-        self.corpus_sha = hashlib.sha256(path.read_bytes()).hexdigest()
+        self.corpus_sha = hashlib.sha256(path.read_bytes()+SUPPLEMENT_SHA.encode()).hexdigest()
         with path.open(encoding='utf-8',newline='') as f:
             self.chunks = list(csv.DictReader(f,delimiter='\t'))
         for c in self.chunks:
@@ -143,13 +190,16 @@ class RegulationSearch:
             if self.client is None:
                 from google import genai
                 from google.genai import types
-                self.client = genai.Client(api_key=os.environ['GEMINI_API_KEY'], http_options=types.HttpOptions(timeout=60000))
+                options={'timeout':CLOUD_SDK_TIMEOUT_MS}
+                if hasattr(types,'HttpRetryOptions'):
+                    options['retry_options']=types.HttpRetryOptions(attempts=1)
+                self.client = genai.Client(api_key=os.environ['GEMINI_API_KEY'], http_options=types.HttpOptions(**options))
         return self.client
 
     def _embed(self, texts, task):
         from google.genai import types
-        response = retry_transient(lambda: self._cloud().models.embed_content(model=os.getenv('CMC_EMBED_MODEL','gemini-embedding-001'), contents=texts,
-                config=types.EmbedContentConfig(task_type=task,output_dimensionality=768)))
+        response = retry_transient(lambda: cloud_call(lambda: self._cloud().models.embed_content(model=os.getenv('CMC_EMBED_MODEL','gemini-embedding-001'), contents=texts,
+                config=types.EmbedContentConfig(task_type=task,output_dimensionality=768))))
         m = np.asarray([x.values for x in response.embeddings],dtype=float)
         if m.shape != (len(texts),768) or not np.isfinite(m).all():
             raise ValueError('Embedding không hợp lệ')
@@ -183,8 +233,14 @@ class RegulationSearch:
         if clauses and not arts: return []
         if len(arts)>1 and clauses: return []
         if arts:
-            return [c for c in self.chunks if c['article'] in arts and (not clauses or any(k in span(c['clause']) for k in clauses))][:12]
+            return [c for c in self.chunks if c['article'] in arts and (not clauses or any(k in span(c['clause']) for k in clauses))]
         if unsupported(question): return []
+        query0=normalize_query(question)
+        if any(x in query0 for x in ('cac hinh thuc thoi hoc','cac con duong dan den thoi hoc','phan biet cac loai thoi hoc')):
+            wanted=('D18.K2','D25.K4–6','D21.K2–3','D12.K4','D21.K1')
+            return [next(c for c in self.chunks if c['id']==key) for key in wanted]
+        if 'quyen loi sau thoi hoc' in query0:
+            return [next(c for c in self.chunks if c['id']==key) for key in ('D20.K5–6','D19.K1–5','D18.K3–4')]
         query = normalize_query(question)
         focus = public_focus(question)
         q = set(tokens(query))
@@ -204,13 +260,18 @@ class RegulationSearch:
         # Lọc từ hiếm/trùng chủ đề trước, không lấy kết quả ngẫu nhiên khi không có căn cứ.
         ranking = sorted(range(len(scores)),key=lambda i:scores[i],reverse=True)
         candidates = [i for i in ranking if scores[i]>=max(2.,scores[ranking[0]]*.50) and (len(q & self.bags[i].keys())>=2 or (len(q)==1 and any(len(w)>=4 and self.df[w]<=2 for w in q & self.bags[i].keys())))]
+        narrow=[(16,('phuc tra','phuc khao')),(21,('bao luu','nghi hoc tam thoi')),(25,('cam thi','vang khong phep')),(3,('thoi gian hoc toi da','hoc phan tien quyet')),(22,('chuyen truong','chuyen nganh'))]
+        strong={a for a,terms in narrow if any(t in query for t in terms)}
+        if len(strong)==1:
+            # Câu hỏi đơn chủ đề: không đưa nguồn thuộc chủ đề khác chỉ vì cùng chữ "thi", "học".
+            candidates=[i for i in candidates if self.chunks[i]['article'] in strong]
         if cloud and focus:
             try:
                 if self._cloud():
                     similarities = self._semantic(focus)
                     if trace is not None: trace['embedding_used']=True
                     # Tìm ngữ nghĩa trên toàn corpus, không giới hạn bởi BM25.
-                    semantic=[i for i in np.argsort(-similarities)[:limit] if similarities[i]>=.55]
+                    semantic=[i for i in np.argsort(-similarities) if similarities[i]>=.55 and (len(strong)!=1 or self.chunks[i]['article'] in strong)][:limit]
                     candidates=list(dict.fromkeys(candidates+semantic))
                     candidates.sort(key=lambda i:scores[i]/max(1,max(scores))+.65*float(similarities[i]),reverse=True)
             except Exception as exc:
@@ -220,14 +281,42 @@ class RegulationSearch:
         return [self.chunks[i] for i in candidates[:limit]]
 
     def answer(self, question, cloud=False):
+        # Deadline tổng thể cho khách; tối đa hai worker, không xếp hàng vô hạn.
+        if not cloud:
+            return self._answer(question,False)
+        if not _cloud_slots.acquire(blocking=False):
+            result=self._answer(question,False);result['generation_status']='CLOUD_BUSY';return result
+        def work():
+            token=_deadline.set(time.monotonic()+CLOUD_DEADLINE)
+            try: return self._answer(question,True)
+            finally:
+                _deadline.reset(token)
+                _cloud_slots.release()
+        try:
+            pending=_cloud_pool.submit(work)
+        except BaseException:
+            _cloud_slots.release()
+            raise
+        try: return pending.result(timeout=CLOUD_DEADLINE)
+        except FutureTimeout:
+            # SDK đồng bộ đang chạy không thể cưỡng bức hủy; slot được trả khi worker kết thúc.
+            result=self._answer(question,False);result['generation_status']='DEADLINE';return result
+
+    def _answer(self, question, cloud=False):
         trace={'embedding_used':False,'generation_status':'NOT_REQUESTED'}
         chunks = self.retrieve(question,cloud=cloud,trace=trace)
+        requested,clauses=numbers(question)
+        missing=sorted(set(requested)-{c['article'] for c in chunks})
         if not chunks:
             return {'reply':'<p>Chưa tìm thấy căn cứ trong quy chế. Hãy nêu Điều, Khoản hoặc chủ đề cụ thể.</p>','regulations':[], 'method':'none',**trace}
         evidence = [{'id':c['id'],'article':c['article'],'clause':c['clause'],'pages':c['pages'],'document':PDF,'title':c['title'],'text':c['text']} for c in chunks]
+        for c in evidence:
+            if c['id'] in SUPPLEMENT_PAGES:
+                c['supplement']={'document':SUPPLEMENT,'pages':SUPPLEMENT_PAGES[c['id']],'kind':'Bản tổng hợp tham khảo'}
         method = 'bm25'
         intro = ''
-        if cloud:
+        retrieved=list(evidence)
+        if cloud and len(chunks)<=12 and not missing:
             code = 'SDK_ERROR'
             try:
                 client = self._cloud()
@@ -244,8 +333,8 @@ class RegulationSearch:
                         'answer':{'type':'STRING'},
                         'citations':{'type':'ARRAY','items':{'type':'STRING','enum':sorted(allowed)}}
                     },'required':['answer','citations']}
-                    r = retry_transient(lambda: client.models.generate_content(model=os.getenv('CMC_LLM_MODEL','gemini-3.1-flash-lite'),contents=prompt,
-                        config=types.GenerateContentConfig(response_mime_type='application/json',response_schema=schema,temperature=0,max_output_tokens=4096)))
+                    r = retry_transient(lambda: cloud_call(lambda: client.models.generate_content(model=os.getenv('CMC_LLM_MODEL','gemini-3.1-flash-lite'),contents=prompt,
+                        config=types.GenerateContentConfig(response_mime_type='application/json',response_schema=schema,temperature=0,max_output_tokens=4096))))
                     # Một số model dùng chung ngân sách token cho suy luận và đầu ra.
                     status = finish_status(r)
                     if status not in ('STOP','UNKNOWN','NO_CANDIDATES'):
@@ -262,6 +351,8 @@ class RegulationSearch:
                     if not isinstance(ids,list) or not ids or not all(isinstance(x,str) and x in allowed for x in ids) or not isinstance(obj.get('answer'),str) or not obj['answer'].strip():
                         raise ValueError('Trích dẫn không hợp lệ')
                     intro = '<p><b>Diễn giải AI (đối chiếu bằng chứng bên dưới):</b> '+html.escape(obj['answer'][:6000])+' ['+html.escape(', '.join(ids))+']</p>'
+                    # Giữ toàn bộ đoạn khi người dùng tra cứu Điều/Khoản trực tiếp.
+                    if not numbers(question)[0]: evidence=[c for c in evidence if c['id'] in ids]
                     method='gemini'
                     trace['generation_status']='OK'
             except Exception as exc:
@@ -269,8 +360,14 @@ class RegulationSearch:
                 if code == 'SDK_ERROR': code = safe_api_error(exc)
                 trace['generation_status']=code
                 logging.getLogger(__name__).warning('LLM không khả dụng (%s); trả bằng chứng trực tiếp.',code)
+        if missing:
+            intro='<p>Không có căn cứ cho Điều '+ ', '.join(map(str,missing)) + ' trong kho đang sử dụng.</p>'+intro
+        if len(chunks)>12:
+            intro='<p>Truy vấn nhiều Điều: hiển thị đầy đủ các đoạn tóm lược, không yêu cầu AI rút gọn.</p>'+intro
         blocks = []
         for c in evidence:
             page = c['pages'].split('–')[0]
-            blocks.append(f"<div class='border border-slate-600 rounded-lg p-3'><b>Điều {c['article']}, Khoản {c['clause']}: {html.escape(c['title'])}</b><p>{html.escape(c['text'])}</p><p><a href='/regulations/{PDF}#page={page}' target='_blank' rel='noopener noreferrer'>QĐ 22/2023 · trang PDF {c['pages']}</a></p></div>")
-        return {'reply':intro+''.join(blocks)+'<p>Bản tóm lược đã đối chiếu ảnh trang; văn bản PDF gốc là căn cứ. Áp dụng từ năm học 2023–2024.</p>', 'regulations':evidence, 'method':method,'retrieval_method':'hybrid' if trace['embedding_used'] else 'bm25',**trace}
+            extra=c.get('supplement')
+            supplement_link=f"<p><a href='/regulations/{SUPPLEMENT}#page={extra['pages'].split('–')[0]}' target='_blank' rel='noopener noreferrer'>Bản tổng hợp tham khảo · trang {extra['pages']}</a></p>" if extra else ''
+            blocks.append(f"<div class='border border-slate-600 rounded-lg p-3'><b>Điều {c['article']}, Khoản {c['clause']}: {html.escape(c['title'])}</b><p>{html.escape(c['text'])}</p><p><a href='/regulations/{PDF}#page={page}' target='_blank' rel='noopener noreferrer'>QĐ 22/2023 · trang PDF {c['pages']}</a></p>{supplement_link}</div>")
+        return {'reply':intro+''.join(blocks)+'<p>Bản tóm lược đã đối chiếu ảnh trang; văn bản PDF gốc là căn cứ. Áp dụng từ năm học 2023–2024.</p>', 'regulations':evidence, 'retrieved':retrieved, 'method':method,'retrieval_method':'hybrid' if trace['embedding_used'] else 'bm25',**trace}
