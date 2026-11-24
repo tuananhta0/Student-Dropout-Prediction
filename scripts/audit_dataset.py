@@ -141,7 +141,7 @@ def audit(source, scored_path, output):
     ca = course_features(x,a)
     check('course_feature_missing',len(x)-len(ca))
     if scored_path is not None:
-        scored = pd.read_csv(scored_path,low_memory=False,float_precision='round_trip')
+        scored = pd.read_csv(scored_path,low_memory=False)
         meta = json.loads(scored_path.with_name('model_metadata.json').read_text(encoding='utf-8'))
         allowed = set(registry.loc[registry.role.eq('FEATURE_ALLOWED_ASOF'),'feature_name']) | set(EXTRA_FEATURES)
         check('model_disallowed_features',len(set(meta['feature_cols'])-allowed))

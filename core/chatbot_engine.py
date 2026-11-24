@@ -98,7 +98,7 @@ class CMCChatbotEngine:
             if key not in self.meta:
                 raise ValueError(f"Thiếu trường metadata mô hình: {key}")
 
-        self.df = pd.read_csv(scored_path, low_memory=False,float_precision="round_trip")
+        self.df = pd.read_csv(scored_path, low_memory=False)
 
         required = {
             "record_uid", "student_id", "snapshot_term_index",

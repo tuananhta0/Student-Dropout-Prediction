@@ -252,7 +252,7 @@ def main():
         (stage/'model_metadata.json').write_text(json.dumps(meta,ensure_ascii=False,indent=2,allow_nan=False),encoding='utf-8')
         # Kiểm tra sau khi nạp lại, trước khi đổi tên thư mục kết quả.
         restored=joblib.load(stage/'dropout_pipeline.joblib')
-        persisted=pd.read_csv(stage/'student_snapshots_scored.csv.gz',low_memory=False,float_precision='round_trip')
+        persisted=pd.read_csv(stage/'student_snapshots_scored.csv.gz',low_memory=False)
         sample=persisted.sample(min(512,len(persisted)),random_state=SEED)
         require(np.allclose(restored.predict_proba(model_inputs(sample,meta))[:,1],sample.risk_probability,atol=1e-10,rtol=0),'Sai xác suất khi đọc lại model')
         rt,_=runtime_view(persisted,source,'DEMO');ac,latest=academic_view(rt,source,'DEMO')
