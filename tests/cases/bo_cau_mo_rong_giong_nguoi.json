@@ -1,0 +1,626 @@
+[
+ [
+  "Cho mình xin hỏi quy chế áp dụng cho ai?",
+  1
+ ],
+ [
+  "Dạ cho em hỏi mục tiêu đào tạo của trường hướng tới những năng lực nào ạ?",
+  2
+ ],
+ [
+  "Dạ em hỏi mục tiêu đào tạo là gì?",
+  2
+ ],
+ [
+  "Mục tiêu đào tạo của trường hướng tới những năng lực nào ạ?",
+  2
+ ],
+ [
+  "Cho mình xin hỏi một tín chỉ học được bao nhiêu giờ vậy ạ?",
+  3
+ ],
+ [
+  "Dạ cho em hỏi một tín chỉ tương ứng bao nhiêu giờ tín chỉ lý thuyết ạ?",
+  3
+ ],
+ [
+  "Dạ em hỏi học một tín chỉ thì cần bao nhiêu giờ tự học?",
+  3
+ ],
+ [
+  "Học một tín chỉ thì cần bao nhiêu giờ tự học?",
+  3
+ ],
+ [
+  "Một tín chỉ học được bao nhiêu giờ vậy ạ?",
+  3
+ ],
+ [
+  "Một tín chỉ tương ứng bao nhiêu giờ tín chỉ lý thuyết ạ?",
+  3
+ ],
+ [
+  "Cho em xin hỏi không đạt học phần bắt buộc phải làm gì?",
+  4
+ ],
+ [
+  "Cho em xin hỏi môn bắt buộc trượt rồi thì phải xử lý sao ạ?",
+  4
+ ],
+ [
+  "Cho mình hỏi môn bắt buộc không đạt thì sao?",
+  4
+ ],
+ [
+  "Cho mình xin hỏi không đạt học phần bắt buộc có được chọn môn thay thế không?",
+  4
+ ],
+ [
+  "Không đạt học phần bắt buộc có được chọn môn thay thế không?",
+  4
+ ],
+ [
+  "Môn bắt buộc trượt rồi thì phải xử lý sao ạ?",
+  4
+ ],
+ [
+  "Cho em hỏi hệ thống quy định tiết học bao nhiêu phút?",
+  5
+ ],
+ [
+  "Cho mình xin hỏi một tiết học trên trường dài bao nhiêu phút vậy?",
+  5
+ ],
+ [
+  "Em thắc mắc là mỗi tiết bao nhiêu phút?",
+  5
+ ],
+ [
+  "Một tiết học trên trường dài bao nhiêu phút vậy?",
+  5
+ ],
+ [
+  "Tiết học đầu tiên trong ngày bắt đầu lúc mấy giờ ạ?",
+  5
+ ],
+ [
+  "Tôi muốn hỏi tiết học đầu tiên trong ngày bắt đầu lúc mấy giờ ạ?",
+  5
+ ],
+ [
+  "Cho mình xin hỏi trách nhiệm sinh viên theo quy chế là gì ạ?",
+  6
+ ],
+ [
+  "Trách nhiệm sinh viên theo quy chế là gì ạ?",
+  6
+ ],
+ [
+  "Cho mình hỏi cố vấn học tập có trách nhiệm gì?",
+  7
+ ],
+ [
+  "Cố vấn học tập giúp em những việc gì ạ?",
+  7
+ ],
+ [
+  "Dạ cho em hỏi giáo viên chủ nhiệm lớp chịu trách nhiệm gì với sinh viên?",
+  7
+ ],
+ [
+  "Dạ em hỏi cố vấn học tập có nhiệm vụ gì?",
+  7
+ ],
+ [
+  "Dạ em hỏi cố vấn học tập giúp em những việc gì ạ?",
+  7
+ ],
+ [
+  "Giáo viên chủ nhiệm lớp chịu trách nhiệm gì với sinh viên nhỉ?",
+  7
+ ],
+ [
+  "Cho mình hỏi kế hoạch đào tạo của trường công bố vào thời điểm nào trong năm?",
+  8
+ ],
+ [
+  "Cho mình xin hỏi thời khóa biểu học kỳ mới được thông báo trước bao lâu?",
+  8
+ ],
+ [
+  "Kế hoạch đào tạo của trường công bố vào thời điểm nào trong năm nha?",
+  8
+ ],
+ [
+  "Kế hoạch đào tạo của trường công bố vào thời điểm nào trong năm?",
+  8
+ ],
+ [
+  "Thời khóa biểu học kỳ mới được thông báo trước bao lâu nha?",
+  8
+ ],
+ [
+  "Thời khóa biểu học kỳ mới được thông báo trước bao lâu?",
+  8
+ ],
+ [
+  "Dạ cho em hỏi lớp nhập học khác lớp học phần được phân biệt thế nào ạ?",
+  9
+ ],
+ [
+  "Dạ em hỏi lớp nhập học và lớp học phần được tạo ra thế nào ạ?",
+  9
+ ],
+ [
+  "Lớp nhập học khác lớp học phần được phân biệt thế nào ạ?",
+  9
+ ],
+ [
+  "Lớp nhập học và lớp học phần được tạo ra thế nào ạ?",
+  9
+ ],
+ [
+  "Dạ em hỏi quy mô lớp học thường bao nhiêu sinh viên một lớp ạ?",
+  10
+ ],
+ [
+  "Quy mô lớp học thường bao nhiêu sinh viên một lớp ạ?",
+  10
+ ],
+ [
+  "Dạ em hỏi học trực tuyến chiếm tối đa bao nhiêu phần trăm của chương trình?",
+  11
+ ],
+ [
+  "Dạ em hỏi học trực tuyến cần điều kiện phê duyệt học phần nào ạ?",
+  11
+ ],
+ [
+  "Học trực tuyến chiếm tối đa bao nhiêu phần trăm của chương trình nha?",
+  11
+ ],
+ [
+  "Học trực tuyến chiếm tối đa bao nhiêu phần trăm của chương trình?",
+  11
+ ],
+ [
+  "Học trực tuyến cần điều kiện phê duyệt học phần nào ạ?",
+  11
+ ],
+ [
+  "Phần mềm học trực tuyến được dùng cho những học phần nào?",
+  11
+ ],
+ [
+  "Cho em xin hỏi đăng ký tín chỉ mỗi kỳ tối thiểu và tối đa bao nhiêu ạ?",
+  12
+ ],
+ [
+  "Em thắc mắc là đã quá hạn mà tự ý bỏ học phần thì bị gì?",
+  12
+ ],
+ [
+  "Rút học phần trong tuần đầu học kỳ được không ạ?",
+  12
+ ],
+ [
+  "Đã quá hạn mà tự ý bỏ học phần thì bị gì ạ?",
+  12
+ ],
+ [
+  "Đã quá hạn mà tự ý bỏ học phần thì bị gì?",
+  12
+ ],
+ [
+  "Đăng ký tín chỉ mỗi kỳ tối thiểu và tối đa bao nhiêu ạ?",
+  12
+ ],
+ [
+  "Cho mình hỏi điểm chữ C quy đổi bao nhiêu điểm trên thang 4?",
+  13
+ ],
+ [
+  "Cho mình hỏi điểm cuối kỳ dưới bao nhiêu thì bị coi là điểm liệt ạ?",
+  13
+ ],
+ [
+  "Thang điểm A, B, C được quy đổi sang GPA thế nào ạ?",
+  13
+ ],
+ [
+  "Điểm chữ C quy đổi bao nhiêu điểm trên thang 4 nhỉ?",
+  13
+ ],
+ [
+  "Điểm chữ C quy đổi bao nhiêu điểm trên thang 4?",
+  13
+ ],
+ [
+  "Điểm cuối kỳ dưới bao nhiêu thì bị coi là điểm liệt ạ?",
+  13
+ ],
+ [
+  "Cho em hỏi thi lại thì điểm cao nhất được giới hạn ở mức chữ nào?",
+  14
+ ],
+ [
+  "Cho mình hỏi vắng thi cuối kỳ không có lý do thì được bao nhiêu điểm ạ?",
+  14
+ ],
+ [
+  "Em thắc mắc là thi lại do bị điểm F áp dụng điều nào?",
+  14
+ ],
+ [
+  "Thi lại thì điểm cao nhất được giới hạn ở mức chữ nào ạ?",
+  14
+ ],
+ [
+  "Thi lại thì điểm cao nhất được giới hạn ở mức chữ nào?",
+  14
+ ],
+ [
+  "Vắng thi cuối kỳ không có lý do thì được bao nhiêu điểm ạ?",
+  14
+ ],
+ [
+  "Cho mình hỏi học cải thiện điểm thì lấy lần cao nhất hay lần cuối cùng?",
+  15
+ ],
+ [
+  "Cho mình xin hỏi môn đã đạt điểm C thì có học lại để nâng điểm không ạ?",
+  15
+ ],
+ [
+  "Học cải thiện điểm thì lấy lần cao nhất hay lần cuối cùng ạ?",
+  15
+ ],
+ [
+  "Học cải thiện điểm thì lấy lần cao nhất hay lần cuối cùng?",
+  15
+ ],
+ [
+  "Môn đã đạt điểm C thì có học lại để nâng điểm không ạ?",
+  15
+ ],
+ [
+  "Nghỉ học quá nhiều tiết bị trượt có phải học lại không?",
+  15
+ ],
+ [
+  "Cho em hỏi phúc tra điểm thành phần thì khi nào có kết quả trả về?",
+  16
+ ],
+ [
+  "Cho mình xin hỏi muốn phúc tra điểm cuối kỳ thì nộp đơn ở đâu và trong hạn nào ạ?",
+  16
+ ],
+ [
+  "Muốn chấm lại điểm điểm cuối kỳ thì nộp đơn ở đâu và trong hạn nào ạ?",
+  16
+ ],
+ [
+  "Muốn phúc tra điểm cuối kỳ thì nộp đơn ở đâu và trong hạn nào ạ?",
+  16
+ ],
+ [
+  "Phúc tra điểm thành phần thì khi nào có kết quả trả về nhỉ?",
+  16
+ ],
+ [
+  "Phúc tra điểm thành phần thì khi nào có kết quả trả về?",
+  16
+ ],
+ [
+  "Cho em xin hỏi xếp loại học lực khá, giỏi dựa trên thang điểm mấy?",
+  17
+ ],
+ [
+  "Công thức tính điểm trung bình tích lũy ra sao nhỉ?",
+  17
+ ],
+ [
+  "Em thắc mắc là GPA tích lũy được tính bằng cách nào ạ?",
+  17
+ ],
+ [
+  "GPA tích lũy được tính bằng cách nào ạ?",
+  17
+ ],
+ [
+  "Xếp loại học lực khá, giỏi dựa trên thang điểm mấy nhỉ?",
+  17
+ ],
+ [
+  "Xếp loại học lực khá, giỏi dựa trên thang điểm mấy?",
+  17
+ ],
+ [
+  "Bị cảnh báo học tập liên tiếp mấy lần thì buộc thôi học ạ?",
+  18
+ ],
+ [
+  "Bị nhắc nhở học tập liên tiếp mấy lần thì đuổi học ạ?",
+  18
+ ],
+ [
+  "Dạ em hỏi bị cảnh báo học tập liên tiếp mấy lần thì buộc thôi học ạ?",
+  18
+ ],
+ [
+  "Em thắc mắc là nợ bao nhiêu tín chỉ thì rơi vào diện cảnh báo học tập?",
+  18
+ ],
+ [
+  "Nợ bao nhiêu tín chỉ thì rơi vào diện cảnh báo học tập ạ?",
+  18
+ ],
+ [
+  "Nợ bao nhiêu tín chỉ thì rơi vào diện cảnh báo học tập?",
+  18
+ ],
+ [
+  "Cho mình hỏi chứng chỉ tiếng Anh có ảnh hưởng đến tốt nghiệp?",
+  19
+ ],
+ [
+  "Chuẩn ngoại ngữ B1 hay B2 là điều kiện gì của tốt nghiệp ạ?",
+  19
+ ],
+ [
+  "Chuẩn ngoại ngữ B1 hay B2 là điều kiện gì của tốt nghiệp?",
+  19
+ ],
+ [
+  "Muốn xét tốt nghiệp cần đạt chứng chỉ tiếng Anh trình độ nào ạ?",
+  19
+ ],
+ [
+  "Tôi muốn hỏi chuẩn ngoại ngữ B1 hay B2 là điều kiện gì của tốt nghiệp?",
+  19
+ ],
+ [
+  "Tôi muốn hỏi muốn xét tốt nghiệp cần đạt chứng chỉ tiếng Anh trình độ nào ạ?",
+  19
+ ],
+ [
+  "Cho em hỏi điều kiện cần để xét tốt nghiệp?",
+  20
+ ],
+ [
+  "Cho mình hỏi chưa đủ điều kiện tốt nghiệp thì có bị hạ hạng bằng tốt nghiệp không?",
+  20
+ ],
+ [
+  "Cho mình xin hỏi muốn được xét tốt nghiệp cần đủ những điều kiện gì ạ?",
+  20
+ ],
+ [
+  "Chưa đủ điều kiện tốt nghiệp thì có bị hạ hạng bằng tốt nghiệp không?",
+  20
+ ],
+ [
+  "Muốn được xét tốt nghiệp cần đủ những điều kiện gì ạ?",
+  20
+ ],
+ [
+  "Bảo lưu xong rồi muốn quay lại học thì phải làm gì?",
+  21
+ ],
+ [
+  "Cho mình xin hỏi nghỉ học tạm thời vì nghĩa vụ quân sự thì thủ tục thế nào?",
+  21
+ ],
+ [
+  "Dạ em hỏi bảo lưu xong rồi muốn quay lại học thì phải làm gì?",
+  21
+ ],
+ [
+  "Em bị ốm dài ngày xin nghỉ hai học kỳ có được duyệt không ạ?",
+  21
+ ],
+ [
+  "Nghỉ học tạm thời vì nghĩa vụ quân sự thì thủ tục thế nào nha?",
+  21
+ ],
+ [
+  "Nghỉ học tạm thời vì nghĩa vụ quân sự thì thủ tục thế nào?",
+  21
+ ],
+ [
+  "Cho em hỏi chuyển sang trường đại học khác thì cần giấy tờ gì?",
+  22
+ ],
+ [
+  "Chuyển sang trường đại học khác thì cần giấy tờ gì nha?",
+  22
+ ],
+ [
+  "Chuyển sang trường đại học khác thì cần giấy tờ gì?",
+  22
+ ],
+ [
+  "Dạ cho em hỏi học ngành này muốn chuyển sang ngành khác trong trường cần điều kiện gì ạ?",
+  22
+ ],
+ [
+  "Học ngành này muốn chuyển sang ngành khác trong trường cần điều kiện gì ạ?",
+  22
+ ],
+ [
+  "Đổi từ ngành IT sang BA thì đăng ký ở đâu ạ?",
+  22
+ ],
+ [
+  "Cho mình hỏi có được đăng ký ngành thứ hai không?",
+  23
+ ],
+ [
+  "Cho mình hỏi đăng ký học song ngành chương trình thứ hai vào thời điểm nào ạ?",
+  23
+ ],
+ [
+  "Dạ cho em hỏi học đồng thời hai chương trình đào tạo cần điều kiện gì?",
+  23
+ ],
+ [
+  "Học đồng thời hai chương trình đào tạo cần điều kiện gì nha?",
+  23
+ ],
+ [
+  "Học đồng thời hai chương trình đào tạo cần điều kiện gì?",
+  23
+ ],
+ [
+  "Đăng ký học song ngành chương trình thứ hai vào thời điểm nào ạ?",
+  23
+ ],
+ [
+  "Chương trình trao đổi sinh viên hợp tác áp dụng cho ngành nào nha?",
+  24
+ ],
+ [
+  "Chương trình trao đổi sinh viên hợp tác áp dụng cho ngành nào?",
+  24
+ ],
+ [
+  "Dạ cho em hỏi chương trình trao đổi sinh viên hợp tác áp dụng cho ngành nào?",
+  24
+ ],
+ [
+  "Dạ em hỏi trao đổi sinh viên sang nơi khác được không?",
+  24
+ ],
+ [
+  "Cho em hỏi nhờ người thi hộ hoặc làm hộ bài thi bị kỷ luật gì ạ?",
+  25
+ ],
+ [
+  "Em thắc mắc là mang tài liệu trái phép vào phòng thi bị xử lý thế nào?",
+  25
+ ],
+ [
+  "Mang tài liệu trái phép vào phòng thi bị xử lý thế nào ạ?",
+  25
+ ],
+ [
+  "Mang tài liệu trái phép vào phòng thi bị xử lý thế nào?",
+  25
+ ],
+ [
+  "Nhờ người thi hộ hoặc làm hộ bài thi bị kỷ luật gì ạ?",
+  25
+ ],
+ [
+  "Tôi muốn hỏi nghỉ không phép quá 20 phần trăm thì sao?",
+  25
+ ],
+ [
+  "Dạ em hỏi luận văn phải được lưu bao lâu?",
+  26
+ ],
+ [
+  "Em thắc mắc là khóa luận tốt nghiệp được lưu trữ bao lâu ạ?",
+  26
+ ],
+ [
+  "Khóa luận tốt nghiệp được lưu trữ bao lâu ạ?",
+  26
+ ],
+ [
+  "Dạ em hỏi quy chế đào tạo này có hiệu lực thi hành từ thời điểm nào ạ?",
+  27
+ ],
+ [
+  "Quy chế đào tạo này có hiệu lực thi hành từ thời điểm nào ạ?",
+  27
+ ],
+ [
+  "Cho em hỏi học phí mỗi học kỳ đóng khoảng bao nhiêu vậy?",
+  null
+ ],
+ [
+  "Cho em xin hỏi ngày mấy phải đóng học phí vào tháng 12 năm nay?",
+  null
+ ],
+ [
+  "Cho em xin hỏi thư viện trường mở cửa từ mấy giờ đến mấy giờ?",
+  null
+ ],
+ [
+  "Cho em xin hỏi trường có miễn giảm học phí cho sinh viên giỏi không?",
+  null
+ ],
+ [
+  "Cho mình hỏi học phí một tín chỉ hiện nay là bao nhiêu tiền ạ?",
+  null
+ ],
+ [
+  "Cho mình xin hỏi ký túc xá sinh viên có loại phòng và giá thế nào ạ?",
+  null
+ ],
+ [
+  "Cho mình xin hỏi trường có câu lạc bộ thể thao hay đội nhóm nào không?",
+  null
+ ],
+ [
+  "Dạ cho em hỏi gửi xe máy trong khu trường sở mất bao nhiêu tiền một ngày?",
+  null
+ ],
+ [
+  "Em thắc mắc là lịch nghỉ lễ, Tết của trường năm nay như thế nào ạ?",
+  null
+ ],
+ [
+  "Gửi xe máy trong khu trường sở mất bao nhiêu tiền một ngày?",
+  null
+ ],
+ [
+  "Học phí mỗi học kỳ đóng khoảng bao nhiêu vậy?",
+  null
+ ],
+ [
+  "Học phí một tín chỉ hiện nay là bao nhiêu tiền ạ?",
+  null
+ ],
+ [
+  "Khi nào thì đến hạn đóng học phí học kỳ tới ạ?",
+  null
+ ],
+ [
+  "Ký túc xá sinh viên có loại phòng và giá thế nào ạ?",
+  null
+ ],
+ [
+  "Lịch nghỉ lễ, Tết của trường năm nay như thế nào ạ?",
+  null
+ ],
+ [
+  "Ngày mấy phải đóng học phí vào tháng 12 năm nay?",
+  null
+ ],
+ [
+  "Sinh viên khó khăn có được hỗ trợ học bổng hay không ạ?",
+  null
+ ],
+ [
+  "Thư viện trường mở cửa từ mấy giờ đến mấy giờ?",
+  null
+ ],
+ [
+  "Trường có câu lạc bộ thể thao hay đội nhóm nào không?",
+  null
+ ],
+ [
+  "Trường có miễn giảm học phí cho sinh viên giỏi không?",
+  null
+ ],
+ [
+  "Tôi muốn hỏi khi nào thì đến hạn đóng học phí học kỳ tới ạ?",
+  null
+ ],
+ [
+  "Tôi muốn hỏi sinh viên khó khăn có được hỗ trợ học bổng hay không ạ?",
+  null
+ ]
+]
