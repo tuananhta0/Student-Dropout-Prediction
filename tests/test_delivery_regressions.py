@@ -304,6 +304,7 @@ class DeliveryRegressionTests(unittest.TestCase):
         for q in ('bảng điểm', 'xem bảng điểm chi tiết các học phần', 'môn trượt'):
             with self.subTest(q=q):
                 self.assertEqual(self.ask(q)['intent'], 'courses')
+        self.engine.df = self.engine.df.assign(credits_required_total=128, credits_registered_term=15, state_as_of='ENROLLED')
         for q in ('dự đoán gpa', 'dự đoán gpa kì sau', 'kịch bản gpa'):
             with self.subTest(q=q):
                 out = self.ask(q)
