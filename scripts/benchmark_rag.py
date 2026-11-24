@@ -4,6 +4,8 @@ import importlib
 import hashlib
 import os
 import sys
+import time
+import core.retrieval as cloud_runtime
 from contextlib import contextmanager
 from unittest.mock import patch
 import csv
@@ -92,6 +94,51 @@ def cloud_quality(rows):
             'cloud_quality_gate':bool(rate is not None and rate>=.90)}
 
 
+
+def wait_for_cloud_budget(clock=time.monotonic, sleeper=time.sleep):
+    """Reserve up to six SDK calls before starting a benchmark question.
+
+    Waiting happens outside the per-question RAG deadline.
+    The production rate limiter remains unchanged.
+    Daily budget exhaustion is still reported as fallback.
+    """
+    waited = 0.0
+    events = 0
+
+    while True:
+        with cloud_runtime._cloud_budget_lock:
+            now = clock()
+            calls = list(cloud_runtime._cloud_calls)
+            daily = sum(now - t < 86400 for t in calls)
+            remaining = cloud_runtime.CLOUD_LIMIT_DAY - daily
+
+            if remaining <= 0:
+                return waited, events
+
+            reserve = min(
+                6, remaining, cloud_runtime.CLOUD_LIMIT_MINUTE
+            )
+            recent = sorted(t for t in calls if now - t < 60)
+            excess = len(recent) - (
+                cloud_runtime.CLOUD_LIMIT_MINUTE - reserve
+            )
+
+            if excess <= 0:
+                return waited, events
+
+            delay = max(0.5, 60.5 - (now - recent[excess - 1]))
+
+        print(
+            f"Cloud budget: waiting {delay:.1f}s",
+            file=sys.stderr,
+            flush=True
+        )
+        before = clock()
+        sleeper(delay)
+        waited += max(0.0, clock() - before)
+        events += 1
+
+
 def main():
     ap=argparse.ArgumentParser(description=__doc__);ap.add_argument('--cloud',action='store_true');ap.add_argument('--e2e',action='store_true',help='Kiểm thử API nội bộ với fixture, cloud tắt');ap.add_argument('--all',action='store_true',help='Gộp các bộ hồi quy');ap.add_argument('--extended',action='store_true',help='Bộ câu diễn đạt khác');ap.add_argument('--cases',type=Path,help='JSON của người đánh giá độc lập: [[câu hỏi, Điều hoặc null], ...]');ap.add_argument('--probe',action='store_true',help='Kiểm tra một câu có Điều/Khoản, không gọi embedding hoặc ghi đè báo cáo');ap.add_argument('--output',type=Path,default=Path('data/kiem_tra_rag/bao_cao.json'));a=ap.parse_args()
     if a.e2e and (a.cloud or a.probe): ap.error('--e2e chỉ hỗ trợ offline, không dùng --probe')
@@ -105,9 +152,15 @@ def main():
     if not isinstance(cases,(list,tuple)) or not cases or not all(isinstance(x,(list,tuple)) and len(x)==2 and isinstance(x[0],str) and x[0].strip() and (x[1] is None or type(x[1]) is int and 1<=x[1]<=27) for x in cases):
         ap.error('Bộ câu hỏi phải gồm các cặp [câu hỏi, số Điều hoặc null]')
     rows=[];rr=[];first=[];unknown=[]
+    pacing_seconds = 0.0
+    pacing_events = 0
     from contextlib import nullcontext
     with (endpoint() if a.e2e else nullcontext(lambda q:r.answer(q,cloud=a.cloud))) as invoke:
       for q,expected in cases:
+        if a.cloud:
+            seconds, events = wait_for_cloud_budget()
+            pacing_seconds += seconds
+            pacing_events += events
         out=invoke(q);chunks=out['regulations'];articles=out.get('retrieved_articles',[c['article'] for c in out.get('retrieved',chunks)])
         rank=next((i+1 for i,v in enumerate(articles[:5]) if v==expected),0)
         if expected is None:unknown.append(not chunks and out.get('intent','regulation') in ('regulation','none','clarify'))
@@ -120,7 +173,16 @@ def main():
     report['e2e_fixture']=a.e2e
     report['nguon_bo_cau']='do người đánh giá cung cấp (cần xác nhận độc lập)' if a.cases else 'hồi quy do người phát triển soạn'
     report['cloud_requested']=a.cloud
-    report['provenance']=provenance(corpus_sha256=r.corpus_sha, cases_sha256=hashlib.sha256(json.dumps(cases,ensure_ascii=False).encode()).hexdigest(), cloud_requested=a.cloud, llm_model=os.getenv('CMC_LLM_MODEL','gemini-3.1-flash-lite') if a.cloud else None, embedding_model=os.getenv('CMC_EMBED_MODEL','gemini-embedding-001') if a.cloud else None)
+    if a.cloud:
+        report['cloud_pacing'] = {
+            'enabled': True,
+            'reserved_sdk_calls': 6,
+            'wait_seconds': round(pacing_seconds, 3),
+            'wait_events': pacing_events,
+            'minute_limit': cloud_runtime.CLOUD_LIMIT_MINUTE,
+            'day_limit': cloud_runtime.CLOUD_LIMIT_DAY,
+        }
+    report['provenance']=provenance(corpus_sha256=r.corpus_sha, cases_sha256=hashlib.sha256(json.dumps(cases,ensure_ascii=False).encode()).hexdigest(), cloud_requested=a.cloud, cloud_pacing=report.get('cloud_pacing'), llm_model=os.getenv('CMC_LLM_MODEL','gemini-3.1-flash-lite') if a.cloud else None, embedding_model=os.getenv('CMC_EMBED_MODEL','gemini-embedding-001') if a.cloud else None)
     if a.cloud:
         report.update(cloud_quality(rows))
     a.output.parent.mkdir(parents=True,exist_ok=True);a.output.write_text(json.dumps(report,ensure_ascii=False,indent=2),encoding='utf-8')
