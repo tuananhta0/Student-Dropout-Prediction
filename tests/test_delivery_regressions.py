@@ -300,3 +300,77 @@ class DeliveryRegressionTests(unittest.TestCase):
                 with self.subTest(q=question):
                     out = invoke(question)
                     self.assertEqual({c['article'] for c in out['regulations']}, {expected})
+    def test_short_queries_and_professional_tables(self):
+        for q in ('bảng điểm', 'xem bảng điểm chi tiết các học phần', 'môn trượt'):
+            with self.subTest(q=q):
+                self.assertEqual(self.ask(q)['intent'], 'courses')
+        for q in ('dự đoán gpa', 'dự đoán gpa kì sau', 'kịch bản gpa'):
+            with self.subTest(q=q):
+                out = self.ask(q)
+                self.assertEqual(out['intent'], 'gpa')
+                self.assertIn('<table', out['reply'])
+        for q in ('nguy cơ thôi học', 'nguy cơ nghỉ học'):
+            with self.subTest(q=q):
+                out = self.ask(q)
+                self.assertEqual(out['intent'], 'risk')
+                self.assertNotIn('Chân trời:', out['reply'])
+                self.assertNotIn('snapshot', out['reply'].lower())
+        for q in ('thanh toán học phí', 'What-if thanh toán học phí'):
+            with self.subTest(q=q):
+                self.assertEqual(self.ask(q)['intent'], 'payment')
+    def test_partial_student_id_blocked_and_short_credit_unit(self):
+        from fastapi import HTTPException
+        for q in ('xem hồ sơ 250007', 'xem hồ sơ 999999', 'xem hồ sơ sinh viên khác'):
+            with self.subTest(q=q):
+                with self.assertRaises(HTTPException) as ctx:
+                    self.ask(q)
+                self.assertEqual(ctx.exception.status_code, 403)
+        own = self.ask('xem hồ sơ 250093')
+        self.assertEqual(own['intent'], 'student')
+        out_target = self.ask('nâng gpa lên 3.05 nếu học 18 tín')
+        self.assertEqual(out_target['intent'], 'gpa')
+        self.assertIn('18 tín chỉ mới', out_target['reply'])
+        self.assertIn('3.75/4', out_target['reply'])
+        out_proj = self.ask('dự đoán gpa kì sau nếu học 20 tín')
+        self.assertEqual(out_proj['intent'], 'gpa')
+        self.assertIn('Giả định 20 TC mới', out_proj['reply'])
+    def test_block_faculty_stats_for_student_and_plain_tuition_payment(self):
+        from fastapi import HTTPException
+        for q in ('xem thống kê của khoa', 'xem thống kê của khoa it', 'thống kê của lớp', 'xem thống kê của trường'):
+            with self.subTest(q=q):
+                with self.assertRaises(HTTPException) as ctx:
+                    self.ask(q)
+                self.assertEqual(ctx.exception.status_code, 403)
+        self.engine.df = self.engine.df.assign(tuition_debt_end_vnd=176336, tuition_overdue_days_end=0)
+        owed = self.ask('thanh toán học phí')
+        self.assertEqual(owed['intent'], 'payment')
+        self.assertIn('176,336 VNĐ', owed['reply'])
+        self.assertNotIn('độ nhạy', owed['reply'].lower())
+        self.assertNotIn('what-if', owed['reply'].lower())
+        self.engine.df = self.engine.df.assign(tuition_debt_end_vnd=0, tuition_overdue_days_end=0)
+        zero = self.ask('thanh toán học phí')
+        self.assertEqual(zero['intent'], 'payment')
+        self.assertIn('0 VNĐ', zero['reply'])
+        self.assertNotIn('độ nhạy', zero['reply'].lower())
+    def test_advisor_and_admin_dropout_rate_explanation(self):
+        from fastapi import HTTPException
+        self.engine.df = self.engine.df.assign(
+            cohort_year=2025,
+            state_as_of='ENROLLED',
+            prediction_status='VALID',
+            risk_probability=0.18,
+            attendance_rate_term=88.0,
+            warning_bool=False,
+        )
+        self.engine.latest_df = self.engine.df.copy()
+        self.engine.active_latest_df = self.engine.df.copy()
+        with self.assertRaises(HTTPException) as stu_err:
+            self.ask('tỉ lệ thôi học')
+        self.assertEqual(stu_err.exception.status_code, 403)
+        gv_out = route(self.engine, self.search, Principal('GV001', 'advisor'), 'dự đoán tỉ lệ thôi học', {})
+        self.assertEqual(gv_out['intent'], 'analytics')
+        self.assertIn('Random Forest', gv_out['reply'])
+        self.assertIn('Dự báo kỳ vọng (AI)', gv_out['reply'])
+        with self.assertRaises(HTTPException) as scope_err:
+            route(self.engine, self.search, Principal('GV001', 'advisor'), 'tỉ lệ thôi học toàn trường', {})
+        self.assertEqual(scope_err.exception.status_code, 403)

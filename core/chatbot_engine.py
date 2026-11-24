@@ -319,7 +319,7 @@ class CMCChatbotEngine:
             elif "khoa luan" in q or "do an" in q:
                 notes.append(f"Điều 12.3a: GPA {g:.2f} {'đạt' if g >= 2.5 else 'chưa đạt'} ngưỡng 2.50; còn điều kiện riêng của chương trình.")
             elif "canh bao" in q:
-                term = re.search(r'\b(?:hoc\s*ky|(?<!dang )ky|hk)\s*(\d+)\b(?!\s*(?:tin chi|tc)\b)', q)
+                term = re.search(r'\b(?:hoc\s*ky|(?<!dang )ky|hk)\s*(\d+)\b(?!\s*(?:tin chi|tin|tc)\b)', q)
                 if term_gpa:
                     term_text=term_gpa.group('term')
                     term={'nhat':1,'dau':1,'mot':1,'hai':2,'ba':3,'bon':4,
@@ -433,15 +433,15 @@ class CMCChatbotEngine:
 
         metric_map = [
             (["gpa hoc ky", "gpa ky gan nhat", "gpa ky nay"], "gpa4_term", "GPA học kỳ (Hệ 4)", "{:.2f}"),
-            (["gpa tich luy", "diem trung binh tich luy"], "gpa4_cumulative", "GPA tích lũy (Hệ 4)", "{:.2f}"),
+            (["gpa tich luy", "diem trung binh tich luy", "gpa hien tai", "diem trung binh hien tai"], "gpa4_cumulative", "GPA tích lũy (Hệ 4)", "{:.2f}"),
             (["tin chi da dat", "tin chi tich luy", "tich luy bao nhieu tin"], "credits_earned_cumulative", "Số tín chỉ tích lũy đã đạt", "{:.0f} TC"),
-            (["tin chi no dong", "no bao nhieu tin"], "credits_owed_cumulative", "Số tín chỉ nợ đọng tích lũy", "{:.0f} TC"),
+            (["tin chi no dong", "no bao nhieu tin", "tin chi no"], "credits_owed_cumulative", "Số tín chỉ nợ đọng tích lũy", "{:.0f} TC"),
             (["tin chi truot trong hoc ky", "tin chi truot ky nay"], "credits_failed_term", "Số tín chỉ trượt trong học kỳ", "{:.0f} TC"),
-            (["ty le chuyen can", "chuyen can cua em"], "attendance_rate_term", "Tỷ lệ chuyên cần học kỳ", "{:.1f}%"),
+            (["ty le chuyen can", "chuyen can cua em", "chuyen can"], "attendance_rate_term", "Tỷ lệ chuyên cần học kỳ", "{:.1f}%"),
             (["vang khong phep"], "unexcused_absence_rate_term", "Tỷ lệ vắng không phép", "{:.1f}%"),
             (["so lan canh bao hoc tap", "canh bao may lan"], "warnings_total_to_date", "Tổng số lần cảnh báo học tập", "{:.0f} lần"),
             (["canh bao lien tiep"], "warning_streak", "Số lần cảnh báo liên tiếp", "{:.0f} lần"),
-            (["hoc phi con no", "no hoc phi bao nhieu"], "tuition_debt_end_vnd", "Công nợ học phí cuối kỳ", "{:,.0f} VNĐ"),
+            (["hoc phi con no", "no hoc phi bao nhieu", "no hoc phi", "cong no hoc phi"], "tuition_debt_end_vnd", "Công nợ học phí cuối kỳ", "{:,.0f} VNĐ"),
             (["so ngay qua han", "qua han may ngay"], "tuition_overdue_days_end", "Số ngày quá hạn học phí", "{:.0f} ngày"),
             (["buoi gap co van", "gap co van may lan"], "advisor_contacts_to_date", "Số buổi gặp Cố vấn học tập", "{:.0f} buổi"),
             (["buoi phu dao", "tham gia bao nhieu buoi phu dao"], "tutoring_sessions_to_date", "Số buổi Phụ đạo đã tham gia", "{:.0f} buổi"),
@@ -533,25 +533,37 @@ class CMCChatbotEngine:
         q = strip_accents(query)
         if any(k in q for k in ["kich ban hoc lai","gpa hoc lai"]) or ("kich ban cai thien" in q and "gpa" not in q):
             return ""
-        if not any(k in q for k in ["du doan","du bao","ky sau","ki sau","ky toi","tuong lai","nguy co","xac suat","what-if","what if","gia lap","kich ban","cong thuc","muc tieu gpa","can dat bao nhieu","cai thien gpa"]):
+        if not any(k in q for k in ["du doan","du bao","ky sau","ki sau","ky toi","ki toi","tinh gpa","tuong lai","nguy co","xac suat","what-if","what if","gia lap","kich ban","cong thuc","muc tieu gpa","can dat bao nhieu","cai thien gpa"]):
             return ""
         latest = row_to_clean_dict(records.iloc[-1])
         if latest.get("state_as_of") not in (None,"ENROLLED"):
             return "<div>Hồ sơ lịch sử; không dự báo can thiệp cho sinh viên không đang học.</div>"
-        p = self.calc_next_term_gpa_projection(latest)
+        q_tc = re.findall(r'(?<![\d.,-])(-?\d+(?:[.,]\d+)?)\s*(?:tin chi|tin(?!\s*(?:tuc|nhan|dung))|tc)\b', q)
+        custom_tc = whole(q_tc[0].replace(',', '.'), 1) if len(q_tc) == 1 else None
+        if q_tc and custom_tc is None:
+            return "<div>Số tín chỉ giả định phải là số nguyên dương.</div>"
+        p = projection(latest, new_credits=custom_tc) if custom_tc is not None else self.calc_next_term_gpa_projection(latest)
         if p is None:
             return "<div>Không đủ dữ liệu GPA hoặc không còn tín chỉ mới để lập kịch bản.</div>"
         risk = number(latest.get("risk_probability"),0,1)
         risk_text = "Chưa có dự báo" if risk is None else risk_display(latest, self.meta['threshold'])
         required = f"{p['req_gpa_next']:.2f}" if p['req_gpa_next'] <= 4 else "Không thể đạt chỉ bằng số tín chỉ mới giả định"
-        return f"""<div class="bg-[#131314] rounded-xl p-4 text-xs space-y-2">
-          <b>Kịch bản GPA sau HK{latest['snapshot_term_index']} (Điều 15, 17)</b>
-          <div>Mốc học vụ {latest.get('snapshot_cutoff','')}. Giả định học {p['next_tc']:.0f} tín chỉ mới tính GPA, không học lại/cải thiện. Đây là phép tính, không phải dự báo đã kiểm định.</div>
-          <div>Theo điểm chữ đã lưu trong bộ dữ liệu đang sử dụng. Điểm trọng số hiện tại: {p['gpa_quality_points']:.2f}; tín chỉ tính GPA: {p['gpa_credit_count']:.0f}.</div>
-          <div>Kịch bản A: GPA kỳ tới {p['pred_gpa_cur']:.2f} → GPA tích lũy {p['pred_cum_cur']:.2f}.</div>
-          <div>Kịch bản B: GPA kỳ tới {p['pred_gpa_imp']:.2f} → GPA tích lũy {p['pred_cum_imp']:.2f}.</div>
-          <div>GPA kỳ mới tối thiểu cho mục tiêu {p['target_cum']:.2f}: {required}.</div>
-          <div>Nguy cơ thôi học ML: {risk_text}. Không phải cảnh báo học tập theo Điều 18. Kịch bản thanh toán (nếu khả dụng) chỉ là phép thử độ nhạy, không khẳng định tác động.</div>
+        return f"""<div class="bg-[#131314] border border-[#333537] rounded-2xl p-4 text-xs space-y-3">
+          <div class="flex flex-wrap justify-between items-center border-b border-[#333537] pb-2">
+            <div class="text-sm font-bold text-blue-300">Kịch bản GPA sau HK{latest['snapshot_term_index']} (Điều 15, 17)</div>
+            <span class="text-[11px] px-2.5 py-0.5 rounded-full bg-blue-950 text-blue-300 font-semibold">Giả định {p['next_tc']:.0f} TC mới</span>
+          </div>
+          <div class="text-[#c4c7c5]">Mốc dữ liệu {latest.get('snapshot_cutoff','')}. Cơ sở tính theo điểm chữ đã lưu: điểm trọng số hiện tại <b>{p['gpa_quality_points']:.2f}</b> trên <b>{p['gpa_credit_count']:.0f} tín chỉ tính GPA</b> (giả định {p['next_tc']:.0f} tín chỉ mới, không học lại/cải thiện).</div>
+          <div class="overflow-x-auto"><table class="w-full text-left text-xs">
+            <thead><tr class="border-b border-[#333537] text-[#9aa0a6]"><th class="py-1.5 px-2">Kịch bản</th><th class="py-1.5 px-2 text-center">GPA kỳ tới</th><th class="py-1.5 px-2 text-right">GPA tích lũy dự kiến</th></tr></thead>
+            <tbody>
+              <tr class="border-b border-[#2c2e30]"><td class="py-2 px-2 font-medium text-white">Kịch bản A (Duy trì phong độ)</td><td class="py-2 px-2 text-center font-semibold text-blue-300">{p['pred_gpa_cur']:.2f}</td><td class="py-2 px-2 text-right font-bold text-white">{p['pred_cum_cur']:.2f}</td></tr>
+              <tr class="border-b border-[#2c2e30]"><td class="py-2 px-2 font-medium text-white">Kịch bản B (Cải thiện học lực)</td><td class="py-2 px-2 text-center font-semibold text-emerald-300">{p['pred_gpa_imp']:.2f}</td><td class="py-2 px-2 text-right font-bold text-emerald-300">{p['pred_cum_imp']:.2f}</td></tr>
+              <tr><td class="py-2 px-2 font-medium text-white">Mục tiêu tích lũy {p['target_cum']:.2f}</td><td class="py-2 px-2 text-center font-semibold text-amber-300" colspan="2">{required}</td></tr>
+            </tbody>
+          </table></div>
+          <div class="text-[11px] text-[#c4c7c5]"><b>Nguy cơ thôi học ML:</b> {risk_text}. Không phải cảnh báo học tập theo Điều 18.</div>
+          <div class="text-[11px] text-[#9aa0a6]">Đây là phép tính toán học, không phải dự báo đã kiểm định. Kịch bản thanh toán (nếu khả dụng) chỉ là phép thử độ nhạy, không khẳng định tác động.</div>
         </div>"""
 
 
@@ -598,9 +610,9 @@ class CMCChatbotEngine:
             <div class="bg-[#131314] border border-[#333537] rounded-2xl p-3"><div class="text-xs font-semibold text-emerald-300 mb-2">2. Biểu đồ GPA qua các học kỳ (Thang 4.0)</div><div class="flex items-end justify-around pt-2">{bars_html}</div></div>
             <div class="bg-[#131314] border border-[#333537] rounded-2xl p-3 space-y-2.5 text-xs">
               <div class="font-semibold text-amber-300">Tỷ lệ học tập trọng tâm (Kỳ hiện tại)</div>
-              <div><div class="flex justify-between text-[11px] mb-1"><span>Tiến độ tín chỉ tích lũy</span><b>{earn_latest}/{req_latest} TC (${prog_pct}%)</b></div><div class="w-full bg-[#282a2c] h-2 rounded-full overflow-hidden"><div class="bg-blue-500 h-full" style="width:${prog_pct}%"></div></div></div>
-              <div><div class="flex justify-between text-[11px] mb-1"><span>Tỷ lệ qua môn trong kỳ</span><b>{pass_pct:.0f}%</b></div><div class="w-full bg-[#282a2c] h-2 rounded-full overflow-hidden"><div class="bg-emerald-500 h-full" style="width:${pass_pct}%"></div></div></div>
-              <div><div class="flex justify-between text-[11px] mb-1"><span>Chuyên cần học kỳ (không phải điều kiện thi từng môn)</span><b>{att_latest}%</b></div><div class="w-full bg-[#282a2c] h-2 rounded-full overflow-hidden"><div class="bg-indigo-400 h-full" style="width:${min(100, att_latest)}%"></div></div></div>
+              <div><div class="flex justify-between text-[11px] mb-1"><span>Tiến độ tín chỉ tích lũy</span><b>{earn_latest}/{req_latest} TC ({prog_pct}%)</b></div><div class="w-full bg-[#282a2c] h-2 rounded-full overflow-hidden"><div class="bg-blue-500 h-full" style="width:{prog_pct}%"></div></div></div>
+              <div><div class="flex justify-between text-[11px] mb-1"><span>Tỷ lệ qua môn trong kỳ</span><b>{pass_pct:.0f}%</b></div><div class="w-full bg-[#282a2c] h-2 rounded-full overflow-hidden"><div class="bg-emerald-500 h-full" style="width:{pass_pct}%"></div></div></div>
+              <div><div class="flex justify-between text-[11px] mb-1"><span>Chuyên cần học kỳ (không phải điều kiện thi từng môn)</span><b>{att_latest}%</b></div><div class="w-full bg-[#282a2c] h-2 rounded-full overflow-hidden"><div class="bg-indigo-400 h-full" style="width:{min(100, att_latest)}%"></div></div></div>
             </div>
           </div>
           <div class="space-y-1.5"><div class="text-xs font-semibold text-rose-300">3. Cảnh báo & Lời khuyên ngắn gọn</div><div class="grid grid-cols-1 gap-1.5">{warn_html}</div></div>
@@ -733,7 +745,7 @@ class CMCChatbotEngine:
                 if any(a in q_ascii for a in aliases):
                     detected_major = m_code
                     break
-        term_match = re.search(r'\b(?:hoc\s*ky|(?<!dang )ky|hk)\s*(\d{1,2})\b(?!\s*(?:tin chi|tc)\b)', q_ascii)
+        term_match = re.search(r'\b(?:hoc\s*ky|(?<!dang )ky|hk)\s*(\d{1,2})\b(?!\s*(?:tin chi|tin|tc)\b)', q_ascii)
         term_num = int(term_match.group(1)) if term_match else None
         art_matches = re.findall(r'\b(?:dieu|quy\s*che|quy\s*dinh|muc)\s*(?:so\s*)?(\d{1,2})\b', q_ascii)
         art_matches = [a for a in art_matches if 1 <= int(a) <= 27]

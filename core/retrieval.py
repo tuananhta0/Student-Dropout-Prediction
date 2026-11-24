@@ -274,7 +274,7 @@ def numbers(text):
     """Danh sách số ngay sau nhãn; không nuốt số tín chỉ/học kỳ ở câu kế tiếp."""
     q = strip_accents(text)
     def collect(label):
-        pattern = r'\b(?:'+label+r')\s*(?:so\s*)?(\d{1,3}\b(?:\s*(?:,|;|va|hoac|&|/)\s*\d{1,3}\b(?!\s*(?:tin chi|tc|hoc ky|diem|%)))*)'
+        pattern = r'\b(?:'+label+r')\s*(?:so\s*)?(\d{1,3}\b(?:\s*(?:,|;|va|hoac|&|/)\s*\d{1,3}\b(?!\s*(?:tin chi|tin|tc|hoc ky|diem|%)))*)'
         return list(dict.fromkeys(int(x) for m in re.finditer(pattern,q) for x in re.findall(r'\d+',m.group(1))))
     return collect(r'dieu|quy\s*che|quy\s*dinh'), collect('khoan')
 
