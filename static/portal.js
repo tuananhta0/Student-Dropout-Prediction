@@ -129,6 +129,8 @@
           const v = await view.json();
           if(session!==currentUser) return;
           document.getElementById('txtRoleLabel').innerText += ` | Dữ liệu mô phỏng`;
+          const note=document.getElementById('chatModeNote');
+          if(note) note.textContent=v.chat_agent ? 'Hội thoại AI V3: có thể gửi câu hỏi bạn nhập đến Gemini; không nhập dữ liệu thật, mật khẩu hoặc thông tin nhạy cảm.' : 'Chế độ tra cứu học vụ; hội thoại AI chung chưa bật.';
         }
       } catch (err) { if(session===currentUser) workspaceError('Không tải được thông tin dữ liệu'); }
       if (session!==currentUser) return;

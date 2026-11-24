@@ -30,8 +30,9 @@ class RAGWave2(unittest.TestCase):
             ('Đổi từ IT sang BA được không?', {22}),
             ('Em có thể tạm dừng việc học vì tai nạn phải điều trị 6 tháng không?', {21}),
             ('Tôi muốn tạm ngưng học vì phải phẫu thuật dài ngày', {21}),
-            ('Cách quy đổi điểm 8,5 theo thang 4?', {17}),
-            ('Điểm 7,5 quy đổi về thang điểm 4 thế nào?', {17}),
+            # Numeric conversion needs both the score-to-letter and letter-to-GPA rules.
+            ('Cách quy đổi điểm 8,5 theo thang 4?', {13,17}),
+            ('Điểm 7,5 quy đổi về thang điểm 4 thế nào?', {13,17}),
             ('Cho em biết số lần cảnh báo học tập bao nhiêu thì bị đuổi học', {18}),
             ('Cho em hỏi quy định về số lần cảnh báo học tập?', {18}),
             ('Em hỏi số lần bị cảnh báo học tập tối đa theo quy chế?', {18}),

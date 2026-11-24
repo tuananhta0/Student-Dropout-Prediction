@@ -94,3 +94,6 @@ python -B -X utf8 -m scripts.benchmark_rag --cloud --output data/kiem_tra_rag/ba
 Trên máy đang giữ ZIP tải từ GitHub Release, chạy công cụ đọc-chỉ `python -B -m scripts.review_public_runtime data/cmc-research-v1.zip` (mặc định dùng SHA256 đã xác minh tại thời điểm công bố). Công cụ không thực thi joblib, kiểm tra checksum ZIP, checksum từng file và manifest, đường dẫn bất thường, mẫu bí mật phổ biến; kết quả ghi dưới `data/kiem_tra_ban_giao/`. Việc đối chiếu nguồn tin cậy và xác nhận dữ liệu thật/giả **vẫn cần người phụ trách dữ liệu**. Không công bố nội dung các bản ghi nghi ngờ.
 
 Bộ regression sau sửa câu hỏi nghỉ cá nhân/ốm, học cải thiện, GPA học kỳ giả định và câu ghép học phí nằm trong `tests/test_delivery_regressions.py` và `scripts.benchmark_rag`. Điểm hồi quy không thay kết luận đánh giá ngữ nghĩa độc lập. Phiên bản báo cáo mới phải ghi commit sau khi chốt patch, còn `100eef9` là baseline lịch sử trước vòng sửa này.
+
+
+> Cập nhật V3: các mô tả bảo mật cloud ở trên áp dụng cho RAG cũ. Khi bật rõ ràng `CMC_CHAT_AGENT=1` trong DEMO, câu hỏi người dùng nhập có thể được gửi tới Gemini; không gửi hồ sơ từ database, token hoặc kết quả công cụ học vụ. Xem [V3 Final](chatbot_v3_final_Dung.md). Không nhập dữ liệu thật hoặc thông tin nhạy cảm.

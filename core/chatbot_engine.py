@@ -447,7 +447,16 @@ class CMCChatbotEngine:
             (["buoi phu dao", "tham gia bao nhieu buoi phu dao"], "tutoring_sessions_to_date", "Số buổi Phụ đạo đã tham gia", "{:.0f} buổi"),
             (["gio tu hoc"], "study_hours_week", "Số giờ tự học mỗi tuần", "{:.1f} giờ/tuần"),
             (["gio lam them"], "part_time_work_hours_week", "Số giờ làm thêm mỗi tuần", "{:.1f} giờ/tuần"),
-            (["dang nhap lms"], "lms_logins_4weeks", "Số lần đăng nhập LMS 4 tuần", "{:.0f} lần")
+            (["dang nhap lms"], "lms_logins_4weeks", "Số lần đăng nhập LMS 4 tuần", "{:.0f} lần"),
+            (["mon da truot tich luy", "mon truot tich luy"], "courses_failed_cumulative", "Số môn trượt tích lũy", "{:.0f} môn"),
+            (["mon truot trong hoc ky", "mon truot ky nay"], "courses_failed_term", "Số môn trượt trong kỳ", "{:.0f} môn"),
+            (["mon phai hoc lai"], "retake_count_cumulative", "Số lượt học lại tích lũy", "{:.0f}"),
+            (["tin chi dang ky trong hoc ky", "tin chi dang ky ky nay"], "credits_registered_term", "Tín chỉ đăng ký trong kỳ", "{:.0f} TC"),
+            (["diem qua trinh trung binh"], "process_score10_mean_term", "Điểm quá trình trung bình", "{:.2f}/10"),
+            (["ty le nop bai dung han"], "assignment_on_time_rate_term", "Tỷ lệ nộp bài đúng hạn", "{:.1f}%"),
+            (["tuan lien tiep bo nop bai"], "assignment_miss_streak_weeks", "Số tuần liên tiếp bỏ nộp bài", "{:.0f} tuần"),
+            (["ngay hoat dong lms"], "lms_active_days_4weeks", "Số ngày hoạt động LMS 4 tuần", "{:.0f} ngày"),
+            (["hoc ky da nghi", "nghi hoc tam thoi may hoc ky"], "leave_semesters_to_date", "Số kỳ đã nghỉ", "{:.0f} kỳ")
         ]
 
         matched_lines = []
@@ -457,9 +466,11 @@ class CMCChatbotEngine:
                 if cur_val is None:
                     matched_lines.append(f'{label}: Chưa có dữ liệu')
                     continue
+                if col == "assignment_on_time_rate_term": cur_val *= 100
                 cur_str = fmt.format(cur_val)
                 if is_delta and prev is not None and number(prev.get(col), -math.inf) is not None:
                     prev_val = float(prev[col])
+                    if col == "assignment_on_time_rate_term": prev_val *= 100
                     diff = cur_val - prev_val
                     trend = "tăng" if diff > 0 else ("giảm" if diff < 0 else "không đổi")
                     matched_lines.append(f"• <b>{label}:</b> Kỳ được hỏi (HK{int(latest['snapshot_term_index'])}) là <b>{cur_str}</b>, so với kỳ trước (HK{int(prev['snapshot_term_index'])}: {fmt.format(prev_val)}) đã <b>{trend} {fmt.format(abs(diff))}</b>.")

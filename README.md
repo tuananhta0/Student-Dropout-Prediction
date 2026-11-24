@@ -8,7 +8,7 @@ Hệ thống **Trợ lý học vụ, tra cứu quy chế đào tạo và cảnh 
 - **Cố vấn học tập:** thống kê lớp, hồ sơ sinh viên và danh sách nguy cơ còn hiệu lực.
 - **Quản trị:** thống kê theo khoa, khóa, hệ đào tạo và tình trạng học tập.
 
-Chatbot tra cứu quy chế theo Điều/Khoản/Trang PDF bằng BM25, hỗ trợ embedding đa ngôn ngữ và Gemini tùy chọn. Các phép tính học vụ và ML chạy trong Python, không gửi hồ sơ cá nhân đến LLM. Ứng dụng xác thực bằng phiên bearer và phân quyền phía máy chủ; chỉ chạy localhost với dữ liệu mô phỏng. Xác suất không phải quyết định buộc thôi học.
+Chatbot V3 có hai chế độ: tra cứu học vụ offline và hội thoại Gemini với bộ điều phối công cụ có kiểm tra quyền. Các phép tính học vụ, truy vấn dữ liệu và ML chạy trong Python; chế độ V3 chỉ bật rõ ràng cho DEMO và có thể gửi nội dung câu hỏi người dùng nhập tới Gemini, không gửi hồ sơ từ database hoặc kết quả truy vấn học vụ. Không nhập thông tin thật/nhạy cảm. Ứng dụng xác thực bằng phiên bearer và phân quyền phía máy chủ; chỉ chạy localhost với dữ liệu mô phỏng. Xác suất không phải quyết định buộc thôi học.
 
 **Phiên bản nghiệm thu:** `cmc-research-v1`, dữ liệu MAIN đã hiệu chỉnh. Kết quả máy huấn luyện trên tập kiểm thử mô phỏng: ROC-AUC 0,8293; Average Precision 0,6291; Recall 57,74% ở ngưỡng 0,12. Nhóm cảnh báo sớm chưa đủ điều kiện xử lý hành chính: Recall 45,25%. Xác nhận từ metadata và báo cáo của gói được bàn giao, không sử dụng kết quả baseline cho model mới.
 
@@ -67,7 +67,7 @@ if ($LASTEXITCODE -ne 0) { throw 'Smoke phan quyen that bai' }
 python -m uvicorn app:app --host 127.0.0.1 --port 8000 --no-proxy-headers
 ```
 
-Mở **http://127.0.0.1:8000**. Mặc định trình diễn mốc mô phỏng **03/02/2027**, không phải ngày hiện tại. Mật khẩu demo là mã tài khoản viết hoa (ví dụ `BIT250093` / `BIT250093`, `ADMIN` / `ADMIN`); không cần tạo file tài khoản. Chế độ offline vẫn tra cứu quy chế và tính học vụ, không cần Gemini API key. Muốn bật Gemini, xem [cấu hình RAG và cloud](docs/tra_cuu_quy_che.md); không đưa API key vào Git. Đây là hệ thống demo, chỉ chạy localhost với dữ liệu mô phỏng, không dùng để xác thực danh tính thực tế.
+Mở **http://127.0.0.1:8000**. Mặc định trình diễn mốc mô phỏng **03/02/2027**, không phải ngày hiện tại. Mật khẩu demo là mã tài khoản viết hoa (ví dụ `BIT250093` / `BIT250093`, `ADMIN` / `ADMIN`); không cần tạo file tài khoản. Chế độ offline vẫn tra cứu quy chế và tính học vụ, không cần Gemini API key. Muốn bật hội thoại V3, xem [hướng dẫn V3 Final](docs/chatbot_v3_final_Dung.md); không đưa API key vào Git. Chạy `powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/start_v3_web_ASCII.ps1` trong repo Windows đã cài runtime và `.env`. Đây là hệ thống demo, chỉ chạy localhost với dữ liệu mô phỏng, không dùng để xác thực danh tính thực tế.
 
 **Kiểm thử hồi quy đầy đủ (tùy chọn):** `python -B -X utf8 -m unittest discover -s tests -v` và `python -B -X utf8 -m scripts.benchmark_rag --all --e2e`. Node.js chỉ cần cho kiểm thử JavaScript, không cần để chạy giao diện đã biên dịch.
 
