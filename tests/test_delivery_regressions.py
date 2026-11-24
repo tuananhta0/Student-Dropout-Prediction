@@ -176,6 +176,42 @@ class DeliveryRegressionTests(unittest.TestCase):
                 out = self.ask(q)
                 self.assertEqual(out['intent'], 'gpa')
 
+    def test_policy_improvement_class_phrase(self):
+        for q in (
+            'Điều kiện học lớp cải thiện khi đạt C?',
+            'Em có được học lớp cải thiện điểm C không?',
+            'Học lớp cải thiện với điểm D thì lấy điểm nào?',
+        ):
+            with self.subTest(q=q):
+                out = self.ask(q)
+                self.assertEqual(out['intent'], 'regulation')
+                self.assertIn(15, {c['article'] for c in out['regulations']})
+                self.assertIn('Điều 15', out['reply'])
+        with endpoint() as ask:
+            out = ask('Điều kiện học lớp cải thiện khi đạt C?')
+            self.assertIn(15, {c['article'] for c in out['regulations']})
+
+    def test_partial_tuition_and_study_leave(self):
+        for q in (
+            'Học phí cao quá em muốn nghỉ học một năm được không?',
+            'Học phí cao quá nên em muốn nghỉ học một năm được không?',
+            'Mức học phí cao nên em cần xin nghỉ học tạm thời một năm?',
+            'Học phí một tín chỉ bao nhiêu, em có được nghỉ học một năm không?',
+            'Học phí một tín chỉ bao nhiêu và bảo lưu thế nào?',
+        ):
+            with self.subTest(q=q):
+                out = self.ask(q)
+                self.assertEqual(out['intent'], 'regulation')
+                self.assertIn(21, {c['article'] for c in out['regulations']})
+                self.assertIn('Điều 21', out['reply'])
+                self.assertNotIn('mức thu:', out['reply'].lower())
+        # Hỏi đơn giá riêng phải từ chối, không kéo Điều 21 vào sai ngữ cảnh.
+        out = self.ask('Học phí mỗi tín chỉ là bao nhiêu?')
+        self.assertFalse(out['regulations'])
+        with endpoint() as ask:
+            out = ask('Học phí cao quá em muốn nghỉ học một năm được không?')
+            self.assertIn(21, {c['article'] for c in out['regulations']})
+
     def test_r03_military_service_leave(self):
         for q in (
             'Nghỉ học để thực hiện nghĩa vụ quân sự có được bảo lưu không?',
@@ -190,3 +226,77 @@ class DeliveryRegressionTests(unittest.TestCase):
         focus = public_focus('Em phải đi nghĩa vụ quân sự')
         self.assertIn('nghia vu quan su', focus)
         self.assertIn('nghi hoc tam thoi', focus)
+
+    def test_study_leave_and_retake_followups(self):
+        """Câu hỏi mới ngoài bộ hồi quy 70 câu: giữ đúng căn cứ và ý nghĩa."""
+        questions = (
+            ('Mức học phí một tín chỉ bao nhiêu? Có được nghỉ học do khó khăn tài chính?', 21),
+            ('Em có thể nghỉ 3 kỳ vì lý do cá nhân không?', 21),
+            ('Em có thể nghỉ 3 học kỳ vì lý do cá nhân được không?', 21),
+            ('Em xin nghỉ 1 học kỳ vì ốm có phải nộp đơn không?', 21),
+            ('Em đạt điểm C nhưng muốn thi lại để cải thiện thì sao?', 15),
+            ('Em đạt điểm B nhưng muốn thi lại để cải thiện thì sao?', 15),
+            ('Em đạt điểm B+ nhưng muốn thi lại để cải thiện thì sao?', 15),
+            ('Em xin nghỉ 4 kỳ vì lý do cá nhân được không?', 21),
+        )
+        for question, expected in questions:
+            with self.subTest(q=question):
+                out = self.ask(question)
+                self.assertEqual(out['intent'], 'regulation')
+                self.assertEqual({c['article'] for c in out['regulations']}, {expected})
+                self.assertIn(f'Điều {expected}', out['reply'])
+        for q in (
+            'Mức học phí một tín chỉ bao nhiêu? Có được nghỉ học do khó khăn tài chính?',
+            'Học phí cao quá em muốn nghỉ học một năm được không?',
+        ):
+            self.assertIn('thông báo', self.ask(q)['reply'].lower())
+        allowed = self.ask('Em có thể nghỉ 3 kỳ vì lý do cá nhân không?')['reply']
+        self.assertIn('giới hạn tối đa 3 học kỳ', allowed)
+        self.assertIn('nhà trường quyết định', allowed)
+        exceeded = self.ask('Em xin nghỉ 4 kỳ vì lý do cá nhân được không?')['reply']
+        self.assertIn('vượt giới hạn', exceeded)
+        self.assertNotIn('Điều 25', exceeded)
+        sick = self.ask('Em xin nghỉ 1 học kỳ vì ốm có phải nộp đơn không?')['reply']
+        self.assertIn('chứng nhận', sick)
+
+    def test_hypothetical_term_gpa_warning(self):
+        """GPA giả định dùng số nêu trong câu, không đọc GPA hồ sơ cá nhân."""
+        checks = (
+            ('GPA học kỳ thứ hai 0.99 có bị cảnh báo?', 'Bị cảnh báo'),
+            ('GPA học kỳ 2 là 0.99 có bị cảnh báo không?', 'Bị cảnh báo'),
+            ('GPA học kỳ đầu 0.79 có bị cảnh báo không?', 'Bị cảnh báo'),
+            ('GPA học kỳ đầu 0.80 có bị cảnh báo không?', 'Không bị cảnh báo'),
+            ('GPA học kỳ 3 1.00 có bị cảnh báo?', 'Không bị cảnh báo'),
+        )
+        for question, phrase in checks:
+            with self.subTest(q=question):
+                out = self.ask(question)
+                self.assertEqual(out['intent'], 'regulation')
+                self.assertEqual({c['article'] for c in out['regulations']}, {18})
+                self.assertIn(phrase, out['reply'])
+                self.assertIn('còn tiêu chí tín chỉ', out['reply'])
+        self.assertNotIn('Bị cảnh báo vì GPA', self.ask('GPA học kỳ 2 là bao nhiêu?')['reply'])
+
+    def test_no_semantic_regressions_from_new_leave_phrases(self):
+        """Nghỉ không phép, thi lại F và học phí riêng vẫn giữ ý định cũ."""
+        with self.subTest('nghi-khong-phep'):
+            out = self.ask('Nghỉ không phép quá 20% số giờ môn thì sao?')
+            self.assertIn(25, {c['article'] for c in out['regulations']})
+            self.assertNotIn(21, {c['article'] for c in out['regulations']})
+        out = self.ask('Thi lại khi bị điểm F được không?')
+        self.assertIn(14, {c['article'] for c in out['regulations']})
+        self.assertNotIn(15, {c['article'] for c in out['regulations']})
+        out = self.ask('Mức học phí một tín chỉ bao nhiêu?')
+        self.assertFalse(out['regulations'])
+        self.assertIn('thông báo học phí', out['reply'].lower())
+        out = self.ask('Em có thể nghỉ 1 kỳ vì ốm không?')
+        self.assertIn(21, {c['article'] for c in out['regulations']})
+        with endpoint() as invoke:
+            for question, expected in (
+                ('GPA học kỳ thứ hai 0.99 có bị cảnh báo?', 18),
+                ('Mức học phí một tín chỉ bao nhiêu? Có được nghỉ học do khó khăn tài chính?', 21),
+                ('Em đạt điểm B nhưng muốn thi lại để cải thiện thì sao?', 15),
+            ):
+                with self.subTest(q=question):
+                    out = invoke(question)
+                    self.assertEqual({c['article'] for c in out['regulations']}, {expected})

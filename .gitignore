@@ -4,6 +4,7 @@ venv/
 __pycache__/
 *.pyc
 .env
+!.env.example
 
 # Loại bỏ bộ dữ liệu gốc quá nặng và đường dẫn dài
 dataset_full/

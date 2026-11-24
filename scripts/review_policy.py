@@ -2,6 +2,7 @@
 Không thay đổi dữ liệu, đặc trưng hoặc artifact mô hình.
 """
 from pathlib import Path
+import argparse
 import json
 import numpy as np
 from core.data_pipeline import Dataset, ROOT, gpa_ledger, admission_evidence
@@ -14,14 +15,27 @@ METHODS = {
 }
 
 
-def main():
-    source = Dataset()
-    output = ROOT / 'data/doi_chieu_quy_che'
+def main(argv=None):
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--stress-run', type=Path)
+    parser.add_argument('--output', type=Path)
+    args = parser.parse_args(argv)
+
+    default_output = ROOT / 'data/doi_chieu_quy_che'
+    if args.stress_run:
+        if args.output is None or args.output.resolve() == default_output.resolve():
+            parser.error('STRESS requires a separate --output directory')
+        from scripts.train_model import StressDataset
+        source = StressDataset(args.stress_run)
+    else:
+        source = Dataset()
+
+    output = args.output or default_output
     output.mkdir(parents=True, exist_ok=True)
     t = source.table('term_academics').sort_values(['record_uid','term_index']).copy()
     s = source.table('students')
     a = source.table('course_attempts')
-    report = {}
+    report = {'scenario': source.manifest['scenario_id']}
     t = t.merge(s[['record_uid','designed_semesters']],on='record_uid',validate='many_to_one')
     low = np.ceil(2*t.credits_required/(3*t.designed_semesters))
     high = np.floor(3*t.credits_required/(2*t.designed_semesters))
@@ -58,6 +72,19 @@ def main():
     missing = s.admission_score.isna() & ~direct
     assert s.loc[missing,'admission_score_missing_reason'].isin(['SYNTHETIC_SOURCE_MISSING','BELOW_REVIEWED_FLOOR_EXCLUDED']).all()
     report['missing_non_direct'] = int(missing.sum())
+    report['missing_non_direct_by_reason'] = {
+        str(reason): int(count)
+        for reason, count in
+        s.loc[missing, 'admission_score_missing_reason'].value_counts().items()
+    }
+    report['missing_non_direct_by_cohort_method'] = [
+        {'cohort_year': int(year), 'admission_method': str(method),
+         'non_direct_students': len(group),
+         'missing': int(group.admission_score.isna().sum()),
+         'missing_rate': float(group.admission_score.isna().mean())}
+        for (year, method), group in
+        s.loc[~direct].groupby(['cohort_year', 'admission_method'])
+    ]
     report['direct_not_applicable'] = int((direct & s.admission_score.isna()).sum())
     s.loc[missing,['record_uid','cohort_year','admission_method','admission_score_missing_reason']].to_csv(output/'admission_missing.csv',index=False)
     s.groupby(['cohort_year','admission_method']).admission_score.agg(['size','count','min','max']).to_csv(output/'admission_method_summary.csv')
@@ -80,7 +107,7 @@ def main():
         'tuyen_sinh_duoi_nguong':'Đánh dấu không dùng để kết luận đủ điều kiện tuyển sinh',
         'lam_tron':'Đã tái sinh; kiểm tra lại lịch sử và nhãn' if source.manifest.get('research_revision') else 'Chờ tái tạo đồng bộ điểm, lịch sử học lại, GPA, feature và nhãn trước khi huấn luyện'}
     from scripts.report_provenance import provenance, sha256, sidecar
-    report['provenance']=provenance(dataset_manifest_sha256=sha256(source.run/'manifests/generation_manifest.json'))
+    report['provenance']=provenance(dataset_manifest_sha256=sha256(source.run/'manifests/generation_manifest.json'), scenario=report['scenario'])
     for name in ('registration','exam','grade_rounding','admission_method_mismatch','admission_missing','admission_method_summary','admission_evidence','admission_floor_review'):
         sidecar(output/(name+'.csv'),report['provenance'])
     (output/'review.json').write_text(json.dumps(report,ensure_ascii=False,indent=2,default=int),encoding='utf-8')

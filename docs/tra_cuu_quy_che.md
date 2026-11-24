@@ -58,8 +58,26 @@ SDK timeout 20 giây (20000 ms), deadline tổng thể 25 giây. `HTTP_400_DEADL
 
 - Cú pháp `Điều 18 và 21`, `Điều 18 Khoản 1 và 99` được nhận diện; chỉ hiển thị phần có trong kho và báo từng số thiếu. Nếu có nhiều Điều kèm Khoản nhưng chưa rõ cách ghép, yêu cầu tra cứu từng Điều riêng. Không lưu context của truy vấn Điều/Khoản thiếu căn cứ.
 - Với chủ đề có neo rõ, giới hạn BM25/embedding vào Điều tương ứng. Câu ghép như bảo lưu và phúc tra giữ nguồn của cả hai; Gemini thiếu nguồn của một chủ đề sẽ fallback. Câu ghép có phần nằm ngoài quy chế chỉ trả phần có căn cứ nếu nhận diện được. Lịch nghỉ lễ, hạn nộp học phí cụ thể, giờ thư viện thuộc thông báo vận hành, không tự suy diễn từ quy chế.
-- Từ điển neo chủ đề và phép chiếu công khai có thể bỏ sót cách diễn đạt mới hoặc nhầm chủ đề; việc từ chối quá mức cũng cần kiểm thử. Đây không phải phân loại ngữ nghĩa tổng quát hoặc xác minh sự thật. Tập hồi quy 68 câu qua API kiểm tra thêm lỗi đã phát hiện; không thay cho đánh giá độc lập.
+- Từ điển neo chủ đề và phép chiếu công khai có thể bỏ sót cách diễn đạt mới hoặc nhầm chủ đề; việc từ chối quá mức cũng cần kiểm thử. Đây không phải phân loại ngữ nghĩa tổng quát hoặc xác minh sự thật. Tập hồi quy 70 câu qua API kiểm tra thêm lỗi đã phát hiện; không thay cho đánh giá độc lập.
 - Giả định GPA mục tiêu có số tín chỉ mới rõ ràng sử dụng đúng số nguyên dương, không vượt cap lưu trong hồ sơ, số tín chỉ còn lại và số học phần mới được giả định. Không tự đổi về 15 nếu người dùng chỉ định số khác. Điều kiện mở lớp và đăng ký kỳ tới vẫn cần xác minh.
 - Giả định số lần cảnh báo dùng đúng ngưỡng Điều 18.2. Với nợ có chứng chỉ, chỉ trừ phần chứng chỉ có số lượng rõ hoặc yêu cầu tách ra; kết luận chỉ cho tiêu chí đang xét. Các câu thiếu điểm thành phần/tổng điểm vẫn kèm Điều 13.
 
 Nguồn phiên bản báo cáo được ghi tại thời điểm chạy (commit, tree, dirty, dấu vân tay diff tracked, thời gian UTC, hash corpus và bộ câu hỏi; model cloud khi bật). CSV có sidecar `.provenance.json`; nếu người chấm sửa CSV, manifest ghi `changed_after_recording`, và báo cáo chấm lưu hash CSV đã chấm. Không tự nhận người chấm độc lập khi chưa xác nhận.
+
+## Câu hỏi học vụ nhiều ý và GPA giả định
+
+Nếu người dùng hỏi đơn giá học phí kết hợp với nghỉ học, chatbot chỉ trả nội dung nghỉ học có căn cứ Điều 21 và hướng dẫn tra thông báo học phí, không suy đoán con số. Hỏi nghỉ 3 hoặc 4 học kỳ do lý do cá nhân có phép tính giới hạn 3 học kỳ bằng Python theo Điều 21.1d; không áp ngưỡng này cho nghỉ do bệnh. Hỏi thi lại để cải thiện điểm môn đã đạt (C/B) trả quy định học lại cải thiện Điều 15 thay vì Điều 14 về thi lại thông thường.
+
+Câu hỏi giả định `GPA học kỳ thứ hai 0,99 có bị cảnh báo?` được Rule Engine Python so với ngưỡng GPA Điều 18.1a, không lấy GPA từ hồ sơ sinh viên hoặc gọi Gemini. Kết luận chỉ cho một tiêu chí, không là quyết định cảnh báo chính thức. Những câu hỏi thiếu thông tin kỳ/GPA phải yêu cầu bổ sung, không tự đoán.
+
+## Bộ sửa RAG và kiểm định bàn giao ABCD (nhánh Dung)
+
+- Quy tắc mới nhận các diễn đạt nghỉ học do bệnh, nghỉ một học kỳ, chuyển đến/đổi trường; hỏi ngày đóng học phí cụ thể phải nói rõ không có lịch trong PDF, không trích nguồn lạc chủ đề.
+- Bộ `tests/cases/bo_cau_ra_soat_40_de_xuat.json` có 40 câu gợi ý kiểm tra offline. **Bộ này do người sửa mã chuẩn bị, KHÔNG độc lập/mù.** Thành viên không sửa retrieval phải tự biên soạn hoặc chỉnh sửa và giữ kín bộ kiểm tra cuối, rồi mới gọi là đánh giá độc lập.
+- Chạy `python -B -m scripts.benchmark_rag --cases tests/cases/bo_cau_ra_soat_40_de_xuat.json --e2e --output data/kiem_tra_rag/bo_40.json`. Đầu ra CSV có các cột `dung_ngu_nghia`, `day_du`, `ghi_chu_nguoi_cham`.
+- Với **tất cả** phản hồi (Gemini/BM25/fallback), điền thêm cột `trich_dan_dung`, `khong_bia_quy_dinh` (0/1); mỗi câu không đạt phải ghi lý do. Chạy `python -B -m scripts.review_rag_semantics data/kiem_tra_rag/bo_40_doi_chieu.csv --reviewer MA_THANH_VIEN`. Không có điểm thủ công trước khi người thật đọc PDF.
+- Cloud thật: tạo file `.env` nội bộ một lần bằng `python -B -m scripts.setup_shared_gemini` và chia sẻ riêng cho thành viên. Một key chung đủ, không yêu cầu mỗi người có key riêng; `.env` đã được Git bỏ qua. **Không dán key vào file tracked, patch hoặc log.** Nếu phiên PowerShell có `CMC_RAG_CLOUD=0` thì `Remove-Item Env:CMC_RAG_CLOUD -ErrorAction SilentlyContinue` để `.env` có hiệu lực.
+- Chạy `python -B -m scripts.benchmark_rag --cloud --probe`, rồi `python -B -m scripts.benchmark_rag --cloud --cases tests/cases/bo_cau_ra_soat_40_de_xuat.json --output data/kiem_tra_rag/bo_40_cloud.json` khi đủ quota. Đọc `trang_thai_llm`, `so_cau_gemini`, `ty_le_gemini_thanh_cong` và tỷ lệ fallback. **Không coi `cloud_quality_gate` hay ID hợp lệ là chấm ngữ nghĩa tự động.**
+
+
+> Cập nhật V3: các mô tả bảo mật cloud ở trên áp dụng cho RAG cũ. Khi bật rõ ràng `CMC_CHAT_AGENT=1` trong DEMO, câu hỏi người dùng nhập có thể được gửi tới Gemini; không gửi hồ sơ từ database, token hoặc kết quả công cụ học vụ. Xem [V3 Final](chatbot_v3_final_Dung.md). Không nhập dữ liệu thật hoặc thông tin nhạy cảm.

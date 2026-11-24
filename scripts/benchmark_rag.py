@@ -4,6 +4,8 @@ import importlib
 import hashlib
 import os
 import sys
+import time
+import core.retrieval as cloud_runtime
 from contextlib import contextmanager
 from unittest.mock import patch
 import csv
@@ -62,7 +64,15 @@ REGRESSION=[
  ('Tự xin thôi học',21),('Quyền lợi sau thôi học',20),
  ('Lịch nghỉ lễ của sinh viên?',None),('Thời hạn nộp học phí kỳ tới?',None),
  ('Thư viện trường mở cửa mấy giờ?',None),('Em có 3 lần cảnh báo liên tiếp có bị thôi học không?',18),
- ('Em nợ 25 tín chỉ chứng chỉ thì sao?',18),('Em thi cuối kỳ 4 điểm có qua môn không?',13)
+ ('Điều kiện học lớp cải thiện khi đạt C?',15),('Học phí cao quá em muốn nghỉ học một năm được không?',21),
+ ('Em nợ 25 tín chỉ chứng chỉ thì sao?',18),('Em thi cuối kỳ 4 điểm có qua môn không?',13),
+ ('Mức học phí một tín chỉ bao nhiêu? Có được nghỉ học do khó khăn tài chính?',21),
+ ('Em có thể nghỉ 3 kỳ vì lý do cá nhân không?',21),
+ ('Em xin nghỉ 1 học kỳ vì ốm có phải nộp đơn không?',21),
+ ('Em đạt điểm C nhưng muốn thi lại để cải thiện thì sao?',15),
+ ('Em đạt điểm B nhưng muốn thi lại để cải thiện thì sao?',15),
+ ('GPA học kỳ thứ hai 0.99 có bị cảnh báo?',18),
+ ('Em xin nghỉ 4 kỳ vì lý do cá nhân được không?',21)
 ]
 
 def quality_pass(report, top1=.95):
@@ -76,8 +86,57 @@ def cloud_quality(rows):
     known=[r for r in rows if r['dieu_mong_doi'] is not None]
     ok=sum(r['phuong_phap']=='gemini' and r['trang_thai_llm']=='OK' for r in known)
     rate=ok/len(known) if known else None
+    counts=Counter(r.get('trang_thai_llm','NOT_REQUESTED') for r in known)
     return {'so_cau_gemini_mong_doi':len(known),'ty_le_gemini_thanh_cong':rate,
+            'so_cau_generation_ok':ok,'so_cau_fallback':len(known)-ok,
+            'ty_le_fallback':(len(known)-ok)/len(known) if known else None,
+            'trang_thai_generation':dict(counts),
             'cloud_quality_gate':bool(rate is not None and rate>=.90)}
+
+
+
+def wait_for_cloud_budget(clock=time.monotonic, sleeper=time.sleep):
+    """Reserve up to six SDK calls before starting a benchmark question.
+
+    Waiting happens outside the per-question RAG deadline.
+    The production rate limiter remains unchanged.
+    Daily budget exhaustion is still reported as fallback.
+    """
+    waited = 0.0
+    events = 0
+
+    while True:
+        with cloud_runtime._cloud_budget_lock:
+            now = clock()
+            calls = list(cloud_runtime._cloud_calls)
+            daily = sum(now - t < 86400 for t in calls)
+            remaining = cloud_runtime.CLOUD_LIMIT_DAY - daily
+
+            if remaining <= 0:
+                return waited, events
+
+            reserve = min(
+                6, remaining, cloud_runtime.CLOUD_LIMIT_MINUTE
+            )
+            recent = sorted(t for t in calls if now - t < 60)
+            excess = len(recent) - (
+                cloud_runtime.CLOUD_LIMIT_MINUTE - reserve
+            )
+
+            if excess <= 0:
+                return waited, events
+
+            delay = max(0.5, 60.5 - (now - recent[excess - 1]))
+
+        print(
+            f"Cloud budget: waiting {delay:.1f}s",
+            file=sys.stderr,
+            flush=True
+        )
+        before = clock()
+        sleeper(delay)
+        waited += max(0.0, clock() - before)
+        events += 1
 
 
 def main():
@@ -93,9 +152,15 @@ def main():
     if not isinstance(cases,(list,tuple)) or not cases or not all(isinstance(x,(list,tuple)) and len(x)==2 and isinstance(x[0],str) and x[0].strip() and (x[1] is None or type(x[1]) is int and 1<=x[1]<=27) for x in cases):
         ap.error('Bộ câu hỏi phải gồm các cặp [câu hỏi, số Điều hoặc null]')
     rows=[];rr=[];first=[];unknown=[]
+    pacing_seconds = 0.0
+    pacing_events = 0
     from contextlib import nullcontext
     with (endpoint() if a.e2e else nullcontext(lambda q:r.answer(q,cloud=a.cloud))) as invoke:
       for q,expected in cases:
+        if a.cloud:
+            seconds, events = wait_for_cloud_budget()
+            pacing_seconds += seconds
+            pacing_events += events
         out=invoke(q);chunks=out['regulations'];articles=out.get('retrieved_articles',[c['article'] for c in out.get('retrieved',chunks)])
         rank=next((i+1 for i,v in enumerate(articles[:5]) if v==expected),0)
         if expected is None:unknown.append(not chunks and out.get('intent','regulation') in ('regulation','none','clarify'))
@@ -108,15 +173,25 @@ def main():
     report['e2e_fixture']=a.e2e
     report['nguon_bo_cau']='do người đánh giá cung cấp (cần xác nhận độc lập)' if a.cases else 'hồi quy do người phát triển soạn'
     report['cloud_requested']=a.cloud
-    report['provenance']=provenance(corpus_sha256=r.corpus_sha, cases_sha256=hashlib.sha256(json.dumps(cases,ensure_ascii=False).encode()).hexdigest(), cloud_requested=a.cloud, llm_model=os.getenv('CMC_LLM_MODEL','gemini-3.1-flash-lite') if a.cloud else None, embedding_model=os.getenv('CMC_EMBED_MODEL','gemini-embedding-001') if a.cloud else None)
+    if a.cloud:
+        report['cloud_pacing'] = {
+            'enabled': True,
+            'reserved_sdk_calls': 6,
+            'wait_seconds': round(pacing_seconds, 3),
+            'wait_events': pacing_events,
+            'minute_limit': cloud_runtime.CLOUD_LIMIT_MINUTE,
+            'day_limit': cloud_runtime.CLOUD_LIMIT_DAY,
+        }
+    report['provenance']=provenance(corpus_sha256=r.corpus_sha, cases_sha256=hashlib.sha256(json.dumps(cases,ensure_ascii=False).encode()).hexdigest(), cloud_requested=a.cloud, cloud_pacing=report.get('cloud_pacing'), llm_model=os.getenv('CMC_LLM_MODEL','gemini-3.1-flash-lite') if a.cloud else None, embedding_model=os.getenv('CMC_EMBED_MODEL','gemini-embedding-001') if a.cloud else None)
     if a.cloud:
         report.update(cloud_quality(rows))
     a.output.parent.mkdir(parents=True,exist_ok=True);a.output.write_text(json.dumps(report,ensure_ascii=False,indent=2),encoding='utf-8')
     print(json.dumps({k:v for k,v in report.items() if k!='chi_tiet'},ensure_ascii=False,indent=2))
     review=a.output.with_name(a.output.stem+'_doi_chieu.csv')
     with review.open('w',encoding='utf-8-sig',newline='') as f:
-        writer=csv.writer(f);writer.writerow(['cau_hoi','dieu_mong_doi','dieu_da_truy_xuat','phuong_phap','phan_hoi_html','dung_ngu_nghia','day_du','ghi_chu_nguoi_cham'])
-        for row in rows: writer.writerow([row['cau_hoi'],row['dieu_mong_doi'],row['dieu_truy_xuat'],row['phuong_phap'],row['phan_hoi'],'','',''])
+        writer=csv.writer(f);writer.writerow(['cau_hoi','dieu_mong_doi','dieu_da_truy_xuat','phuong_phap','phan_hoi_html',
+                                'dung_ngu_nghia','day_du','trich_dan_dung','khong_bia_quy_dinh','ghi_chu_nguoi_cham'])
+        for row in rows: writer.writerow([row['cau_hoi'],row['dieu_mong_doi'],row['dieu_truy_xuat'],row['phuong_phap'],row['phan_hoi'],'','','','',''])
     sidecar(review,report['provenance'])
     print('Báo cáo:',a.output,'; bảng đối chiếu thủ công:',review)
     return 0 if report['quality_gate'] and (not a.cloud or report['cloud_quality_gate']) else 1

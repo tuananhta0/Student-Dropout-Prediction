@@ -18,6 +18,7 @@ from core.security import (SessionStore, RateLimiter, authenticate, permitted_st
 from core.runtime_config import configure_runtime
 from core.retrieval import RegulationSearch, PDF, SUPPLEMENT
 from core.intent_router import route
+from core.chat_agent import enabled as agent_enabled
 from core.data_pipeline import ROOT
 
 app = FastAPI(title="CMC Academic AI Portal", docs_url=None, redoc_url=None, openapi_url=None)
@@ -94,7 +95,7 @@ def favicon():
 @app.get('/api/data-view')
 def data_view(p=Depends(principal)):
     # Sinh viên chỉ cần mốc dữ liệu và phiên bản, không cần số liệu toàn trường.
-    base={'mode':engine.data_mode,'as_of':engine.data_as_of,'synthetic':True,'model_version':engine.meta.get('version','baseline')}
+    base={'mode':engine.data_mode,'as_of':engine.data_as_of,'synthetic':True,'model_version':engine.meta.get('version','baseline'),'chat_agent':agent_enabled(engine)}
     if p.role=='admin':
         base.update(statistics_scope='Sinh viên đã có kết quả học kỳ tại mốc dữ liệu',snapshots=len(engine.ml_df),academic_terms=len(engine.df),active_students=len(engine.active_latest_df),students_with_snapshots=len(engine.latest_df),valid_predictions=int(engine.active_latest_df.prediction_status.eq('VALID').sum()))
     return base
@@ -110,7 +111,7 @@ def login(req: LoginRequest,request: Request):
     else: label='Quản trị học vụ toàn trường'
     token=sessions.issue(p)
     with context_lock:
-        # Dọn các phiên đã hết hạn/đăng xuất; không lưu nội dung hội thoại.
+        # Dọn phiên hết hạn. V3 chỉ giữ ngữ cảnh ngắn trong RAM, không lưu hồ sơ/chat ra đĩa.
         with sessions.lock:
             for k in list(contexts):
                 if k not in sessions.items: contexts.pop(k,None)
@@ -209,7 +210,7 @@ def safe_link(tag,name,value):
     return tag=='td' and name=='colspan' and value.isdigit()
 
 def sanitize_reply(text):
-    return bleach.clean(text,tags={'div','span','p','b','strong','em','i','br','ul','ol','li','table','thead','tbody','tr','th','td','code','pre','a','h3','h4'},attributes=safe_link,strip=True)
+    return bleach.clean(text,tags={'div','span','p','b','strong','em','i','br','ul','ol','li','table','thead','tbody','tr','th','td','code','pre','a','h3','h4','details','summary'},attributes=safe_link,strip=True)
 
 @app.post('/api/chat')
 def chat_endpoint(req: ChatRequest, token: str=Depends(credential)):
@@ -227,4 +228,4 @@ def chat_endpoint(req: ChatRequest, token: str=Depends(credential)):
     finally:
         with context_lock: chat_busy.discard(token)
     # Không trả hồ sơ thô hoặc kết quả công cụ ngoài phạm vi đã cấp.
-    return {'reply':sanitize_reply(result['reply']),'regulations':result.get('regulations',[]),'retrieved_articles':[c['article'] for c in result.get('retrieved',result.get('regulations',[]))],'intent':result['intent'],'method':result['method'],'embedding_used':result.get('embedding_used',False),'retrieval_method':result.get('retrieval_method'),'generation_status':result.get('generation_status','NOT_REQUESTED')}
+    return {'reply':sanitize_reply(result['reply']),'regulations':result.get('regulations',[]),'retrieved_articles':[c['article'] for c in result.get('retrieved',result.get('regulations',[]))],'intent':result['intent'],'method':result['method'],'embedding_used':result.get('embedding_used',False),'retrieval_method':result.get('retrieval_method'),'generation_status':result.get('generation_status','NOT_REQUESTED'),'agent_status':result.get('agent_status','NOT_REQUESTED')}

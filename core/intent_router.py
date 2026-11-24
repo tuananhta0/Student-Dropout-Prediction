@@ -1,4 +1,6 @@
-"""Chọn công cụ học vụ theo quyền; không chuyển câu hỏi cá nhân sang LLM."""
+"""Công cụ học vụ cục bộ và bộ điều phối V3 tùy chọn cho DEMO.
+Không gửi hồ sơ từ database hoặc kết quả công cụ cho LLM.
+"""
 import html
 import re
 from fastapi import HTTPException
@@ -6,6 +8,10 @@ from core.chatbot_engine import row_to_clean_dict, risk_display, strip_accents
 from core.security import permitted_student, require_role, require_major, require_class, scoped_classes, scoped_frame, assigned_classes, ADVISOR_MAJORS
 from core.retrieval import numbers, public_focus, unsupported, normalize_query, span
 from core.academic_rules import graduation_conditions, projection, number, whole
+from core.chat_query_v2 import scoped_analytics, focused_policy, student_risk
+from core.chat_data_v3 import aggregate_v3, personal_v3, numeric_policy, model_explanation, unavailable_aggregate, simple_major_count
+from core.policy_focus_v3 import normalize_chat, facet_ids, specific_facets, ambiguous_penalty
+from core.conversation_basics import basic_conversation
 
 
 def reply(text, intent):
@@ -39,8 +45,12 @@ def extract_target_gpa(q):
     return None
 
 
-def route(engine, retrieval, principal, message, context):
+def _route_one(engine, retrieval, principal, message, context, allow_cloud=True):
+    message=normalize_chat(message)
     q=re.sub(r"\s+", " ", strip_accents(message))
+    # "Học lớp cải thiện" và "học cải thiện" là cùng ý định tra cứu Điều 15.
+    q=re.sub(r'\bhoc\s+lop\s+cai\s+thien\b', 'hoc cai thien', q)
+    q=re.sub(r'\blop\s+cai\s+thien\b', 'hoc cai thien', q)
     simple=re.sub(r'[^a-z0-9 ]','',q).strip()
     if simple in ('xin chao','chao','hello','hi','chao ban','cam on','cam on ban','thanks','huong dan','ban lam duoc gi'):
         context.pop('article',None)
@@ -56,6 +66,67 @@ def route(engine, retrieval, principal, message, context):
     if len(ids)>1 or len(classes)>1 or (ids and classes):
         return reply('<p>Hãy tra cứu một sinh viên hoặc một lớp mỗi lần.</p>','clarify')
     arts,clauses=numbers(message)
+    if not ids and not classes and not arts and not clauses:
+        basic = basic_conversation(engine, retrieval, principal, q, context)
+        if basic is not None:
+            return basic
+    context.pop('basic_leave',None)
+    if not ids and not classes and ambiguous_penalty(message):
+        context.pop('article',None)
+        return retrieval.answer(message,cloud=False)
+    if not arts and not clauses and not ids and not classes and principal.role in ('advisor','admin') and any(x in q for x in ('gop y qua chatbot','gop y cua sinh vien','gop y cua sv','sv gop y','gop y sinh vien','gop y nao','tong hop gop y','gop y co an danh','tra loi lai gop y')):
+        context.pop('article',None)
+        return reply('<p>Bản demo chưa có kho dữ liệu góp ý sinh viên; không thể thống kê, xác định người gửi hoặc hứa chức năng phản hồi chưa được triển khai.</p>','none')
+    if not ids and not arts and not clauses:
+        advanced=aggregate_v3(engine,principal,q,parsed,classes)
+        if advanced is not None:
+            context.pop('article',None)
+            return advanced
+    if not ids and not classes and not arts and not clauses:
+        advanced=numeric_policy(retrieval,q)
+        if advanced is not None:
+            context.pop('article',None)
+            return advanced
+    # Dedicated queries use only authenticated, locally scoped data.
+    if not ids and not arts and not clauses:
+        if principal.role in ('advisor','admin') or not any(x in q for x in ('cua em','cua toi','cua minh','em co','em da','em con')):
+            focused = scoped_analytics(engine, principal, q, parsed, classes)
+            if focused is not None:
+                context.pop('article',None)
+                return focused
+    if not ids and not classes:
+        focused = focused_policy(retrieval, q, arts, clauses)
+        if focused is not None:
+            context.pop('article',None)
+            found={c['article'] for c in focused['regulations']}
+            if len(found)==1: context['article']=next(iter(found))
+            return focused
+        if not arts and not clauses and not unsupported(message) and specific_facets(message):
+            out=retrieval.answer(message,cloud=allow_cloud)
+            out['intent']='regulation'
+            context.pop('article',None)
+            found={c['article'] for c in out['regulations']}
+            if len(found)==1: context['article']=next(iter(found))
+            return out
+        if not arts and not clauses:
+            focused = student_risk(engine, principal, q, parsed, ids)
+            if focused is not None:
+                context.pop('article',None)
+                return focused
+    if not ids and not arts and not clauses and not unsupported(message):
+        advanced=unavailable_aggregate(engine,principal,q,parsed,classes)
+        if advanced is not None:
+            context.pop('article',None)
+            return advanced
+    if not ids and not classes and not arts and not clauses and not unsupported(message):
+        advanced=model_explanation(engine,q)
+        if advanced is not None:
+            context.pop('article',None)
+            return advanced
+        advanced=personal_v3(engine,principal,q,parsed)
+        if advanced is not None:
+            context.pop('article',None)
+            return advanced
     personal=bool(ids) or ('tot nghiep' in q and bool(re.search(r'\b(?:em|toi|minh)\b',q))) or any(x in q for x in ('cua em','cua toi','cua minh','ban than','em co','em da','em con','toi co','toi da','toi con','ho so cua'))
     aggregate=bool(classes) or any(x in q for x in ('lop manh nhat','lop yeu nhat','toan truong','tong ket khoa','tong so sinh vien','thong ke lop','xem lop','danh sach lop','top 5 lop','so sanh cac lop','hoc bong co giu chan','ty le thoi hoc','tong no hoc phi','thong ke theo','thong ke khoa','so sanh he','so sanh bac','so sanh khoa','ty le bo hoc'))
     admission='dau vao' in q or 'diem tuyen sinh' in q or 'phuong thuc tuyen sinh' in q
@@ -66,8 +137,12 @@ def route(engine, retrieval, principal, message, context):
     retake_cmd = bool(re.search(r'(?:hoc lai|cai thien)\s+\S+\s+(?:dat|len)\s+(?:a\+|a|b\+|b|c\+|c|d\+|d|f)(?:\s|$)', q))
     has_scenario_cue = any(x in q for x in ('kich ban', 'du doan', 'gia lap', 'what-if', 'what if', 'ky sau', 'ki sau', 'ky toi', 'ki toi'))
     improve_policy_cues = ('quy che', 'quy dinh', 'dieu kien', 'lay diem', 'tinh diem', 'tinh vao gpa', 'diem cao nhat', 'lan sau', 'duoc phep', 'co duoc', 'gioi han', 'bao nhieu lan', 'diem d', 'diem c', 'khac nhau', 'nhu the nao', 'the nao')
+    passed_retake_policy = bool(
+        'thi lai' in q and 'cai thien' in q
+        and re.search(r'\bdiem\s*[abcd]\+?(?=\s|[.,!?;]|$)',q)
+    )
     asking_improve_policy = (
-        any(x in q for x in ('hoc cai thien', 'cai thien diem'))
+        (any(x in q for x in ('hoc cai thien', 'cai thien diem')) or passed_retake_policy)
         and not target_match
         and not retake_cmd
         and not any(x in q for x in ('kich ban', 'du doan', 'gia lap', 'what-if', 'what if'))
@@ -143,8 +218,25 @@ def route(engine, retrieval, principal, message, context):
     if unsupported(message) and not calculation and not arts:
         result=retrieval.answer(message,cloud=False); result['intent']='regulation';return result
     pq=normalize_query(message)
-    policy_improve = not ids and not gpa_improve_scenario and any(x in pq for x in ('hoc cai thien', 'cai thien diem'))
-    policy_only=not ids and not target_match and not gpa_improve_scenario and (policy_improve or any(x in pq for x in ('bao luu','nghi hoc tam thoi','hoc phan tien quyet','chuyen nganh','chuyen truong','phuc tra','thoi gian hoc toi da','dang ky tin chi','cam thi','dieu kien du thi')) or (not personal and bool(public_focus(message)) and not any((risk,admission,course)) and not any(x in q for x in ('kich ban','gpa hoc ky','gpa tich luy','gpa ky sau','gpa ky toi','hoc phi con no','tin chi da dat','tin chi no dong','so lan canh bao hoc tap','canh bao lien tiep','xem ho so','bang diem'))))
+    policy_improve = not ids and not gpa_improve_scenario and (
+        any(x in pq for x in ('hoc cai thien', 'cai thien diem')) or passed_retake_policy
+    )
+    # Hỏi cách tính GPA theo quy chế là câu lý thuyết, không phải yêu cầu
+    # đọc GPA cá nhân chỉ vì trong câu chứa 'GPA tích lũy'.
+    # 'Cho em biết số lần cảnh báo ...' là yêu cầu giải thích ngưỡng theo
+    # quy chế, không phải xem lịch sử cảnh báo của tài khoản đang đăng nhập.
+    # Yêu cầu lịch sử cá nhân rõ ràng vẫn đi qua phân quyền/hồ sơ như cũ.
+    warning_policy_query = bool(
+        re.search(r'\b(?:so|may|bao nhieu|qua|tren)\s+lan\s+(?:bi\s+)?canh bao\b',pq)
+        and any(x in pq for x in ('buoc thoi hoc','duoi hoc','bi thoi hoc','bao nhieu','quy dinh','quy che','gioi han','so lan'))
+        and not any(x in pq for x in ('cua em','cua toi','cua minh','em da bi','toi da bi','em hien co','lich su canh bao','ho so cua'))
+    )
+    if warning_policy_query:
+        pq += ' canh bao hoc tap buoc thoi hoc'
+    policy_gpa_explanation = ('gpa tich luy' in pq and
+        any(x in pq for x in ('cong thuc gpa', 'tinh tu', 'duoc tinh', 'tinh nhu the nao')) and
+        not any(x in pq for x in ('gpa cua em', 'gpa cua toi', 'gpa cua minh', 'ho so cua')))
+    policy_only=not ids and not target_match and not gpa_improve_scenario and (policy_improve or policy_gpa_explanation or warning_policy_query or any(x in pq for x in ('bao luu','nghi hoc tam thoi','hoc phan tien quyet','chuyen nganh','chuyen truong','phuc tra','thoi gian hoc toi da','dang ky tin chi','cam thi','dieu kien du thi')) or (not personal and bool(public_focus(message)) and not any((risk,admission,course)) and not any(x in q for x in ('kich ban','gpa hoc ky','gpa tich luy','gpa ky sau','gpa ky toi','hoc phi con no','tin chi da dat','tin chi no dong','so lan canh bao hoc tap','canh bao lien tiep','xem ho so','bang diem'))))
     if ('tot nghiep' in q or requested_registration) and personal and not arts:
         policy_only=False
     if re.search(r'(?:vang|nghi)\s*\d+(?:[.,]\d+)?\s*%',q) and not calculation and not arts:
@@ -163,11 +255,23 @@ def route(engine, retrieval, principal, message, context):
                     message+=' '+ ' và '.join('Khoản '+k for k in dict.fromkeys(k for _,k in references))
             result=retrieval.answer(message,cloud=False)
             result['reply']=('<p>Điều được nêu không phải căn cứ của phép tính; xem căn cứ đúng bên dưới.</p>' if wrong else '')+calculation+result['reply']
-        else: result=retrieval.answer(message,cloud=True)
+        else:
+            # Intent đã được xác nhận theo ngưỡng quy chế, nên truy xuất theo
+            # chủ đề chuẩn hóa thay vì chuyển nhầm thành truy vấn hồ sơ cá nhân.
+            query = message + ' cảnh báo học tập buộc thôi học' if warning_policy_query else message
+            result=retrieval.answer(query,cloud=allow_cloud)
         result['intent']='regulation'
         found={c['article'] for c in result['regulations']}
         if len(found)==1 and not (set(arts)-found) and all(any(k in span(c['clause']) for c in result['regulations']) for k in clauses): context['article']=next(iter(found))
         return result
+    if not ids and not classes and not arts and not clauses and not personal and not scenario and not aggregate and not unsupported(message):
+        facets=facet_ids(message)
+        if facets:
+            result=retrieval.answer(message,cloud=allow_cloud); result['intent']='regulation'
+            if result['regulations']:
+                found={c['article'] for c in result['regulations']}
+                if len(found)==1: context['article']=next(iter(found))
+                return result
     personal_request=personal or (principal.role=='advisor' and bool(context.get('target')) and (risk or admission or scenario or course)) or (principal.role=='student' and (risk or admission or scenario or course or any(x in q for x in ('gio tu hoc','gio lam them','xem ho so','bang diem','gpa tich luy','gpa hoc ky','no hoc phi bao nhieu','tin chi da dat','so lan canh bao hoc tap','ty le chuyen can','hoc phi con no','tin chi no dong','tin chi tich luy','diem trung binh tich luy','dang nhap lms','buoi gap co van','buoi phu dao','so ngay qua han'))))
     if personal_request:
         target=next(iter(ids), principal.user_id if principal.role=='student' else context.get('target',''))
@@ -252,9 +356,67 @@ def route(engine, retrieval, principal, message, context):
     if any(x in q for x in ('quyen rieng tu','bao mat','gemini','lich su chat')):
         return reply('<p>Phiên đăng nhập và phân quyền được kiểm tra phía máy chủ. Hệ thống dùng tài khoản và dữ liệu mô phỏng; không dùng cho hồ sơ thật. Nếu bật Gemini, chỉ gửi bằng chứng quy chế công khai, không gửi hồ sơ hoặc câu hỏi gốc.</p>','privacy')
     # Phép tính giả định chỉ từ các số người dùng nêu, không truy cập dữ liệu.
-    result=retrieval.answer(message,cloud=True);result['intent']='regulation'
+    result=retrieval.answer(message,cloud=allow_cloud);result['intent']='regulation'
     if calculation: result['reply']=calculation+result['reply']
     a={c['article'] for c in result['regulations']}
     if len(a)==1: context['article']=next(iter(a))
     else: context.pop('article',None)
     return result
+
+
+# Only store public topic IDs or a metric enum, never raw questions or results.
+_FOLLOW_PUBLIC = {
+    16: ('Điều 16 Khoản 1', 'Phúc tra: xem thời hạn và quy trình trong căn cứ.'),
+    21: ('Điều 21 Khoản 1', 'Nghỉ học tạm thời: thời hạn tùy lý do nghỉ.'),
+    12: ('Điều 12', 'Đăng ký, rút học phần và khóa luận có thời hạn riêng.'),
+}
+_FOLLOW_METRIC = {'gpa tich luy':'GPA tích lũy của em', 'gpa hoc ky':'GPA học kỳ của em', 'tin chi tich luy':'Tín chỉ tích lũy của em'}
+
+
+def _legacy_route(engine, retrieval, principal, message, context, allow_cloud=True):
+    q=strip_accents(normalize_chat(message))
+    topic=context.pop('v3_public',None)
+    metric=context.pop('v3_metric',None)
+    # Strictly bounded elliptical questions; a new subject never inherits context.
+    if topic in _FOLLOW_PUBLIC and re.fullmatch(r'(?:con |the |vay )?(?:thoi han|han nop don|bao lau)(?: thi sao)?[?.! ]*',q):
+        query,intro=_FOLLOW_PUBLIC[topic]
+        out=retrieval.answer(query,cloud=False)
+        out['reply']='<p>'+html.escape(intro)+'</p>'+out['reply'];out['intent']='regulation'
+        context['article']=topic;context['v3_public']=topic
+        return out
+    follow=re.fullmatch(r'(?:con |the |vay )?(?:hoc ky|ky|hk)\s*(\d{1,2})(?: thi sao)?[?.! ]*',q)
+    if follow and metric in _FOLLOW_METRIC and principal.role=='student':
+        # _route_one always checks current authentication and record scope again.
+        out=_route_one(engine,retrieval,principal,_FOLLOW_METRIC[metric]+' học kỳ '+follow[1],context,allow_cloud=allow_cloud)
+        if out.get('intent')=='personal': context['v3_metric']=metric
+        return out
+    # Separate only clearly independent public policy questions. Existing
+    # mixed-topic and private questions keep the original authorization path.
+    parts=[p.strip() for p in re.split(r'[?;]+',message) if p.strip()]
+    if (2<=len(parts)<=3 and not re.search(r'\b(?:B[A-Z]{2}\d{6}|SIMV31_\d{6}|[A-Z]{2}\d{2}-\d{2,3})\b',message.upper())
+        and all(facet_ids(p) and not unsupported(p) and not numbers(p)[0] and not numbers(p)[1] for p in parts)):
+        outs=[_route_one(engine,retrieval,principal,p,{},allow_cloud=False) for p in parts]
+        if all(o.get('intent')=='regulation' for o in outs):
+            evidence=list({c['id']:c for o in outs for c in o['regulations']}.values())
+            context.pop('article',None)
+            return {'reply':''.join(f'<p><b>Ý {i+1}</b></p>'+o['reply'] for i,o in enumerate(outs)), 'regulations':evidence,'retrieved':evidence,'intent':'regulation','method':'bm25','generation_status':'NOT_REQUESTED'}
+    out=_route_one(engine,retrieval,principal,message,context,allow_cloud=allow_cloud)
+    arts={c['article'] for c in out.get('regulations',[])}
+    if out.get('intent')=='regulation' and len(arts)==1: context['v3_public']=next(iter(arts))
+    if principal.role=='student' and out.get('intent')=='personal':
+        selected=[k for k in _FOLLOW_METRIC if k in q]
+        if len(selected)==1:context['v3_metric']=selected[0]
+    return out
+
+
+def route(engine, retrieval, principal, message, context):
+    # Simple, fully specified counts are business queries, not LLM guesses.
+    local=simple_major_count(engine,principal,strip_accents(normalize_chat(message)))
+    if local is not None:
+        context.clear()
+        return local
+    from core.chat_agent import enabled, route_agent
+    if enabled(engine):
+        return route_agent(_legacy_route, engine, retrieval, principal, message, context)
+    context.pop('agent_context', None)
+    return _legacy_route(engine, retrieval, principal, message, context)

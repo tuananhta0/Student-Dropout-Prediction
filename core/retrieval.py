@@ -19,6 +19,8 @@ import unicodedata
 
 import numpy as np
 from core.chatbot_engine import strip_accents
+from core.policy_focus_v3 import facet_ids, normalize_chat, public_facets, specific_facets, SPECIFIC_ASPECTS, ambiguous_penalty
+from sklearn.feature_extraction.text import TfidfVectorizer
 
 ROOT = Path(__file__).resolve().parents[1]
 PDF = 'Quy-che-dao-tao-trinh-do-dai-hoc.pdf'
@@ -36,19 +38,65 @@ PARAPHRASES = {
     'nhac nho lien tiep': 'canh bao hoc tap lien tiep', 'duoi hoc': 'buoc thoi hoc',
     'hoc het bao nhieu nam thi phai ra truong': 'thoi gian hoc toi da', 'hoc het bao lau': 'thoi gian hoc toi da',
     'chuyen sang truong': 'chuyen truong', 'chuyen sang dai hoc': 'chuyen truong',
+    'chuyen den truong': 'chuyen truong', 'chuyen den dai hoc': 'chuyen truong',
+    'chuyen qua truong': 'chuyen truong', 'doi truong': 'chuyen truong',
+    'doi nganh': 'chuyen nganh', 'doi chuyen nganh': 'chuyen nganh',
+    'doi sang truong': 'chuyen truong',
+    'dang ky hoc phan': 'dang ky tin chi', 'tiet hoc': 'moi tiet',
     'bi om': 'nghi hoc tam thoi bao luu', 'nghi vi benh': 'nghi hoc tam thoi bao luu',
     'phuc khao': 'phuc tra', 'song nganh': 'hai chuong trinh',
-    'mon bat buoc':'hoc phan bat buoc', 'nganh thu hai':'hai chuong trinh', 'nghi khong phep':'vang khong phep', 'luu bao lau':'luu tru', 'thoi gian toi da': 'thoi gian hoc toi da', 'rot mon': 'hoc lai', 'truot mot mon muon nang diem': 'hoc lai cai thien diem', 'luan van': 'khoa luan', 'nghi hoc do benh':'nghi hoc tam thoi bao luu', 'nghi hoc vi benh':'nghi hoc tam thoi bao luu', 'nghi mot nam':'nghi hoc tam thoi', 'cham nguoi than':'ly do ca nhan nghi hoc tam thoi', 'vang mat':'vang', 'tu xin thoi hoc':'tu nguyen thoi hoc',
+    'mon bat buoc':'hoc phan bat buoc', 'nganh thu hai':'hai chuong trinh', 'nghi khong phep':'vang khong phep', 'luu bao lau':'luu tru', 'thoi gian toi da': 'thoi gian hoc toi da', 'rot mon': 'hoc lai', 'truot mot mon muon nang diem': 'hoc lai cai thien diem', 'luan van': 'khoa luan', 'nghi hoc do benh':'nghi hoc tam thoi bao luu', 'nghi hoc vi benh':'nghi hoc tam thoi bao luu', 'nghi hoc mot nam':'nghi hoc tam thoi bao luu', 'nghi mot nam':'nghi hoc tam thoi', 'cham nguoi than':'ly do ca nhan nghi hoc tam thoi', 'hoc lop cai thien':'hoc cai thien', 'lop cai thien':'hoc cai thien', 'vang mat':'vang', 'tu xin thoi hoc':'tu nguyen thoi hoc',
 }
 TOPICS = ('phuc tra ket qua thi|thoi gian hoc toi da|canh bao hoc tap|buoc thoi hoc|chuyen truong|chuyen nganh|bao luu|nghi hoc tam thoi|hoc phan tien quyet|hoc phan bat buoc|hoc phan tu chon|dang ky tin chi|rut hoc phan|diem liet|thi lai|hoc lai|cai thien diem|gpa|tot nghiep|tieng anh|hoc truc tuyen|ke hoach dao tao|quy mo lop|co van hoc tap|trach nhiem sinh vien|muc tieu dao tao|lop nhap hoc|trao doi sinh vien|luu tru khoa luan|hieu luc thi hanh|cam thi|ha hang tot nghiep|hoc phi rut mon|hoc phi|khoa luan|moi tiet|quy che ap dung|hai chuong trinh|tin chi|diem thi|tu nguyen thoi hoc|ly do ca nhan|chung nhan|thoi hoc|vang khong phep|dieu kien du thi|thi cuoi ky|cong nhan tin chi|quyen loi sau thoi hoc|hoc cai thien|nghia vu quan su').split('|')
 
 
 def normalize_query(question):
-    query=strip_accents(question)
+    query=strip_accents(normalize_chat(question))
     for old,new in PARAPHRASES.items():
         query=query.replace(old,new)
+    # Các cụm thông dụng không nhất thiết dùng từ pháp lý 'nghỉ học tạm thời'.
+    # Chỉ nối ý định nghỉ học khi có yêu cầu nghỉ học theo kỳ/lý do, không bắt
+    # nhầm 'nghỉ thi', 'nghỉ không phép' hay hỏi giờ vắng mặt trong học phần.
+    if re.search(r'\b(?:chuyen|doi)\s+(?:den|qua|sang)?\s*(?:mot\s+)?(?:truong|dai hoc)\s+(?:dai hoc\s+)?khac\b', query):
+        query += ' chuyen truong'
+    # Hỏi giờ tín chỉ không phải hỏi đơn giá học phí. Điều 3.1 định nghĩa
+    # khối lượng học tập theo giờ tín chỉ; Điều 5 quy định độ dài mỗi tiết.
+    if (re.search(r'\b(?:mot|1|moi)\s+tin\s+chi\b',query)
+            and re.search(r'\b(?:hoc\s+)?(?:bao nhieu|may|so|tinh)\s+(?:gio|tiet|phut|tieng)\b',query)
+            and 'hoc phi' not in query):
+        query += ' gio tin chi ly thuyet'
+    if (re.search(r'\b(?:mot|1|moi)\s+tiet(?:\s+hoc)?\b',query)
+            and any(x in query for x in ('bao lau','bao nhieu phut','keo dai','thoi luong'))):
+        query += ' moi tiet'
+    if 'hoc phan' in query and 'diem' in query and any(x in query for x in ('lam tron','ra chu','diem chu')):
+        query += ' diem chu'
+    # Câu chuyển ngành chỉ dùng mã ngành, thường không nhắc từ 'ngành'.
+    # Chỉ nhận khi có động từ chuyển/đổi cùng hướng chuyển giữa hai mã viết hoa.
+    original_codes = re.findall(r'\b[A-Z]{2,3}\b', question)
+    if (len(set(original_codes)) >= 2 and re.search(r'\b(?:doi|chuyen)\b',query)
+            and re.search(r'\b(?:sang|qua|den)\b',query)):
+        query += ' chuyen nganh'
+    if (re.search(r'\b(?:tam dung|dung|tam ngung|ngung)\s+(?:viec\s+)?hoc\b', query)
+            and any(x in query for x in ('tai nan','dieu tri','benh','om','phau thuat','nam vien'))):
+        query += ' nghi hoc tam thoi bao luu'
+    if re.search(r'\bquy doi\s+(?:ve\s+|sang\s+)?(?:thang\s+)?(?:diem\s+)?4\b', query):
+        query += ' quy doi thang 4'
+    if 'gpa tich luy' in query and any(x in query for x in ('duoc tinh', 'cong thuc', 'tinh tu', 'tinh nhu the nao')):
+        query += ' cong thuc gpa'
     if 'bao nhieu nam' in query and any(x in query for x in ('hoc','dao tao','ra truong')): query+=' thoi gian hoc toi da'
     if re.search(r'(?:vang|nghi)\s*\d+(?:[.,]\d+)?\s*%',query): query+=' cam thi'
+    # Các câu xin nghỉ có thời hạn/lý do thường không nói nguyên cụm "bảo lưu".
+    # Không áp dụng với vắng giờ học, nghỉ không phép hoặc nghỉ thi.
+    study_leave = (
+        re.search(r'\b(?:xin|muon|co the|duoc)\s+nghi\s+(?:hoc\s+)?\d+\s*(?:hoc\s*)?ky\b',query)
+        or re.search(r'\bnghi\s+(?:hoc\s+)?\d+\s*(?:hoc\s*)?ky\s+(?:vi|do)\b',query)
+        or re.search(r'\b(?:xin|muon|co the|duoc)\s+nghi\s+\d+\s*(?:hoc\s*)?ky\b',query)
+        or ('nghi hoc' in query and any(x in query for x in ('kho khan tai chinh','bi om','vi om','vi benh','do benh','dang benh','bi benh','benh nang','dieu tri','tai nan','phau thuat','nam vien','ly do ca nhan','mot hoc ky','moi hoc ky')))
+        or (re.search(r'\b(?:xin|muon|dinh|can)\s+nghi\s+(?:hoc\s+)?(?:mot|hai|ba|bon|1|2|3|4)\s*(?:hoc\s*)?ky\b',query)
+            and not any(x in query for x in ('nghi khong phep','nghi thi')))
+    )
+    if study_leave and not any(x in query for x in ('nghi khong phep','nghi thi','nghi le','nghi tet')):
+        query += ' nghi hoc tam thoi bao luu'
     if (
         any(x in query for x in ('nghia vu quan su', 'di nghia vu', 'nhap ngu', 'di bo doi', 'luc luong vu trang'))
         or re.search(r'\bnvqs\b', query)
@@ -57,7 +105,7 @@ def normalize_query(question):
     return query
 
 
-def public_focus(question):
+def public_focus(question, include_facets=True):
     """Chỉ xuất cụm có sẵn trong danh sách công khai, không sao chép đầu vào."""
     q=normalize_query(question)
     if any(x in q for x in ('the ngan hang','chuyen khoan','vi dien tu','so tai khoan','thanh toan bang','mat khau','api key')):
@@ -66,6 +114,17 @@ def public_focus(question):
     # Bổ sung khía cạnh hỏi bằng cụm công khai, không chuyển bất kỳ token gốc nào.
     aspects={'bao nhieu':'ngưỡng hoặc số lượng','toi da':'giới hạn tối đa','toi thieu':'giới hạn tối thiểu','lam sao':'thủ tục','giay xac nhan':'minh chứng','can gi':'điều kiện','khi nao':'thời hạn','co duoc':'điều kiện cho phép','ca nhan':'lý do cá nhân','co phep':'vắng có phép'}
     matched=list(dict.fromkeys(matched+[t for terms in POLICY_TOPICS.values() for t in terms if re.search(r'\b'+re.escape(t)+r'\b',q)]))
+    if include_facets:
+        matched=list(dict.fromkeys(matched+[SPECIFIC_ASPECTS[k] for k in specific_facets(question) if k in SPECIFIC_ASPECTS]+["Điều "+str(k.split(".")[0][1:])+" khoản "+k.split(".K")[1] for k in specific_facets(question)]))
+        if 'D20.K5–6' in specific_facets(question):
+            # Fixed public subject labels, not raw question text.
+            normalized = strip_accents(question)
+            for aliases, label in ((('gdtc','giao duc the chat'),'chứng chỉ Giáo dục thể chất'),
+                                   (('gdqp','quoc phong'),'chứng chỉ Giáo dục quốc phòng - an ninh'),
+                                   (('ngoai ngu','tieng anh'),'chuẩn ngoại ngữ')):
+                if any(re.search(r'\b'+re.escape(alias)+r'\b', normalized) for alias in aliases):
+                    matched.append('Nội dung được hỏi: '+label)
+        matched=list(dict.fromkeys(matched+public_facets(question)+["Điều "+str(k.split(".")[0][1:])+" khoản "+k.split(".K")[1] for k in facet_ids(question)]))
     if not matched: return ''
     return '; '.join(matched+[v for k,v in aspects.items() if k in q])
 
@@ -74,15 +133,15 @@ def public_focus(question):
 # tín chỉ, học phí không tự động khóa vào một Điều duy nhất.
 POLICY_TOPICS = {
     1: ('quy che ap dung','pham vi doi tuong'), 2: ('muc tieu dao tao',),
-    3: ('thoi gian hoc toi da','hoc phan tien quyet'), 4: ('hoc phan bat buoc',),
+    3: ('thoi gian hoc toi da','hoc phan tien quyet','gio tin chi ly thuyet'), 4: ('hoc phan bat buoc',),
     5: ('moi tiet','gio hoc ly thuyet'), 6: ('trach nhiem sinh vien',),
     7: ('co van hoc tap','giao vien chu nhiem'), 8: ('ke hoach dao tao',),
     9: ('lop nhap hoc',), 10: ('quy mo lop',), 11: ('hoc truc tuyen',),
     12: ('rut hoc phan','rut mon','dang ky tin chi','hoc phi rut mon','lam do an','lam khoa luan'),
     13: ('diem liet','thi cuoi ky','diem thanh phan','diem chu'),
     14: ('thi lai','thi bo sung','dieu kien du thi'), 15: ('cai thien diem','hoc lai','hoc cai thien'),
-    16: ('phuc tra','phuc khao'), 17: ('cong thuc gpa','quy doi thang 4','xep loai hoc luc'),
-    18: ('canh bao hoc tap','buoc thoi hoc','canh bao lien tiep'),
+    16: ('phuc tra','phuc khao'), 17: ('cong thuc gpa','quy doi thang 4','quy doi diem','diem theo thang 4','xep loai hoc luc'),
+    18: ('canh bao hoc tap','buoc thoi hoc','canh bao lien tiep','so lan canh bao hoc tap'),
     19: ('tieng anh','cong nhan tin chi'), 20: ('dieu kien tot nghiep','ha hang tot nghiep'),
     21: ('bao luu','nghi hoc tam thoi','tu nguyen thoi hoc','nghia vu quan su'),
     22: ('chuyen truong','chuyen nganh'), 23: ('hai chuong trinh',),
@@ -96,6 +155,12 @@ def topic_articles(question):
     out={a for a,terms in POLICY_TOPICS.items() if any(re.search(r'\b'+re.escape(t)+r'\b',q) for t in terms)}
     if 4 in out and not any(t in q for t in ('khong dat','truot','rot','phai lam gi')):
         out.discard(4);out.add(3)
+    # Đã đạt điểm chữ thì hỏi "thi lại để cải thiện" là quy định học lại
+    # cải thiện (Điều 15), không phải thi lại điểm F (Điều 14).
+    if ('thi lai' in q and 'cai thien' in q
+            and re.search(r'\bdiem\s*[abcd]\+?(?=\s|[.,!?;]|$)',q)):
+        out.discard(14)
+        out.add(15)
     return out
 
 
@@ -105,13 +170,18 @@ def is_tuition_exemption_query(question):
         return False
     if re.search(r'\b(?:mien\s*[,/&\-]?\s*giam|mien|giam|ho tro)\s+(?:dong\s+|tien\s+)?hoc\s+phi\b', q):
         return True
-    return 'hoc phi' in q and any(x in q for x in ('mien giam', 'duoc mien', 'duoc giam'))
+    return 'hoc phi' in q and (
+        any(x in q for x in ('mien giam', 'duoc mien', 'duoc giam', 'uu dai hoc phi'))
+        or re.search(r'\bhoc\s*phi\b.{0,45}\b(?:mien|giam|ho tro)\b',q) is not None
+    )
 
 
 def is_tuition_amount_query(question):
     q = strip_accents(question)
     if is_tuition_exemption_query(question):
         return False
+    if re.search(r'\b(?:muc|so)\s+tien\s+(?:mot|1|moi)\s+tin\s+chi\b', q):
+        return True
     if any(x in q for x in ('con no', 'no hoc phi', 'cong no', 'tong no', 'qua han', 'hoan hoc phi', 'hoan tra', 'rut hoc phan', 'rut mon', 'thanh toan hoc phi')):
         return False
     if any(x in q for x in (
@@ -125,17 +195,35 @@ def is_tuition_amount_query(question):
         q,
     ):
         return True
+    # Không suy đoán học phí chỉ từ 'một tín chỉ' + 'bao nhiêu': câu đó
+    # có thể đang hỏi giờ/tiết học. Cần tín hiệu tiền tệ rõ ràng.
     if re.search(r'\b(?:1|mot|moi)\s*(?:tin chi|tc)\b', q) and re.search(
-        r'\b(?:bao nhieu(?:\s+tien)?|bao tien|may trieu|gia|dong bao nhieu|het bao nhieu|so tien)\b',
+        r'\b(?:bao nhieu tien|bao tien|may trieu|gia|dong bao nhieu|het bao nhieu|so tien|hoc phi)\b',
         q,
     ):
         return True
     return False
 
 
+def is_tuition_deadline_query(question):
+    """Lịch thu tiền cụ thể không có trong quy chế học vụ, kể cả 'kỳ tới'.
+
+    Tách riêng khỏi số tiền còn nợ hay thủ tục bảo lưu có lý do tài chính.
+    """
+    q = strip_accents(question)
+    if not re.search(r'\b(?:hoc\s*phi|dong\s*tien\s*hoc)\b', q):
+        return False
+    if any(x in q for x in ('no hoc phi', 'cong no', 'so ngay qua han', 'dong duoc bao nhieu')):
+        return False
+    return bool(
+        re.search(r'\b(?:khi nao|bao gio|ngay nao|ngay may|ngay bao nhieu|han chot|han cuoi|han dong|lich dong|lich nop|thoi han|deadline)\b', q)
+        or re.search(r'\b(?:dong|nop|thanh toan)\s+(?:tien\s+)?hoc\s*phi\b.*\b(?:ky toi|ki toi|ky sau|hoc ky toi|thang \d{1,2}|nam \d{4})\b', q)
+    )
+
+
 def unsupported(question):
     q=strip_accents(question)
-    if is_tuition_exemption_query(question) or is_tuition_amount_query(question):
+    if is_tuition_exemption_query(question) or is_tuition_amount_query(question) or is_tuition_deadline_query(question):
         return True
     # Lịch/ngày giờ/giá cụ thể thuộc thông báo vận hành, không phải quy chế.
     if re.search(r'\b(?:lich|ngay|thoi han|han chot)\s+(?:nghi le|nghi tet|nop hoc phi|dong hoc phi|thi cu the|thi lai cu the)',q): return True
@@ -252,6 +340,8 @@ class RegulationSearch:
         self.lengths = np.array([sum(b.values()) for b in self.bags])
         self.avg = float(self.lengths.mean())
         self.df = Counter(w for b in self.bags for w in b)
+        self.local_index = TfidfVectorizer(analyzer="char_wb", ngram_range=(3,5), sublinear_tf=True)
+        self.local_matrix = self.local_index.fit_transform([strip_accents(c["title"]+" "+c["text"]) for c in self.chunks])
         self.client = None
         self.matrix = None
         self.lock = threading.Lock()
@@ -259,7 +349,11 @@ class RegulationSearch:
         self.matrix_model = None
 
     def _cloud(self):
-        # Chỉ kích hoạt theo lựa chọn rõ ràng; không gửi hồ sơ, lịch sử chat hoặc token.
+        # Một file .env KHÔNG commit có thể được nhóm chia sẻ nội bộ. Biến môi
+        # trường thật luôn ưu tiên và chế độ cloud vẫn phải được bật rõ ràng.
+        from dotenv import load_dotenv
+        load_dotenv(self.root / '.env', override=False)
+        # Không gửi hồ sơ, lịch sử chat, token hay câu hỏi gốc cho LLM.
         if os.getenv('CMC_RAG_CLOUD') != '1' or not os.getenv('GEMINI_API_KEY'):
             return None
         with self.lock:
@@ -312,6 +406,10 @@ class RegulationSearch:
             return [c for c in self.chunks if c['article'] in arts and (not clauses or any(k in span(c['clause']) for k in clauses))]
         if unsupported(question):
             return []
+        precise=specific_facets(question)
+        if precise:
+            by_id={c['id']:c for c in self.chunks}
+            return [by_id[key] for key in precise]
         query0=normalize_query(question)
         if any(x in query0 for x in ('cac hinh thuc thoi hoc','cac con duong dan den thoi hoc','phan biet cac loai thoi hoc')):
             wanted=('D18.K2','D25.K4–6','D21.K2–3','D12.K4','D21.K1')
@@ -321,12 +419,23 @@ class RegulationSearch:
         query = normalize_query(question)
         focus = public_focus(question)
         strong = topic_articles(question)
+        # Độ dài tiết học là Điều 5, không cần hai từ hiếm trùng với
+        # đoạn tóm lược (câu 'kéo dài bao lâu' thường không có trong PDF).
+        if 5 in strong and re.search(r'\bmoi\s+tiet\b',query):
+            return [c for c in self.chunks if c['article']==5][:limit]
+        facets = facet_ids(question)
+        if facets and not strong and not public_focus(question, include_facets=False) and not any(re.search(r"\b"+re.escape(strip_accents(c["title"]))+r"\b",query) for c in self.chunks):
+            # Known public facet; rank verified clauses with local character n-grams.
+            sim = (self.local_matrix @ self.local_index.transform([query]).T).toarray().ravel()
+            chosen = [i for i,c in enumerate(self.chunks) if c["id"] in facets]
+            chosen.sort(key=lambda i:float(sim[i]), reverse=True)
+            return [self.chunks[i] for i in chosen[:limit]]
         q = set(tokens(query))
         original = set(re.findall(r'[^\W_]+', unicodedata.normalize('NFC', question.lower())))
         accented = {w for w in original if w != strip_accents(w) and strip_accents(w) in q}
         phrase = ' '.join(tokens(query))
         if not q: return []
-        if not (strong or focus):
+        if not (strong or public_focus(question, include_facets=False)):
             # Với câu chưa xác định được chủ đề, chỉ nhận cụm từ có nghĩa xuất hiện
             # nguyên cụm trong nhan đề; không dựa vào vài từ chung như sinh viên/học.
             if not any(re.search(r'\b'+re.escape(strip_accents(c['title']))+r'\b',query) for c in self.chunks):
@@ -369,6 +478,14 @@ class RegulationSearch:
                 if ranked: first.append(ranked[0])
             first.sort(key=lambda i: scores[i],reverse=True)
             candidates=list(dict.fromkeys(first+candidates))
+        if len(facets)==1 and not re.search(r"\b(?:va|dong thoi|hoac)\b",query) and len(strong)<=1:
+            match=[i for i in candidates if self.chunks[i]["id"] in facets]
+            if match and (not strong or self.chunks[match[0]]["article"] in strong):
+                candidates=match+[i for i in candidates if i not in match]
+        if not candidates and facets:
+            selected = [i for i,c in enumerate(self.chunks) if c["id"] in facets and (not strong or c["article"] in strong)]
+            sim = (self.local_matrix @ self.local_index.transform([query]).T).toarray().ravel()
+            candidates = sorted(selected, key=lambda i:float(sim[i]), reverse=True)
         return [self.chunks[i] for i in candidates[:max(limit,len(strong))]]
 
     def answer(self, question, cloud=False):
@@ -395,6 +512,21 @@ class RegulationSearch:
 
     def _answer(self, question, cloud=False):
         trace={'embedding_used':False,'generation_status':'NOT_REQUESTED'}
+        if ambiguous_penalty(question):
+            return {'reply':'<p>Bạn đang hỏi lần vi phạm thứ hai của hành vi nào (trao đổi bài thi, sử dụng tài liệu hay hành vi khác)? Mức xử lý khác nhau nên cần xác định hành vi trước.</p>', 'regulations':[], 'method':'none','intent':'clarify',**trace}
+        # Học phí là hoàn cảnh, không mặc nhiên là câu hỏi về đơn giá: ưu tiên
+        # phần hỏi nghỉ học/bảo lưu có căn cứ ở Điều 21. Không suy diễn học phí.
+        if (not numbers(question)[0] and 'hoc phi' in strip_accents(question)
+                and 21 in topic_articles(question)
+                and unsupported(question)):
+            policy = self._answer('Điều kiện nghỉ học tạm thời bảo lưu', False)
+            if policy['regulations']:
+                boundary = ('ngày hoặc hạn đóng học phí' if is_tuition_deadline_query(question)
+                            else 'mức tiền hoặc chính sách học phí cụ thể')
+                policy['reply'] = ('<p>Quy chế này không cung cấp '+boundary+'; '
+                                   'hãy đối chiếu thông báo học phí của trường. Về nghỉ học tạm thời/bảo lưu, '
+                                   'cần đáp ứng các điều kiện tại Điều 21:</p>' + policy['reply'])
+                return policy
         # Với câu ghép có một chủ đề ngoài phạm vi: chỉ trả nguồn của phần có
         # căn cứ, không gửi câu thô hay tự suy đoán phần thiếu.
         if not numbers(question)[0] and unsupported(question):
@@ -413,6 +545,8 @@ class RegulationSearch:
         if missing_clauses: diagnostics+='<p>Không tìm thấy Khoản '+', '.join(map(str,missing_clauses))+' của Điều '+str(requested[0])+' trong kho đang sử dụng.</p>'
         if len(requested)>1 and clauses: diagnostics+='<p>Hãy nêu từng Điều và Khoản riêng để tránh ghép nhầm.</p>'
         if not chunks:
+            if not requested and is_tuition_deadline_query(question):
+                return {'reply':diagnostics+'<p>Quy chế đào tạo đang sử dụng không có lịch hoặc ngày đến hạn đóng học phí của kỳ cụ thể. Hãy xem thông báo học phí chính thức hoặc liên hệ bộ phận tài chính của trường; không suy đoán ngày từ Điều/Khoản không liên quan.</p>', 'regulations':[], 'method':'none',**trace}
             if not requested and is_tuition_amount_query(question):
                 return {'reply':diagnostics+'<p>Quy chế đào tạo (QĐ 22/2023) không quy định mức tiền học phí cụ thể. Vui lòng tra cứu Thông báo học phí của nhà trường tương ứng khóa học, ngành và chương trình đào tạo.</p>','regulations':[], 'method':'none',**trace}
             if not requested and is_tuition_exemption_query(question):
@@ -437,6 +571,16 @@ class RegulationSearch:
                     prompt = ('Tóm lược bằng tiếng Việt các bằng chứng quy chế dưới đây. Không thêm quy định, số liệu hoặc kết luận cá nhân. '
                               'Nếu thiếu căn cứ, nói rõ. Trả JSON gồm answer (chuỗi) và citations (mảng ID chỉ từ bằng chứng).\n'
                               'Ý định công khai: '+ (public_focus(question) or '; '.join(dict.fromkeys(c['title'] for c in evidence)))+'\n'+json.dumps(evidence,ensure_ascii=False))
+                    prompt = (
+                        "Answer the public intent directly in Vietnamese. "
+                        "Put the conclusion first. "
+                        "For simple questions, prefer one to three sentences. "
+                        "For complex questions, include necessary conditions "
+                        "and exceptions. Do not repeat all evidence. "
+                        "Do not invent facts, thresholds, procedures or "
+                        "personal conclusions. Follow the JSON contract. "
+                        + prompt
+                    )
                     allowed = {c['id'] for c in evidence}
                     schema = {'type':'OBJECT','properties':{
                         'answer':{'type':'STRING'},
@@ -465,7 +609,8 @@ class RegulationSearch:
                         cited=[c for c in evidence if c['id'] in ids]
                         # Không để LLM bỏ mất một chủ đề đã truy xuất; giữ bằng chứng
                         # trực tiếp và báo fallback nếu thiếu nguồn của một chủ đề.
-                        if len(topic_articles(question))>1 and {c['article'] for c in cited}!={c['article'] for c in evidence}:
+                        precise_ids = set(specific_facets(question))
+                        if (precise_ids and not precise_ids.issubset(ids)) or (len(topic_articles(question))>1 and {c['article'] for c in cited}!={c['article'] for c in evidence}):
                             intro=''
                             raise ValueError('Thiếu nguồn cho một chủ đề')
                         evidence=cited
@@ -485,4 +630,34 @@ class RegulationSearch:
             extra=c.get('supplement')
             supplement_link=f"<p><a href='/regulations/{SUPPLEMENT}#page={extra['pages'].split('–')[0]}' target='_blank' rel='noopener noreferrer'>Bản tổng hợp tham khảo · trang {extra['pages']}</a></p>" if extra else ''
             blocks.append(f"<div class='border border-slate-600 rounded-lg p-3'><b>Điều {c['article']}, Khoản {c['clause']}: {html.escape(c['title'])}</b><p>{html.escape(c['text'])}</p><p><a href='/regulations/{PDF}#page={page}' target='_blank' rel='noopener noreferrer'>QĐ 22/2023 · trang PDF {c['pages']}</a></p>{supplement_link}</div>")
+        if not requested and blocks:
+            if method == 'gemini':
+                intro += '<p>Căn cứ: '+html.escape('; '.join(dict.fromkeys(f'Điều {c["article"]}, khoản {c["clause"]}' for c in evidence)))+'.</p>'
+                blocks = [
+                    '<details><summary>C\u0103n c\u1ee9 quy ch\u1ebf chi ti\u1ebft</summary>'
+                    + ''.join(blocks) + '</details>'
+                ]
+            elif len(blocks) > 1:
+                visible = []
+                extra = []
+                seen_articles = set()
+
+                single_topic=len(topic_articles(question))<=1 and not re.search(r'\b(?:va|hoac|dong thoi)\b',normalize_query(question))
+                for item, block in zip(evidence, blocks):
+                    article = item['article']
+
+                    if article not in seen_articles and (not single_topic or not visible):
+                        visible.append(block)
+                        seen_articles.add(article)
+                    else:
+                        extra.append(block)
+
+                if extra:
+                    visible.append(
+                        '<details><summary>C\u0103n c\u1ee9 b\u1ed5 sung</summary>'
+                        + ''.join(extra) + '</details>'
+                    )
+
+                blocks = visible
+
         return {'reply':intro+''.join(blocks)+'<p>Bản tóm lược đã đối chiếu ảnh trang; văn bản PDF gốc là căn cứ. Áp dụng từ năm học 2023–2024.</p>', 'regulations':evidence, 'retrieved':retrieved, 'method':method,'retrieval_method':'hybrid' if trace['embedding_used'] else 'bm25',**trace}

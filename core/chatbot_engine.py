@@ -98,7 +98,7 @@ class CMCChatbotEngine:
             if key not in self.meta:
                 raise ValueError(f"Thiếu trường metadata mô hình: {key}")
 
-        self.df = pd.read_csv(scored_path, low_memory=False,float_precision="round_trip")
+        self.df = pd.read_csv(scored_path, low_memory=False)
 
         required = {
             "record_uid", "student_id", "snapshot_term_index",
@@ -305,16 +305,27 @@ class CMCChatbotEngine:
     def evaluate_regulation_trap(self, query: str) -> str:
         q = re.sub(r"\s+", " ", strip_accents(query)).replace(",", ".")
         notes = []
+        # GPA giả định có học kỳ nêu bằng số hoặc thứ tự viết chữ.
+        # Lấy số GPA từ câu hỏi, không lấy từ hồ sơ hiện tại.
+        term_gpa = re.search(
+            r'\bgpa\s+(?:hoc\s*)?(?:ky|hk)\s*(?:thu\s*)?'
+            r'(?P<term>nhat|dau|mot|hai|ba|bon|tu|nam|sau|bay|tam|chin|muoi|\d+)'
+            r'\s*(?:la|dat|=)?\s*(?P<score>-?\d+(?:\.\d+)?)\b', q)
         m = re.search(r'\bgpa\s*(?:=|la|dat)?\s*(-?\d+(?:\.\d+)?)', q)
-        if m:
-            g = number(m.group(1),0,4)
+        if m or term_gpa:
+            g = number(term_gpa.group('score') if term_gpa else m.group(1),0,4)
             if g is None:
                 notes.append("Điều 17: GPA phải nằm trong [0,4].")
             elif "khoa luan" in q or "do an" in q:
                 notes.append(f"Điều 12.3a: GPA {g:.2f} {'đạt' if g >= 2.5 else 'chưa đạt'} ngưỡng 2.50; còn điều kiện riêng của chương trình.")
             elif "canh bao" in q:
                 term = re.search(r'\b(?:hoc\s*ky|(?<!dang )ky|hk)\s*(\d+)\b(?!\s*(?:tin chi|tc)\b)', q)
-                if 'ky dau' in q:
+                if term_gpa:
+                    term_text=term_gpa.group('term')
+                    term={'nhat':1,'dau':1,'mot':1,'hai':2,'ba':3,'bon':4,
+                          'tu':4,'nam':5,'sau':6,'bay':7,'tam':8,'chin':9,'muoi':10}.get(term_text)
+                    if term is None: term=int(term_text)
+                elif 'ky dau' in q:
                     term = 1
                 elif term:
                     term = int(term.group(1))
@@ -328,6 +339,18 @@ class CMCChatbotEngine:
             elif "xep loai" in q or "loai gi" in q:
                 rank = next(label for n,label in [(3.6,'Xuất sắc'),(3.2,'Giỏi'),(2.5,'Khá'),(2,'Trung bình'),(1,'Yếu'),(0,'Kém')] if g >= n)
                 notes.append(f"Điều 17.3: {g:.2f} xếp loại {rank}.")
+        # Điều 21.1d: giới hạn nghỉ vì lý do cá nhân theo quy chế.
+        # Không áp dụng ngưỡng 3 kỳ này cho trường hợp y tế/quân sự.
+        if 'ly do ca nhan' in q and ('nghi' in q or 'bao luu' in q):
+            leave = re.search(r'\b(?:xin\s+|muon\s+|co the\s+)?nghi\s+(\d+)\s*(?:hoc\s*)?ky\b', q)
+            if leave:
+                n=int(leave.group(1))
+                if n==0:
+                    notes.append('Điều 21.1d: Số học kỳ xin nghỉ phải lớn hơn 0.')
+                elif n>3:
+                    notes.append(f'Điều 21.1d: Xin nghỉ {n} học kỳ vì lý do cá nhân vượt giới hạn tối đa 3 học kỳ; không thể tự coi là được phép.')
+                else:
+                    notes.append(f'Điều 21.1d: {n} học kỳ trong giới hạn tối đa 3 học kỳ cho lý do cá nhân; còn phải học ít nhất một kỳ, không thuộc diện xem xét buộc thôi học/kỷ luật và nộp đơn, minh chứng; nhà trường quyết định.')
         m = re.search(r'(?:khoi luong chuan|chuan)\s*(?:la\s*)?(\d+)\s*(?:tin chi|tc)',q)
         if m:
             lo, hi = registration_bounds(int(m.group(1))) if int(m.group(1)) else (None,None)
@@ -424,7 +447,16 @@ class CMCChatbotEngine:
             (["buoi phu dao", "tham gia bao nhieu buoi phu dao"], "tutoring_sessions_to_date", "Số buổi Phụ đạo đã tham gia", "{:.0f} buổi"),
             (["gio tu hoc"], "study_hours_week", "Số giờ tự học mỗi tuần", "{:.1f} giờ/tuần"),
             (["gio lam them"], "part_time_work_hours_week", "Số giờ làm thêm mỗi tuần", "{:.1f} giờ/tuần"),
-            (["dang nhap lms"], "lms_logins_4weeks", "Số lần đăng nhập LMS 4 tuần", "{:.0f} lần")
+            (["dang nhap lms"], "lms_logins_4weeks", "Số lần đăng nhập LMS 4 tuần", "{:.0f} lần"),
+            (["mon da truot tich luy", "mon truot tich luy"], "courses_failed_cumulative", "Số môn trượt tích lũy", "{:.0f} môn"),
+            (["mon truot trong hoc ky", "mon truot ky nay"], "courses_failed_term", "Số môn trượt trong kỳ", "{:.0f} môn"),
+            (["mon phai hoc lai"], "retake_count_cumulative", "Số lượt học lại tích lũy", "{:.0f}"),
+            (["tin chi dang ky trong hoc ky", "tin chi dang ky ky nay"], "credits_registered_term", "Tín chỉ đăng ký trong kỳ", "{:.0f} TC"),
+            (["diem qua trinh trung binh"], "process_score10_mean_term", "Điểm quá trình trung bình", "{:.2f}/10"),
+            (["ty le nop bai dung han"], "assignment_on_time_rate_term", "Tỷ lệ nộp bài đúng hạn", "{:.1f}%"),
+            (["tuan lien tiep bo nop bai"], "assignment_miss_streak_weeks", "Số tuần liên tiếp bỏ nộp bài", "{:.0f} tuần"),
+            (["ngay hoat dong lms"], "lms_active_days_4weeks", "Số ngày hoạt động LMS 4 tuần", "{:.0f} ngày"),
+            (["hoc ky da nghi", "nghi hoc tam thoi may hoc ky"], "leave_semesters_to_date", "Số kỳ đã nghỉ", "{:.0f} kỳ")
         ]
 
         matched_lines = []
@@ -434,9 +466,11 @@ class CMCChatbotEngine:
                 if cur_val is None:
                     matched_lines.append(f'{label}: Chưa có dữ liệu')
                     continue
+                if col == "assignment_on_time_rate_term": cur_val *= 100
                 cur_str = fmt.format(cur_val)
                 if is_delta and prev is not None and number(prev.get(col), -math.inf) is not None:
                     prev_val = float(prev[col])
+                    if col == "assignment_on_time_rate_term": prev_val *= 100
                     diff = cur_val - prev_val
                     trend = "tăng" if diff > 0 else ("giảm" if diff < 0 else "không đổi")
                     matched_lines.append(f"• <b>{label}:</b> Kỳ được hỏi (HK{int(latest['snapshot_term_index'])}) là <b>{cur_str}</b>, so với kỳ trước (HK{int(prev['snapshot_term_index'])}: {fmt.format(prev_val)}) đã <b>{trend} {fmt.format(abs(diff))}</b>.")

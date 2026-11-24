@@ -8,20 +8,20 @@ Hệ thống **Trợ lý học vụ, tra cứu quy chế đào tạo và cảnh 
 - **Cố vấn học tập:** thống kê lớp, hồ sơ sinh viên và danh sách nguy cơ còn hiệu lực.
 - **Quản trị:** thống kê theo khoa, khóa, hệ đào tạo và tình trạng học tập.
 
-Chatbot tra cứu quy chế theo Điều/Khoản/Trang PDF bằng BM25, hỗ trợ embedding đa ngôn ngữ và Gemini tùy chọn. Các phép tính học vụ và ML chạy trong Python, không gửi hồ sơ cá nhân đến LLM. Ứng dụng xác thực bằng phiên bearer và phân quyền phía máy chủ; chỉ chạy localhost với dữ liệu mô phỏng. Xác suất không phải quyết định buộc thôi học.
+Chatbot V3 có hai chế độ: tra cứu học vụ offline và hội thoại Gemini với bộ điều phối công cụ có kiểm tra quyền. Các phép tính học vụ, truy vấn dữ liệu và ML chạy trong Python; chế độ V3 chỉ bật rõ ràng cho DEMO và có thể gửi nội dung câu hỏi người dùng nhập tới Gemini, không gửi hồ sơ từ database hoặc kết quả truy vấn học vụ. Không nhập thông tin thật/nhạy cảm. Ứng dụng xác thực bằng phiên bearer và phân quyền phía máy chủ; chỉ chạy localhost với dữ liệu mô phỏng. Xác suất không phải quyết định buộc thôi học.
 
 **Phiên bản nghiệm thu:** `cmc-research-v1`, dữ liệu MAIN đã hiệu chỉnh. Kết quả máy huấn luyện trên tập kiểm thử mô phỏng: ROC-AUC 0,8293; Average Precision 0,6291; Recall 57,74% ở ngưỡng 0,12. Nhóm cảnh báo sớm chưa đủ điều kiện xử lý hành chính: Recall 45,25%. Xác nhận từ metadata và báo cáo của gói được bàn giao, không sử dụng kết quả baseline cho model mới.
 
 ## 🚀 Cài đặt và chạy (Windows PowerShell, Python 3.11)
 
-**Cài mới từ GitHub:** Clone nhánh `Dung` và tải [gói runtime chính thức `cmc-research-v1.zip`](https://github.com/tuananhta0/Student-Dropout-Prediction/releases/tag/runtime-v1-7178718) trong GitHub Release. Gói gồm dataset MAIN mô phỏng và model đã huấn luyện; **không cần huấn luyện lại**. Thư mục `artifacts_model/` trong Git chỉ là baseline lịch sử, **không phải model nghiệm thu**.
+**Cài mới từ GitHub:** Clone nhánh `main` (nhánh công bố; `Dung` dành cho phát triển) và tải [gói runtime chính thức `cmc-research-v1.zip`](https://github.com/tuananhta0/Student-Dropout-Prediction/releases/tag/runtime-v1-7178718) trong GitHub Release. Gói gồm dataset MAIN mô phỏng và model đã huấn luyện; **không cần huấn luyện lại**. Thư mục `artifacts_model/` trong Git chỉ là baseline lịch sử, **không phải model nghiệm thu**.
 
 ### 1. Clone mã nguồn và cài dependencies
 
 Yêu cầu: Windows PowerShell, Git, Python **3.11** có lệnh `py -3.11`.
 
 ```powershell
-git clone --branch Dung --single-branch https://github.com/tuananhta0/Student-Dropout-Prediction.git
+git clone --branch main --single-branch https://github.com/tuananhta0/Student-Dropout-Prediction.git
 cd Student-Dropout-Prediction
 py -3.11 -m venv .venv
 .\.venv\Scripts\Activate.ps1
@@ -67,9 +67,11 @@ if ($LASTEXITCODE -ne 0) { throw 'Smoke phan quyen that bai' }
 python -m uvicorn app:app --host 127.0.0.1 --port 8000 --no-proxy-headers
 ```
 
-Mở **http://127.0.0.1:8000**. Mặc định trình diễn mốc mô phỏng **03/02/2027**, không phải ngày hiện tại. Mật khẩu demo là mã tài khoản viết hoa (ví dụ `BIT250093` / `BIT250093`, `ADMIN` / `ADMIN`); không cần tạo file tài khoản. Chế độ offline vẫn tra cứu quy chế và tính học vụ, không cần Gemini API key. Muốn bật Gemini, xem [cấu hình RAG và cloud](docs/tra_cuu_quy_che.md); không đưa API key vào Git. Đây là hệ thống demo, chỉ chạy localhost với dữ liệu mô phỏng, không dùng để xác thực danh tính thực tế.
+Mở **http://127.0.0.1:8000**. Mặc định trình diễn mốc mô phỏng **03/02/2027**, không phải ngày hiện tại. Mật khẩu demo là mã tài khoản viết hoa (ví dụ `BIT250093` / `BIT250093`, `ADMIN` / `ADMIN`); không cần tạo file tài khoản. Chế độ offline vẫn tra cứu quy chế và tính học vụ, không cần Gemini API key. Muốn bật hội thoại V3, xem [hướng dẫn V3 Final](docs/chatbot_v3_final_Dung.md); không đưa API key vào Git. Chạy `powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/start_v3_web_ASCII.ps1` trong repo Windows đã cài runtime và `.env`. Đây là hệ thống demo, chỉ chạy localhost với dữ liệu mô phỏng, không dùng để xác thực danh tính thực tế.
 
 **Kiểm thử hồi quy đầy đủ (tùy chọn):** `python -B -X utf8 -m unittest discover -s tests -v` và `python -B -X utf8 -m scripts.benchmark_rag --all --e2e`. Node.js chỉ cần cho kiểm thử JavaScript, không cần để chạy giao diện đã biên dịch.
+
+**Kiểm tra ZIP runtime trước khi công bố:** `python -B -m scripts.review_public_runtime data/cmc-research-v1.zip`. Công cụ kiểm checksum, manifest và mẫu bí mật mà không nạp model; vẫn cần người tạo dữ liệu xác nhận không có dữ liệu thật. Xem [checklist bàn giao](docs/kiem_tra_ban_giao.md).
 
 ## 🔑 Tài khoản demo
 
@@ -111,10 +113,15 @@ Student-Dropout-Prediction/
 
 ## 🧪 Kiểm thử
 
+Sau khi cài GitHub Release, `scripts.audit_dataset` và `scripts.review_policy` cần trỏ vào thư mục **dataset** bên trong release (khác đường dẫn mặc định `dataset_full/`). Chỉ đặt biến này khi chạy kiểm toán; không cần cho ứng dụng:
+
 ```powershell
+if (-not (Test-Path 'data/releases/cmc-research-v1/dataset/artifacts/runs/V3_2_MAIN/manifests/generation_manifest.json')) { throw 'Chua cai runtime release' }
+$env:CMC_DATASET_ROOT = (Resolve-Path 'data/releases/cmc-research-v1/dataset').Path
 python -B -X utf8 -m scripts.audit_dataset
-python -B -X utf8 -m scripts.benchmark_rag
 python -B -X utf8 -m scripts.review_policy
+Remove-Item Env:CMC_DATASET_ROOT -ErrorAction SilentlyContinue
+python -B -X utf8 -m scripts.benchmark_rag
 python -B -X utf8 -m unittest discover -s tests -v
 python -B -X utf8 -m tests.smoke_runtime
 python -B -X utf8 -m tests.smoke_academic_rules
@@ -128,4 +135,8 @@ Xem [hướng dẫn hiệu chỉnh, thực nghiệm và chọn phiên bản mô 
 
 Nghiệm thu cuối: xem [bàn giao](docs/ban_giao.md), [tra cứu và đánh giá RAG](docs/tra_cuu_quy_che.md) và [giới hạn thực nghiệm ML](docs/ket_qua_nghien_cuu.md). Giao diện chạy CSS/JS cục bộ, mật khẩu demo trùng mã tài khoản. Thống kê chỉ gồm hồ sơ đã có kết quả học kỳ; nguy cơ ML dự báo hai học kỳ tiếp theo từ snapshot.
 
-Kiểm thử hồi quy bổ sung: `python -B -m scripts.benchmark_rag --all --e2e` (68 câu, fixture, không cần cloud) và `node --test tests/portal_async.test.cjs` (Node 22, chỉ cần cho kiểm thử giao diện, không cần khi chạy ứng dụng). Báo cáo mới ghi nguồn commit/dirty và checksum đầu vào; chạy lại sau commit sạch trước khi tạo gói nghiên cứu mới. Xem [bàn giao](docs/ban_giao.md).
+Kiểm thử hồi quy bổ sung: `python -B -m scripts.benchmark_rag --all --e2e` (70 câu, fixture, không cần cloud) và `node --test tests/portal_async.test.cjs` (Node 22, chỉ cần cho kiểm thử giao diện, không cần khi chạy ứng dụng). Báo cáo mới ghi nguồn commit/dirty và checksum đầu vào; chạy lại sau commit sạch trước khi tạo gói nghiên cứu mới. Xem [bàn giao](docs/ban_giao.md).
+
+### Nghiệm thu sau patch ABCD trên `Dung`
+
+Xem `docs/nghiem_thu_ABCD_Dung.md` để chạy regression RAG 40 câu, Gemini cloud bằng **một key dùng chung nội bộ**, phân tầng Machine Learning/Censoring/STRESS, audit runtime ZIP, HTTP thực, kiểm thử giao diện ba vai trò và fresh-clone. Không merge hoặc ghi vào `main` trong giai đoạn này. `tests/data/bo_cau_ra_soat_40_de_xuat.json` không phải tập mù độc lập.

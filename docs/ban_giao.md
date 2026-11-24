@@ -1,6 +1,6 @@
 # Bàn giao mô hình và dữ liệu
 
-Phiên bản chính thức dùng để nghiệm thu: **cmc-research-v1**, dataset MAIN đã hiệu chỉnh `cmc-policy-2026-01`. Gói phục vụ chạy ứng dụng gồm các bảng MAIN cần thiết, pipeline, metadata, snapshot đã chấm điểm, tóm tắt thống kê, manifest và báo cáo thực nghiệm. Giữ riêng dữ liệu STRESS, archive gốc và toàn bộ hồ sơ tái sinh để tái lập nghiên cứu; gói chạy không bao gồm STRESS. Không gửi gói sang dịch vụ bên ngoài hoặc commit vào Git nếu không có chủ đích. Joblib có thể thực thi mã khi nạp: chỉ cài gói do thành viên tin cậy tạo, đối chiếu SHA256 qua kênh riêng.
+Phiên bản chính thức dùng để nghiệm thu: **cmc-research-v1**, dataset MAIN đã hiệu chỉnh `cmc-policy-2026-01`. Gói phục vụ chạy ứng dụng gồm các bảng MAIN cần thiết, pipeline, metadata, snapshot đã chấm điểm, tóm tắt thống kê, manifest và báo cáo thực nghiệm. Giữ riêng dữ liệu STRESS, archive gốc và toàn bộ hồ sơ tái sinh để tái lập nghiên cứu; gói chạy không bao gồm STRESS. Gói runtime đã được công bố có chủ đích trên GitHub Release, **không commit ZIP vào lịch sử Git**. Joblib có thể thực thi mã khi nạp: chỉ cài gói do thành viên tin cậy tạo, đối chiếu SHA256 do GitHub công bố với giá trị đã nghiệm thu trước đó (SHA256 kiểm toàn vẹn, không xác thực tác giả).
 
 ## Máy đã huấn luyện model
 
@@ -9,15 +9,20 @@ python -B -X utf8 -m scripts.release_model pack
 Get-FileHash data/cmc-research-v1.zip -Algorithm SHA256
 ```
 
-Script kiểm tra toàn bộ bảng MAIN theo manifest, đồng thời kiểm tra model khớp manifest và không ghi đè gói đã tồn tại. Chia sẻ file ZIP và SHA256 riêng với nhóm. Không cần train lại.
+Script kiểm tra toàn bộ bảng MAIN theo manifest, đồng thời kiểm tra model khớp manifest và không ghi đè gói đã tồn tại. Bản đã nghiệm thu được lưu tại [GitHub Release runtime-v1-7178718](https://github.com/tuananhta0/Student-Dropout-Prediction/releases/tag/runtime-v1-7178718). Không cần train lại; không phát hành một ZIP khác dưới cùng checksum.
 
 ## Máy thành viên khác
 
-Clone nhánh Dung, cài dependencies, rồi tải gói và nhập SHA256 do thành viên tạo cung cấp:
+Clone nhánh `main` theo [README](../README.md), cài Python 3.11 và dependencies. Tải đúng asset được công bố; không phải tự tạo ZIP hoặc tìm file trên máy huấn luyện:
 
 ```powershell
-$sha = Read-Host 'Nhap SHA256 do nguoi tao goi cung cap'
-python -B -X utf8 -m scripts.release_model install "$HOME\Downloads\cmc-research-v1.zip" --sha256 $sha
+$sha = '72d0ebd7b27ffda8e8e80bd2efe1e72c3a86152cba8e80ac356f7c4e1f98e848'
+$archive = 'data/cmc-research-v1.zip'
+New-Item -ItemType Directory -Force data | Out-Null
+Invoke-WebRequest 'https://github.com/tuananhta0/Student-Dropout-Prediction/releases/download/runtime-v1-7178718/cmc-research-v1.zip' -OutFile $archive
+if ((Get-FileHash $archive -Algorithm SHA256).Hash.ToLowerInvariant() -ne $sha) { throw 'Sai SHA256 runtime' }
+python -B -X utf8 -m scripts.release_model install $archive --sha256 $sha
+if ($LASTEXITCODE -ne 0) { throw 'Khong cai duoc runtime' }
 Remove-Item Env:CMC_DATASET_ROOT, Env:CMC_MODEL_DIR, Env:CMC_ALLOW_BASELINE -ErrorAction SilentlyContinue
 $env:CMC_DATA_MODE = 'DEMO'
 python -B -X utf8 -m tests.smoke_runtime
@@ -38,7 +43,7 @@ Giới hạn: chỉ localhost, một tiến trình Uvicorn; chưa có tài kho�
 
 ## Kiểm tra trước khi chia sẻ
 
-- Đổi API key đã lộ tại Google AI Studio, nhập khóa mới qua `Read-Host -AsSecureString`; không chụp log có khóa. Cơ chế mã tài khoản làm mật khẩu chỉ dành cho dữ liệu mô phỏng; ai có quyền truy cập localhost đều có thể đăng nhập ADMIN.
+- Nhóm dùng chung một Gemini API key qua `.env` do `scripts.setup_shared_gemini` tạo, chia sẻ trong nhóm; không đưa key vào GitHub Public hoặc ảnh chụp/log. Cơ chế mã tài khoản làm mật khẩu chỉ dành cho dữ liệu mô phỏng; ai có quyền truy cập localhost đều có thể đăng nhập ADMIN.
 - Giới hạn đăng nhập 30 yêu cầu/phút theo địa chỉ kết nối, chat 15 yêu cầu/phút theo tài khoản; một câu đang xử lý mỗi phiên. Chỉ chạy `--host 127.0.0.1 --no-proxy-headers`.
 - Có thể đặt `CMC_ADVISOR_SCOPE_FILE` trỏ tới JSON tự quản lý, ví dụ `{"GV001":["IT25-09"],"GV002":["BA25-01"],"GV003":["AI25-01"]}`; khi bật, tài khoản không có danh sách được coi là không có lớp. Đây là ví dụ cấu hình, cần chọn mã lớp thực tế trong dữ liệu. Mặc định vẫn dùng phạm vi ngành mô phỏng.
 - CSS được biên dịch cục bộ với Tailwind 4.1.10; không còn CDN. Chỉ khi sửa CSS cần Node và `npm install; npm run build:css`. CSP cấm inline script, chỉ cho JavaScript cục bộ; style động vẫn dùng inline. Cloud giới hạn 2 worker, 30 lời gọi SDK/phút và 500/24 giờ cho mỗi tiến trình; trả fallback sau 25 giây. SDK đang chạy có thể chưa dừng ngay; những lời gọi nội bộ SDK không phải bộ đếm hóa đơn.
@@ -47,7 +52,7 @@ Giới hạn: chỉ localhost, một tiến trình Uvicorn; chưa có tài kho�
 
 ## Nghiệm thu cuối
 
-Trên máy thành viên khác, clone vào thư mục mới bằng `git clone -b Dung --single-branch https://github.com/tuananhta0/Student-Dropout-Prediction.git`, tạo `.venv` bằng Python 3.11, `pip install -r requirements.txt`, cài release theo SHA256 đã nhận riêng. Không sao chép `.venv` hoặc API key. Tắt cloud, chạy unit test, ba chế độ smoke runtime/học vụ và smoke security, kiểm thử cả ba vai trò. Ghi commit, kết quả và máy thử (không ghi thông tin bí mật).
+Trên máy thành viên khác, clone vào thư mục mới bằng `git clone -b main --single-branch https://github.com/tuananhta0/Student-Dropout-Prediction.git`, tạo `.venv` bằng Python 3.11, `pip install -r requirements.txt`, cài release theo SHA256 đã nhận riêng. Không sao chép `.venv` hoặc API key. Tắt cloud, chạy unit test, ba chế độ smoke runtime/học vụ và smoke security, kiểm thử cả ba vai trò. Ghi commit, kết quả và máy thử (không ghi thông tin bí mật).
 
 CI: `python -B -m scripts.benchmark_rag --all --e2e --output data/kiem_tra_rag/bao_cao_e2e.json` dùng HTTP TestClient và hồ sơ fixture; không kiểm chứng artifact thực. Báo cáo retrieval và benchmark e2e đều có quality gate.
 
@@ -61,4 +66,34 @@ Sau khi commit sạch, chạy lại benchmark gốc, mở rộng, e2e và cloud 
 
 Frontend: `node --test tests/portal_async.test.cjs` dùng Node 22, mô phỏng fetch và DOM để kiểm tra timeout kể cả đọc body JSON, đăng nhập lỗi, phản hồi từ phiên cũ và đổi lớp. CI chạy tự động; không cần Node để khởi động ứng dụng. Vẫn kiểm thử thủ công trên trình duyệt thật. Timeout giao diện 35 giây; logout/đổi phiên hủy yêu cầu đang chờ phía client, không đảm bảo server dừng ngay.
 
-Có thể dùng chung API key của nhóm qua kênh riêng nếu chủ khóa chấp thuận; repository là public nên không hardcode, không lưu trong patch, không đưa vào gói dữ liệu hoặc Git. Khóa từng được chia sẻ nên thay trước khi sử dụng ngoài demo, giới hạn quota và theo dõi chi phí; đổi khóa do chủ sở hữu thực hiện. Kiểm thử offline không cần API key.
+Dự án sử dụng một Gemini API key chung của nhóm qua `.env` được chia sẻ nội bộ; repository là public nên không hardcode hoặc commit vào patch. Chỉ cần key trên máy thử cloud; test offline không cần key. Chủ key tự quản lý quota, chi phí và việc đổi key nếu cần.
+
+
+## Đối chiếu sau merge và nguồn báo cáo
+
+Khi thay đổi đang ở `Dung`, chỉ kiểm tra PASS trên `Dung` hoặc PR nhắm vào `main`; **không** gọi đó là CI PASS trên `main`. Workflow được cấu hình cho cả hai nhánh; sau khi nhóm quyết định merge, kiểm tra run có `head_branch=main`, `head_sha` đúng HEAD của `main`, `conclusion=success`. Không đưa commit lên `main` từ máy đang sửa `Dung`.
+
+Sau commit sạch, xuất báo cáo mới để tránh đánh dấu sai provenance và không ghi đè báo cáo thực nghiệm ML của release:
+
+```powershell
+python -B -X utf8 -m scripts.benchmark_rag --all --e2e --output data/kiem_tra_rag/bao_cao_e2e_Dung.json
+if ($LASTEXITCODE -ne 0) { throw 'Benchmark offline that bai' }
+python -B -X utf8 -m scripts.benchmark_rag --cloud --output data/kiem_tra_rag/bao_cao_cloud_Dung.json  # Chỉ khi chủ động bật cloud và chủ key chấp thuận
+```
+
+`provenance.source_commit` trong báo cáo đo ở nhánh nào phải là commit của **nhánh đó**; `source_dirty=false` chỉ hợp lệ khi worktree sạch. Để có chứng cứ `main`, người nghiệm thu phải chạy lại sau merge trên một clone `main` sạch. Gói runtime/model vẫn giữ tag `runtime-v1-7178718` và các metrics lịch sử của lần huấn luyện; **không** đổi thành commit mới chỉ vì code/chatbot được sửa. [Checklist nghiệm thu sau merge](kiem_tra_ban_giao.md) ghi rõ các hạng mục chưa thể tự xác nhận. Bảng kiểm tra ngữ nghĩa đối chiếu trực tiếp Điều 15, 21 ở [đối chiếu nguồn PDF](doi_chieu_ngu_nghia.md); chưa phải kết quả đánh giá Gemini mù của thành viên độc lập.
+
+## Bảo mật trước khi trình diễn cloud và công khai bản bàn giao
+
+- Nhóm dùng **một Gemini API key chung** trong `.env` nội bộ, không cần mỗi thành viên tạo key riêng. Có thể tạo bằng `python -B -m scripts.setup_shared_gemini` rồi chia sẻ `.env` riêng tư; không đưa key vào Git, PR, ZIP công khai, Markdown hoặc ảnh chụp màn hình. Chủ khóa quản lý quota và chi phí; chủ động bật cloud khi cần đo thật.
+- Với gói public: kiểm tra tên file và manifest của Release, đối chiếu SHA256 cố định, rà soát dữ liệu PII/secrets trong **nội dung file ZIP** trước khi công bố lại. Không coi quét mã nguồn trên GitHub là kiểm toán dữ liệu đã đóng gói; không mở file `.joblib` từ nguồn không tin cậy.
+- Ghi máy thử, Python 3.11, commit, SHA256 asset, kết quả unit/smoke, kiểm tra 3 vai trò và vài câu RAG trên **máy thành viên khác**. Đây là bước nghiệm thu vật lý phải do thành viên thực hiện, không thể được thay thế bằng CI hoặc fixture.
+
+## Kiểm tra nội dung bản phát hành public và hồi quy chatbot cuối
+
+Trên máy đang giữ ZIP tải từ GitHub Release, chạy công cụ đọc-chỉ `python -B -m scripts.review_public_runtime data/cmc-research-v1.zip` (mặc định dùng SHA256 đã xác minh tại thời điểm công bố). Công cụ không thực thi joblib, kiểm tra checksum ZIP, checksum từng file và manifest, đường dẫn bất thường, mẫu bí mật phổ biến; kết quả ghi dưới `data/kiem_tra_ban_giao/`. Việc đối chiếu nguồn tin cậy và xác nhận dữ liệu thật/giả **vẫn cần người phụ trách dữ liệu**. Không công bố nội dung các bản ghi nghi ngờ.
+
+Bộ regression sau sửa câu hỏi nghỉ cá nhân/ốm, học cải thiện, GPA học kỳ giả định và câu ghép học phí nằm trong `tests/test_delivery_regressions.py` và `scripts.benchmark_rag`. Điểm hồi quy không thay kết luận đánh giá ngữ nghĩa độc lập. Phiên bản báo cáo mới phải ghi commit sau khi chốt patch, còn `100eef9` là baseline lịch sử trước vòng sửa này.
+
+
+> Cập nhật V3: các mô tả bảo mật cloud ở trên áp dụng cho RAG cũ. Khi bật rõ ràng `CMC_CHAT_AGENT=1` trong DEMO, câu hỏi người dùng nhập có thể được gửi tới Gemini; không gửi hồ sơ từ database, token hoặc kết quả công cụ học vụ. Xem [V3 Final](chatbot_v3_final_Dung.md). Không nhập dữ liệu thật hoặc thông tin nhạy cảm.
